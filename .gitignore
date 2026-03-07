@@ -1,0 +1,16 @@
+# Mia — Dependencies & build artifacts
+node_modules/
+vendor/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
