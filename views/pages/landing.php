@@ -16,13 +16,13 @@ ob_start();
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <h1 class="display-4 fw-bold mb-3">
-                    Tu hotel tomando reservas<br>
-                    <span class="text-success">por WhatsApp, 24/7</span>
+                    Gana más. Gasta menos.<br>
+                    <span class="text-success">Automatiza tus reservas por WhatsApp.</span>
                 </h1>
                 <p class="lead mb-4">
-                    Mia es tu asistente inteligente que atiende huéspedes,
-                    muestra habitaciones, cobra y confirma reservas —
-                    incluso a las 3 de la mañana.
+                    Deja de perder clientes a las 2am y de pagar comisiones a Booking.com.
+                    Mia toma reservas, verifica identidad y confirma pagos —
+                    automáticamente, las 24 horas.
                 </p>
                 <div class="d-flex gap-3 justify-content-center flex-wrap">
                     <a href="<?= $waLink ?>" class="btn btn-success btn-lg px-4" target="_blank">
