@@ -34,6 +34,11 @@ ob_start();
                     </a>
                 </div>
                 <p class="mt-3 small text-light opacity-75">Sin tarjeta de crédito · Configuración en 48h · Cancela cuando quieras</p>
+                <div class="mt-3 d-flex gap-2 justify-content-center flex-wrap">
+                    <span class="badge bg-success bg-opacity-75 fs-6 px-3 py-2"><i class="bi bi-translate me-1"></i>Habla más de 50 idiomas</span>
+                    <span class="badge bg-light text-dark fs-6 px-3 py-2"><i class="bi bi-clock me-1"></i>Responde en &lt;5 segundos</span>
+                    <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="bi bi-whatsapp me-1"></i>100% en WhatsApp</span>
+                </div>
             </div>
         </div>
     </div>
@@ -108,6 +113,89 @@ ob_start();
     </div>
 </section>
 
+<!-- Why Mia? -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-2">¿Por qué elegir Mia?</h2>
+        <p class="text-center text-muted mb-5">Razones reales por las que negocios como el tuyo están cambiando la forma de vender</p>
+        <div class="row g-4">
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-success bg-opacity-10 rounded p-2 me-3">
+                            <i class="bi bi-translate text-success fs-3"></i>
+                        </div>
+                        <h6 class="fw-bold mb-0">Cierra tratos en cualquier idioma</h6>
+                    </div>
+                    <p class="text-muted small mb-0">Español, inglés, portugués, francés, italiano, alemán y más de 50 idiomas. Mia detecta el idioma del cliente y responde automáticamente. Captura turistas internacionales que tu equipo no podría atender.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary bg-opacity-10 rounded p-2 me-3">
+                            <i class="bi bi-funnel text-primary fs-3"></i>
+                        </div>
+                        <h6 class="fw-bold mb-0">Filtra leads automáticamente</h6>
+                    </div>
+                    <p class="text-muted small mb-0">No todos los mensajes son clientes serios. Mia hace las preguntas clave, descarta curiosos y solo te pasa los leads calificados listos para comprar. Tu equipo solo habla con quien de verdad quiere cerrar.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-warning bg-opacity-10 rounded p-2 me-3">
+                            <i class="bi bi-lightning-charge text-warning fs-3"></i>
+                        </div>
+                        <h6 class="fw-bold mb-0">Velocidad = ventas</h6>
+                    </div>
+                    <p class="text-muted small mb-0">El cliente que escribe a las 9pm quiere respuesta ahora, no mañana. El negocio que responde primero gana el 78% de las veces. Con Mia respondiendo en menos de 5 segundos, siempre serás el primero.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-danger bg-opacity-10 rounded p-2 me-3">
+                            <i class="bi bi-shield-check text-danger fs-3"></i>
+                        </div>
+                        <h6 class="fw-bold mb-0">Sin errores humanos</h6>
+                    </div>
+                    <p class="text-muted small mb-0">Olvidar responder, dar el precio equivocado, duplicar una reserva — errores que cuestan caro. Mia siempre da la información correcta, consistente y profesional en cada conversación.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-info bg-opacity-10 rounded p-2 me-3">
+                            <i class="bi bi-graph-up-arrow text-info fs-3"></i>
+                        </div>
+                        <h6 class="fw-bold mb-0">Escala tu negocio sin escalar costos</h6>
+                    </div>
+                    <p class="text-muted small mb-0">Contrata más personal y tus costos se duplican. Con Mia, puedes triplicar tus campañas de Facebook Ads y manejar el triple de mensajes por el mismo precio mensual fijo.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-success bg-opacity-10 rounded p-2 me-3">
+                            <i class="bi bi-gear text-success fs-3"></i>
+                        </div>
+                        <h6 class="fw-bold mb-0">Listo en 48 horas, sin técnicos</h6>
+                    </div>
+                    <p class="text-muted small mb-0">No necesitas cambiar nada de tu negocio. Mia se conecta a tu WhatsApp existente. Nuestro equipo lo configura todo en 48 horas. Tú solo empiezas a recibir más clientes confirmados.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
 <!-- ROI Section -->
 <section class="py-5 bg-dark text-white">
     <div class="container">
@@ -117,6 +205,11 @@ ob_start();
                 <p class="lead">Si gastas S/1,000 al mes en Facebook Ads y el 60% de tus leads quedan sin responder, estás tirando S/600 a la basura cada mes.</p>
                 <p>Con Mia respondiendo al instante, podrías <strong>convertir el doble de leads</strong> sin contratar más personal — eso puede significar <strong>S/3,000–S/8,000 en ventas adicionales</strong> por solo S/399/mes.</p>
                 <p class="fw-bold text-success fs-5">Por cada S/1 que inviertes → recuperas S/8 o más</p>
+                <div class="alert alert-success border-0 mt-3 py-3">
+                    <i class="bi bi-lightbulb-fill me-2"></i>
+                    <strong>Por el costo de un empleado, puedes cerrar 10 veces más negocios.</strong>
+                    Mia no se cansa, no toma descanso y atiende 200 conversaciones a la vez.
+                </div>
             </div>
             <div class="col-lg-6">
                 <div class="card bg-dark border-success">
