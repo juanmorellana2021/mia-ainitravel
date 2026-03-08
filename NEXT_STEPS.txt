@@ -1,0 +1,84 @@
+MIA PROJECT — NEXT STEPS
+========================
+Last updated: March 7, 2026
+
+─────────────────────────────────────────
+1. GET MIA WHATSAPP NUMBER (Priority #1)
+─────────────────────────────────────────
+- Get a dedicated WhatsApp number for Mia (can be a new SIM or a virtual number)
+- Update mia/config/App.php line ~16:
+    public const WHATSAPP = '+51XXXXXXXXX';  ← replace with real number
+- Deploy:
+    scp "C:\xampp\htdocs\testapp\mia\config\App.php" prod-vps:/var/www/html/mia.ainitravel.com/config/App.php
+- This updates ALL WhatsApp buttons, CTAs and footer contact across the whole site
+
+─────────────────────────────────────────
+2. CONNECT MIA TO WHATSAPP BOT
+─────────────────────────────────────────
+- The /api/chat endpoint in mia/controllers/ApiController.php is ready and waiting
+- Need to add routing in the WhatsApp bot (whatsapp/bot/index.mjs or AiniService.php)
+  so messages coming FROM the Mia number go to:
+    POST http://127.0.0.1/mia/api/chat
+  instead of the main hotel booking API
+- The MiaSalesService 10-state sales funnel will then run automatically:
+  intro → qualifying → roi_pitch → demo → closing → lead capture
+
+─────────────────────────────────────────
+3. DEPLOY WHATSAPP NOTIFICATION SYSTEM (pending from before Mia)
+─────────────────────────────────────────
+Files ready locally but NOT yet on server:
+  - whatsapp/api/WhatsAppNotifier.php
+  - whatsapp/api/outbound.php
+  - groq_migration/updates/GuestBookingService.php → /whatsapp/api/services/
+  - mobile/index.php (updated with WA notify on confirm)
+  - whatsapp/bot/index.mjs (with processOutboundQueue + polling)
+Deploy script: groq_migration/updates/deploy_notifications.sh
+
+─────────────────────────────────────────
+4. PRICING PAGE — UPDATE CURRENCY
+─────────────────────────────────────────
+- Currently prices show in S/ (Soles) — consider if we want USD option
+  since target includes international travel agencies
+- mia/views/pages/pricing.php + mia/config/App.php (CURRENCY constant)
+
+─────────────────────────────────────────
+5. DEMO PAGE — WIRE UP LIVE CHAT
+─────────────────────────────────────────
+- mia/views/pages/demo.php exists with a static simulator (demo.js)
+- Once Mia number is active, update demo to call the real /api/chat endpoint
+  so visitors get a live taste of the actual Mia AI
+
+─────────────────────────────────────────
+6. FACEBOOK AD CAMPAIGN
+─────────────────────────────────────────
+- Record a 30-second screen recording of the Mia WhatsApp demo conversation
+- Create a Facebook ad with:
+    Headline: "¿Quién responde tus 100 mensajes de WhatsApp?"
+    CTA button: "Enviar mensaje" → opens WhatsApp to Mia number
+- Target: hotel owners, travel agency owners, tour operators in Peru/LatAm
+- Budget: start small ($5–$10/day) and scale what converts
+
+─────────────────────────────────────────
+7. LEAD FOLLOW-UP SYSTEM
+─────────────────────────────────────────
+- Admin panel at mia.ainitravel.com/admin (login: admin / MiaAdmin2026!)
+- When Mia captures a lead (name + email), admin gets notified
+- Add email notification to admin when a new lead is captured
+  (currently saves to DB but no email alert to us)
+
+─────────────────────────────────────────
+8. TESTIMONIALS SECTION
+─────────────────────────────────────────
+- Once first clients are onboarded, add a testimonials section to landing page
+- Screenshot real WhatsApp conversations showing deals being closed
+- Add to landing.php between the "Why Mia" section and the ROI section
+
+─────────────────────────────────────────
+CREDENTIALS REMINDER
+─────────────────────────────────────────
+- Admin panel:  mia.ainitravel.com/admin
+- Username:     admin
+- Password:     MiaAdmin2026!
+- GitHub repo:  https://github.com/juanmorellana2021/mia-ainitravel (branch: main)
+- Server:       prod-vps → /var/www/html/mia.ainitravel.com/
+- SSL:          Let's Encrypt, auto-renews
