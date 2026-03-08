@@ -11,10 +11,12 @@ ob_start();
 ?>
 
 <!-- Hero -->
-<section class="mia-hero text-white text-center py-5">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
+<section class="mia-hero text-white py-5">
+    <div class="container py-4">
+        <div class="row align-items-center g-5">
+
+            <!-- Left: copy -->
+            <div class="col-lg-6 text-center text-lg-start">
                 <h1 class="display-4 fw-bold mb-3">
                     Pones anuncios en Facebook.<br>
                     <span class="text-success">¿Quién responde los 100 mensajes de WhatsApp?</span>
@@ -25,7 +27,7 @@ ob_start();
                     Mia es tu asistente de WhatsApp — responde al instante, califica al cliente,
                     toma la reserva o cotización, y confirma el pago. Las 24 horas. Los 7 días. Sin perder ninguno.
                 </p>
-                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <div class="d-flex gap-3 justify-content-center justify-content-lg-start flex-wrap">
                     <a href="<?= $waLink ?>" class="btn btn-success btn-lg px-4" target="_blank">
                         <i class="bi bi-whatsapp me-2"></i>Prueba Gratis — 7 días
                     </a>
@@ -34,12 +36,89 @@ ob_start();
                     </a>
                 </div>
                 <p class="mt-3 small text-light opacity-75">Sin tarjeta de crédito · Configuración en 48h · Cancela cuando quieras</p>
-                <div class="mt-3 d-flex gap-2 justify-content-center flex-wrap">
+                <div class="mt-3 d-flex gap-2 justify-content-center justify-content-lg-start flex-wrap">
                     <span class="badge bg-success bg-opacity-75 fs-6 px-3 py-2"><i class="bi bi-translate me-1"></i>Habla más de 50 idiomas</span>
                     <span class="badge bg-light text-dark fs-6 px-3 py-2"><i class="bi bi-clock me-1"></i>Responde en &lt;5 segundos</span>
                     <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="bi bi-whatsapp me-1"></i>100% en WhatsApp</span>
                 </div>
             </div>
+
+            <!-- Right: phone mockup -->
+            <div class="col-lg-6 d-flex justify-content-center">
+                <div class="mia-phone-wrap">
+                    <!-- Phone shell -->
+                    <div class="mia-phone">
+                        <!-- WhatsApp header -->
+                        <div class="mia-phone-header">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="mia-avatar">
+                                    <i class="bi bi-robot text-white" style="font-size:1.1rem"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-white" style="font-size:.85rem;line-height:1.1">Mia • AiniTravel</div>
+                                    <div style="font-size:.7rem;color:#a8e6c0">en línea</div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 ms-auto">
+                                <i class="bi bi-camera-video text-white opacity-75"></i>
+                                <i class="bi bi-telephone text-white opacity-75"></i>
+                            </div>
+                        </div>
+                        <!-- Chat body -->
+                        <div class="mia-phone-body">
+                            <div class="mia-date-divider">hoy</div>
+
+                            <div class="mia-msg mia-msg--in">
+                                Hola! Vi su anuncio en Facebook, ¿tienen paquetes para Cusco en abril? 🙏
+                                <span class="mia-time">9:43 PM</span>
+                            </div>
+
+                            <div class="mia-msg mia-msg--out">
+                                ¡Hola! Soy Mia 😊 Sí, tenemos paquetes increíbles para Cusco en abril. ¿Cuántas personas viajan?
+                                <span class="mia-time mia-time--out">9:43 PM <i class="bi bi-check2-all" style="color:#53bdeb"></i></span>
+                            </div>
+
+                            <div class="mia-msg mia-msg--in">
+                                Somos 2 adultos y 1 niño
+                                <span class="mia-time">9:44 PM</span>
+                            </div>
+
+                            <div class="mia-msg mia-msg--out">
+                                Perfecto! Para 2 adultos + 1 niño tengo el paquete <strong>Cusco Mágico 5D/4N</strong> en $480 por persona. Incluye vuelos, hotel 3★ y tours. ¿Le interesa reservar?
+                                <span class="mia-time mia-time--out">9:44 PM <i class="bi bi-check2-all" style="color:#53bdeb"></i></span>
+                            </div>
+
+                            <div class="mia-msg mia-msg--in">
+                                ¡Sí! ¿Cómo pago?
+                                <span class="mia-time">9:45 PM</span>
+                            </div>
+
+                            <div class="mia-msg mia-msg--out">
+                                🎉 ¡Excelente! Puede reservar con solo el 30% de adelanto. Le envío el link de pago ahora mismo. Su agente le confirmará los detalles en minutos.
+                                <span class="mia-time mia-time--out">9:45 PM <i class="bi bi-check2-all" style="color:#53bdeb"></i></span>
+                            </div>
+
+                            <div class="mia-typing">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                        <!-- Input bar -->
+                        <div class="mia-phone-input">
+                            <div class="mia-input-bar">
+                                <i class="bi bi-emoji-smile text-secondary"></i>
+                                <span class="text-secondary flex-grow-1" style="font-size:.8rem">Escribe un mensaje</span>
+                                <i class="bi bi-mic text-secondary"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- "Deal closed" badge floating -->
+                    <div class="mia-deal-badge">
+                        <i class="bi bi-check-circle-fill text-success me-1"></i>
+                        <span>¡Trato cerrado en 2 min!</span>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>
