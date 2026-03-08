@@ -1,0 +1,77 @@
+<?php
+/**
+ * mia/views/client/_sidebar.php
+ *
+ * Sidebar nav + opens the main content area.
+ * Requires $base, $activeNav, $client to be set.
+ */
+$sessionClient = $_SESSION['mia_client'] ?? [];
+$clientName    = $sessionClient['business_name'] ?? 'Mi Panel';
+$plan          = $sessionClient['plan'] ?? 'trial';
+$planStatus    = $sessionClient['plan_status'] ?? 'trial';
+$initials      = strtoupper(substr($clientName, 0, 2));
+?>
+<!-- ── Sidebar ── -->
+<aside class="mc-sidebar" id="mcSidebar">
+    <a class="mc-sidebar-brand" href="<?= $base ?>/">
+        <i class="bi bi-whatsapp"></i>
+        <span>Mia</span>
+    </a>
+
+    <!-- Plan badge -->
+    <div class="mc-plan-badge">
+        <i class="bi bi-lightning-fill me-1"></i>
+        <?php if ($planStatus === 'trial'): ?>
+            Prueba gratuita — <?= max(0, (int) ceil((strtotime($_SESSION['mia_client']['trial_ends_at'] ?? 'now') - time()) / 86400)) ?> días
+        <?php elseif ($planStatus === 'active'): ?>
+            Plan <?= htmlspecialchars(ucfirst($plan)) ?> activo
+        <?php else: ?>
+            Plan suspendido
+        <?php endif; ?>
+    </div>
+
+    <nav class="mc-sidebar-nav">
+        <a href="<?= $base ?>/dashboard"
+           class="mc-nav-item <?= $activeNav === 'dashboard' ? 'active' : '' ?>">
+            <i class="bi bi-grid-1x2"></i> Dashboard
+        </a>
+        <a href="<?= $base ?>/dashboard/leads"
+           class="mc-nav-item <?= $activeNav === 'leads' ? 'active' : '' ?>">
+            <i class="bi bi-people"></i> Leads
+        </a>
+        <a href="<?= $base ?>/dashboard/messages"
+           class="mc-nav-item <?= $activeNav === 'messages' ? 'active' : '' ?>">
+            <i class="bi bi-chat-dots"></i> Mensajes
+        </a>
+        <a href="<?= $base ?>/dashboard/billing"
+           class="mc-nav-item <?= $activeNav === 'billing' ? 'active' : '' ?>">
+            <i class="bi bi-credit-card"></i> Suscripción
+        </a>
+    </nav>
+
+    <div class="mc-sidebar-footer">
+        <div class="mc-nav-divider"></div>
+        <a href="<?= $base ?>/" class="mc-nav-item" target="_blank">
+            <i class="bi bi-globe"></i> Ver sitio
+        </a>
+        <a href="<?= $base ?>/logout" class="mc-nav-item" style="color:rgba(255,100,100,0.8)">
+            <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+        </a>
+    </div>
+</aside>
+
+<!-- ── Main area ── -->
+<div class="mc-main-area">
+    <header class="mc-topbar">
+        <div class="d-flex align-items-center gap-3">
+            <button class="mc-mobile-toggle" onclick="document.getElementById('mcSidebar').classList.toggle('open')">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="mc-topbar-title"><?= htmlspecialchars($pageTopTitle ?? $pageTitle ?? '') ?></span>
+        </div>
+        <div class="mc-topbar-user">
+            <div class="avatar"><?= htmlspecialchars($initials) ?></div>
+            <span class="d-none d-md-inline"><?= htmlspecialchars($clientName) ?></span>
+        </div>
+    </header>
+    <main class="mc-content">

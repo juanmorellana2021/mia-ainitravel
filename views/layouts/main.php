@@ -36,8 +36,21 @@ $base = App::basePath();
                 <li class="nav-item"><a class="nav-link" href="<?= $base ?>/features">Funciones</a></li>
                 <li class="nav-item"><a class="nav-link" href="<?= $base ?>/pricing">Precios</a></li>
                 <li class="nav-item"><a class="nav-link" href="<?= $base ?>/demo">Demo</a></li>
+                <?php if (!empty($_SESSION['mia_client_id'])): ?>
                 <li class="nav-item">
-                    <a class="btn btn-success btn-sm ms-lg-3 mt-2 mt-lg-0" href="https://wa.me/<?= preg_replace('/[^0-9]/', '', App::WHATSAPP) ?>?text=Hola%20Mia!" target="_blank">
+                    <a class="btn btn-outline-light btn-sm ms-lg-2 mt-2 mt-lg-0" href="<?= $base ?>/dashboard">
+                        <i class="bi bi-grid me-1"></i>Mi Panel
+                    </a>
+                </li>
+                <?php else: ?>
+                <li class="nav-item">
+                    <a class="btn btn-outline-light btn-sm ms-lg-2 mt-2 mt-lg-0" href="<?= $base ?>/login">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Ingresar
+                    </a>
+                </li>
+                <?php endif; ?>
+                <li class="nav-item">
+                    <a class="btn btn-success btn-sm ms-2 mt-2 mt-lg-0" href="https://wa.me/<?= preg_replace('/[^0-9]/', '', App::WHATSAPP) ?>?text=Hola%20Mia!" target="_blank">
                         <i class="bi bi-whatsapp me-1"></i>Prueba Gratis
                     </a>
                 </li>

@@ -19,9 +19,19 @@ require_once __DIR__ . '/models/Lead.php';
 require_once __DIR__ . '/models/SalesSession.php';
 require_once __DIR__ . '/services/LeadService.php';
 require_once __DIR__ . '/services/MiaSalesService.php';
+require_once __DIR__ . '/models/Client.php';
+require_once __DIR__ . '/models/ClientLead.php';
+require_once __DIR__ . '/models/ClientMessage.php';
+require_once __DIR__ . '/models/Subscription.php';
+require_once __DIR__ . '/services/ClientService.php';
+require_once __DIR__ . '/services/ClientLeadService.php';
+require_once __DIR__ . '/services/BillingService.php';
 require_once __DIR__ . '/controllers/PageController.php';
 require_once __DIR__ . '/controllers/LeadController.php';
 require_once __DIR__ . '/controllers/ApiController.php';
+require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/controllers/DashboardController.php';
+require_once __DIR__ . '/controllers/BillingController.php';
 
 // ── Route resolution ─────────────────────────────────────────────────────────
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -56,7 +66,52 @@ match (true) {
     $uri === 'api/chat' && $method === 'POST'
         => (new ApiController())->chat(),
 
-    // Admin — leads
+    // ── Client auth ───────────────────────────────────────────────────────
+    $uri === 'login' && $method === 'GET'
+        => (new AuthController())->loginForm(),
+
+    $uri === 'login' && $method === 'POST'
+        => (new AuthController())->loginSubmit(),
+
+    $uri === 'register' && $method === 'GET'
+        => (new AuthController())->registerForm(),
+
+    $uri === 'register' && $method === 'POST'
+        => (new AuthController())->registerSubmit(),
+
+    $uri === 'logout'
+        => (new AuthController())->logout(),
+
+    // ── Client dashboard ─────────────────────────────────────────────────
+    $uri === 'dashboard'
+        => (new DashboardController())->index(),
+
+    $uri === 'dashboard/leads' && $method === 'GET'
+        => (new DashboardController())->leads(),
+
+    str_starts_with($uri, 'dashboard/leads/') && $method === 'GET'
+        => (new DashboardController())->leadDetail((int)basename($uri)),
+
+    str_starts_with($uri, 'dashboard/leads/') && $method === 'POST'
+        => (new DashboardController())->leadUpdate((int)basename($uri)),
+
+    $uri === 'dashboard/messages'
+        => (new DashboardController())->messages(),
+
+    // ── Billing ───────────────────────────────────────────────────────────
+    $uri === 'dashboard/billing' && $method === 'GET'
+        => (new BillingController())->index(),
+
+    $uri === 'dashboard/billing/subscribe' && $method === 'POST'
+        => (new BillingController())->subscribe(),
+
+    $uri === 'dashboard/billing/cancel' && $method === 'POST'
+        => (new BillingController())->cancel(),
+
+    $uri === 'dashboard/billing/webhook' && $method === 'POST'
+        => (new BillingController())->webhook(),
+
+    // ── Admin — leads ─────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'
         => (new LeadController())->loginForm(),
 
