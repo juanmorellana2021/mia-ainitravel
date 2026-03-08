@@ -49,7 +49,19 @@ Deploy script: groq_migration/updates/deploy_notifications.sh
   so visitors get a live taste of the actual Mia AI
 
 ─────────────────────────────────────────
-6. FACEBOOK AD CAMPAIGN
+6. CREATE FACEBOOK PAGE FOR MIA BUSINESS
+─────────────────────────────────────────
+- Create a Facebook Business Page for Mia
+    Name: "Mia — Asistente de Ventas por WhatsApp" (or similar)
+    Category: Software / Business Service
+    Profile photo: Mia logo
+    Cover photo: hero banner with the tagline
+    About section: short description + link to mia.ainitravel.com
+    Add WhatsApp number once it's active (step 1)
+- This page will be the source for running Facebook Ads (step 7)
+
+─────────────────────────────────────────
+7. FACEBOOK AD CAMPAIGN
 ─────────────────────────────────────────
 - Record a 30-second screen recording of the Mia WhatsApp demo conversation
 - Create a Facebook ad with:
@@ -59,7 +71,7 @@ Deploy script: groq_migration/updates/deploy_notifications.sh
 - Budget: start small ($5–$10/day) and scale what converts
 
 ─────────────────────────────────────────
-7. LEAD FOLLOW-UP SYSTEM
+8. LEAD FOLLOW-UP SYSTEM
 ─────────────────────────────────────────
 - Admin panel at mia.ainitravel.com/admin (login: admin / MiaAdmin2026!)
 - When Mia captures a lead (name + email), admin gets notified
@@ -67,7 +79,7 @@ Deploy script: groq_migration/updates/deploy_notifications.sh
   (currently saves to DB but no email alert to us)
 
 ─────────────────────────────────────────
-8. TESTIMONIALS SECTION
+9. TESTIMONIALS SECTION
 ─────────────────────────────────────────
 - Once first clients are onboarded, add a testimonials section to landing page
 - Screenshot real WhatsApp conversations showing deals being closed
