@@ -464,8 +464,8 @@ ob_start();
     <div class="container">
         <h2 class="fw-bold mb-3">¿Listo para que Mia empiece a trabajar hoy?</h2>
         <p class="lead mb-4 opacity-75">7 días gratis, sin tarjeta de crédito, configuración incluida</p>
-        <a href="<?= $waLink ?>" class="btn btn-success btn-lg px-5 fw-bold me-3" target="_blank">
-            <i class="bi bi-whatsapp me-2"></i>Probar Gratis 7 Días
+        <a href="<?= $base ?>/register" class="btn btn-success btn-lg px-5 fw-bold me-3">
+            <i class="bi bi-rocket me-2"></i>Probar Gratis 7 Días
         </a>
         <a href="<?= $base ?>/pricing" class="btn btn-outline-light btn-lg px-5">
             Ver Precios

@@ -50,8 +50,8 @@ $base = App::basePath();
                 </li>
                 <?php endif; ?>
                 <li class="nav-item">
-                    <a class="btn btn-success btn-sm ms-2 mt-2 mt-lg-0" href="https://wa.me/<?= preg_replace('/[^0-9]/', '', App::WHATSAPP) ?>?text=Hola%20Mia!" target="_blank">
-                        <i class="bi bi-whatsapp me-1"></i>Prueba Gratis
+                    <a class="btn btn-success btn-sm ms-2 mt-2 mt-lg-0" href="<?= $base ?>/register">
+                        <i class="bi bi-rocket me-1"></i>Prueba Gratis
                     </a>
                 </li>
             </ul>

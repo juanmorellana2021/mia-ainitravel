@@ -40,8 +40,8 @@ ob_start();
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
-                        <a href="<?= $waLink ?>Básico" class="btn btn-outline-success w-100" target="_blank">
-                            <i class="bi bi-whatsapp me-1"></i>Empezar Gratis
+                        <a href="<?= $base ?>/register?plan=basic" class="btn btn-outline-success w-100">
+                            <i class="bi bi-rocket me-1"></i>Empezar Gratis
                         </a>
                     </div>
                 </div>
@@ -70,8 +70,8 @@ ob_start();
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
-                        <a href="<?= $waLink ?>Pro" class="btn btn-success w-100" target="_blank">
-                            <i class="bi bi-whatsapp me-1"></i>Empezar Gratis
+                        <a href="<?= $base ?>/register?plan=pro" class="btn btn-success w-100">
+                            <i class="bi bi-rocket me-1"></i>Empezar Gratis
                         </a>
                     </div>
                 </div>
@@ -99,8 +99,8 @@ ob_start();
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
-                        <a href="<?= $waLink ?>Enterprise" class="btn btn-outline-success w-100" target="_blank">
-                            <i class="bi bi-whatsapp me-1"></i>Contactar Ventas
+                        <a href="<?= $base ?>/register?plan=enterprise" class="btn btn-outline-success w-100">
+                            <i class="bi bi-rocket me-1"></i>Contactar Ventas
                         </a>
                     </div>
                 </div>

@@ -28,8 +28,8 @@ ob_start();
                     toma la reserva o cotización, y confirma el pago. Las 24 horas. Los 7 días. Sin perder ninguno.
                 </p>
                 <div class="d-flex gap-3 justify-content-center justify-content-lg-start flex-wrap">
-                    <a href="<?= $waLink ?>" class="btn btn-success btn-lg px-4" target="_blank">
-                        <i class="bi bi-whatsapp me-2"></i>Prueba Gratis — 7 días
+                    <a href="<?= $base ?>/register" class="btn btn-success btn-lg px-4">
+                        <i class="bi bi-rocket me-2"></i>Prueba Gratis — 7 días
                     </a>
                     <a href="<?= $base ?>/demo" class="btn btn-outline-light btn-lg px-4">
                         <i class="bi bi-play-circle me-2"></i>Ver Demo
@@ -338,8 +338,8 @@ ob_start();
     <div class="container">
         <h2 class="fw-bold mb-3">¿Listo para no perder más leads de WhatsApp?</h2>
         <p class="lead mb-4">Empieza tu prueba gratis de 7 días — para hoteles, agencias de viaje y operadores turísticos</p>
-        <a href="<?= $waLink ?>" class="btn btn-light btn-lg px-5 fw-bold" target="_blank">
-            <i class="bi bi-whatsapp me-2 text-success"></i>Hablar con Mia
+        <a href="<?= $base ?>/register" class="btn btn-light btn-lg px-5 fw-bold">
+            <i class="bi bi-rocket me-2 text-success"></i>Empezar prueba gratis
         </a>
     </div>
 </section>
