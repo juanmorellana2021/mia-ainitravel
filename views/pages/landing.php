@@ -46,8 +46,21 @@ ob_start();
             <!-- Right: phone mockup -->
             <div class="col-lg-6 d-flex justify-content-center">
                 <div class="mia-phone-wrap">
-                    <!-- Phone shell -->
-                    <div class="mia-phone">
+                    <!-- Phone device frame -->
+                    <div class="mia-device">
+                        <div class="mia-device-btn-vol"></div>
+                        <div class="mia-device-btn-power"></div>
+                        <div class="mia-device-island"></div>
+                        <div class="mia-device-screen">
+                        <!-- Status bar -->
+                        <div class="mia-statusbar">
+                            <span>9:41</span>
+                            <div class="d-flex gap-1 align-items-center">
+                                <i class="bi bi-reception-4" style="font-size:.6rem"></i>
+                                <i class="bi bi-wifi" style="font-size:.6rem"></i>
+                                <i class="bi bi-battery-half" style="font-size:.6rem"></i>
+                            </div>
+                        </div>
                         <!-- WhatsApp header -->
                         <div class="mia-phone-header">
                             <div class="d-flex align-items-center gap-2">
@@ -110,7 +123,9 @@ ob_start();
                                 <i class="bi bi-mic text-secondary"></i>
                             </div>
                         </div>
-                    </div>
+                        </div><!-- /mia-device-screen -->
+                        <div class="mia-device-home"></div>
+                    </div><!-- /mia-device -->
                     <!-- "Deal closed" badge floating -->
                     <div class="mia-deal-badge">
                         <i class="bi bi-check-circle-fill text-success me-1"></i>
