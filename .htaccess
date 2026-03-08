@@ -2,7 +2,10 @@
 # Apache mod_rewrite required
 
 RewriteEngine On
-RewriteBase /mia/
+
+# Subdomain root (mia.ainitravel.com) uses RewriteBase /
+# Local /mia/ dev: change to RewriteBase /mia/
+RewriteBase /
 
 # If file or directory exists, serve it directly
 RewriteCond %{REQUEST_FILENAME} !-f
