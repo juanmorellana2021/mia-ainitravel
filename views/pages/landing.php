@@ -20,9 +20,10 @@ ob_start();
                     <span class="text-success">Automatiza tus reservas por WhatsApp.</span>
                 </h1>
                 <p class="lead mb-4">
-                    Deja de perder clientes a las 2am y de pagar comisiones a Booking.com.
-                    Mia toma reservas, verifica identidad y confirma pagos —
-                    automáticamente, las 24 horas.
+                    No pierdas más clientes por falta de personal.
+                    Mia es como tener un call center completo trabajando para ti —
+                    responde al instante, toma reservas y confirma pagos
+                    las 24 horas, los 7 días, sin descanso.
                 </p>
                 <div class="d-flex gap-3 justify-content-center flex-wrap">
                     <a href="<?= $waLink ?>" class="btn btn-success btn-lg px-4" target="_blank">
