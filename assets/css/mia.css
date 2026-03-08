@@ -283,6 +283,147 @@
 /* ── Smooth scroll ──────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 
+/* ── Features page ─────────────────────────────────────── */
+.mia-feat-hero {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 60%, #1a1a2e 100%);
+}
+.mia-feat-visual {
+    width: 100%;
+    max-width: 420px;
+}
+.mia-feat-badge-green {
+    display: inline-block;
+    background: #e8faf0;
+    color: #157347;
+    border: 1px solid #a3d9b1;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: .8rem;
+    font-weight: 600;
+}
+/* Notification stack */
+.mia-notif-stack { display: flex; flex-direction: column; gap: 10px; }
+.mia-notif {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border-left: 3px solid #25d366;
+    animation: fadeInUp .4s ease both;
+}
+.mia-notif--1 { animation-delay: .05s; }
+.mia-notif--2 { animation-delay: .15s; }
+.mia-notif--3 { animation-delay: .25s; }
+.mia-notif--4 { animation-delay: .35s; }
+.mia-notif-icon {
+    width: 36px; height: 36px;
+    background: #25d366;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.mia-notif-body { flex: 1; min-width: 0; }
+.mia-notif-time { font-size: .7rem; color: #aaa; white-space: nowrap; }
+/* Mini chat */
+.mia-minichat {
+    background: #e5ddd5;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+.mia-minichat-header {
+    background: #f0f0f0;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+}
+.mia-minichat-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.mia-minichat-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8b8a2' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+/* Language bubbles */
+.mia-lang-grid { display: flex; flex-direction: column; gap: 8px; }
+.mia-lang-bubble {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: .82rem;
+    max-width: 88%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.mia-lang-bubble--in { background: #fff; border-bottom-left-radius: 2px; }
+.mia-lang-bubble--out { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 2px; }
+.mia-lang-label { font-size: .65rem; color: #999; margin-top: 3px; }
+.mia-lang-label--out { text-align: right; color: #5a9a6a; }
+/* Handoff diagram */
+.mia-handoff {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.mia-handoff-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+.mia-handoff-step--active { border-color: #25d366; background: #f0faf5; }
+.mia-handoff-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+}
+.mia-handoff-text { flex: 1; }
+.mia-handoff-arrow {
+    text-align: center;
+    font-size: .78rem;
+    padding: 6px 0;
+}
+/* Timeline */
+.mia-timeline {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+}
+.mia-tl-step { display: flex; align-items: flex-start; gap: 14px; }
+.mia-tl-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    color: #fff; font-weight: 700; font-size: .85rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.mia-tl-content { flex: 1; padding-top: 4px; }
+.mia-tl-line {
+    width: 2px; height: 24px;
+    background: #dee2e6;
+    margin-left: 15px;
+}
+/* Industry icons */
+.mia-industry-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px;
+}
+
 /* ── Card hover lift ────────────────────────────────────── */
 .card {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
