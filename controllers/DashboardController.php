@@ -101,6 +101,15 @@ class DashboardController
         exit;
     }
 
+    // ── Analytics ─────────────────────────────────────────────────────────────
+
+    public function analytics(): void
+    {
+        $client = $this->requireClient();
+        $data   = (new ClientLeadService())->analyticsData($client->id);
+        require __DIR__ . '/../views/client/analytics.php';
+    }
+
     // ── Messages inbox ────────────────────────────────────────────────────────
 
     public function messages(): void

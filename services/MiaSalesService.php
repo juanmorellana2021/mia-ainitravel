@@ -432,6 +432,16 @@ class MiaSalesService
             error_log('[Mia] Lead creation error: ' . $e->getMessage());
         }
 
+        // Notify all subscribed clients that a new lead was captured
+        try {
+            require_once __DIR__ . '/../services/NotificationService.php';
+            (new NotificationService())->notifyLeadCaptured(
+                array_merge($session, ['phone' => $phone])
+            );
+        } catch (\Throwable $e) {
+            error_log('[Mia] Notification error: ' . $e->getMessage());
+        }
+
         $bizName = $session['business_name'] ?? 'tu negocio';
         $bizType = $session['business_type'] ?? 'negocio';
         return $this->aiReply($phone, $session, $message,

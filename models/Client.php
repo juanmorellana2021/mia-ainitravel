@@ -24,6 +24,11 @@ class Client
     public string $created_at      = '';
     public string $updated_at      = '';
 
+    // ── Notification settings ──────────────────────────────────────────────
+    public ?string $notify_email          = null;
+    public int     $notify_on_capture     = 1;
+    public int     $notify_daily_summary  = 0;
+
     public static function fromRow(array $row): self
     {
         $c = new self();

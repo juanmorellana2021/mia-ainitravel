@@ -43,9 +43,21 @@ $initials      = strtoupper(substr($clientName, 0, 2));
            class="mc-nav-item <?= $activeNav === 'messages' ? 'active' : '' ?>">
             <i class="bi bi-chat-dots"></i> Mensajes
         </a>
+        <a href="<?= $base ?>/dashboard/analytics"
+           class="mc-nav-item <?= $activeNav === 'analytics' ? 'active' : '' ?>">
+            <i class="bi bi-bar-chart"></i> Analíticas
+        </a>
+        <a href="<?= $base ?>/dashboard/broadcast"
+           class="mc-nav-item <?= $activeNav === 'broadcast' ? 'active' : '' ?>">
+            <i class="bi bi-megaphone"></i> Difusión
+        </a>
         <a href="<?= $base ?>/dashboard/billing"
            class="mc-nav-item <?= $activeNav === 'billing' ? 'active' : '' ?>">
             <i class="bi bi-credit-card"></i> Suscripción
+        </a>
+        <a href="<?= $base ?>/dashboard/settings"
+           class="mc-nav-item <?= $activeNav === 'settings' ? 'active' : '' ?>">
+            <i class="bi bi-gear"></i> Configuración
         </a>
     </nav>
 

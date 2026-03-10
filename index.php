@@ -32,6 +32,10 @@ require_once __DIR__ . '/controllers/ApiController.php';
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/DashboardController.php';
 require_once __DIR__ . '/controllers/BillingController.php';
+require_once __DIR__ . '/controllers/SettingsController.php';
+require_once __DIR__ . '/controllers/BroadcastController.php';
+require_once __DIR__ . '/services/BroadcastService.php';
+require_once __DIR__ . '/services/NotificationService.php';
 
 // ── Route resolution ─────────────────────────────────────────────────────────
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -110,6 +114,24 @@ match (true) {
 
     $uri === 'dashboard/billing/webhook' && $method === 'POST'
         => (new BillingController())->webhook(),
+
+    // ── Analytics ─────────────────────────────────────────────────────────────
+    $uri === 'dashboard/analytics'
+        => (new DashboardController())->analytics(),
+
+    // ── Broadcast ─────────────────────────────────────────────────────────────
+    $uri === 'dashboard/broadcast' && $method === 'GET'
+        => (new BroadcastController())->index(),
+
+    $uri === 'dashboard/broadcast/send' && $method === 'POST'
+        => (new BroadcastController())->send(),
+
+    // ── Settings ──────────────────────────────────────────────────────────────
+    $uri === 'dashboard/settings' && $method === 'GET'
+        => (new SettingsController())->index(),
+
+    $uri === 'dashboard/settings/save' && $method === 'POST'
+        => (new SettingsController())->save(),
 
     // ── Admin — leads ─────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'

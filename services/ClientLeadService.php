@@ -130,4 +130,77 @@ class ClientLeadService
         $stmt->execute([$clientId]);
         return (int)$stmt->fetchColumn();
     }
+
+    // ── Analytics ────────────────────────────────────────────────────────────
+
+    public function analyticsData(int $clientId): array
+    {
+        // Leads per week — last 8 weeks
+        $stmt = $this->db->prepare(
+            "SELECT DATE_FORMAT(created_at, '%Y-%u') AS yw,
+                    DATE_FORMAT(MIN(created_at), '%d %b')  AS label,
+                    COUNT(*) AS cnt
+             FROM mia_client_leads
+             WHERE client_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 8 WEEK)
+             GROUP BY yw ORDER BY yw"
+        );
+        $stmt->execute([$clientId]);
+        $leadsPerWeek = $stmt->fetchAll();
+
+        // Status breakdown
+        $stmt = $this->db->prepare(
+            "SELECT status, COUNT(*) AS cnt
+             FROM mia_client_leads
+             WHERE client_id = ?
+             GROUP BY status"
+        );
+        $stmt->execute([$clientId]);
+        $statusBreakdown = $stmt->fetchAll();
+
+        // Messages per day — last 14 days
+        $stmt = $this->db->prepare(
+            "SELECT DATE_FORMAT(created_at, '%d %b') AS label,
+                    COUNT(*) AS cnt
+             FROM mia_client_messages
+             WHERE client_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
+             GROUP BY DATE(created_at) ORDER BY DATE(created_at)"
+        );
+        $stmt->execute([$clientId]);
+        $messagesPerDay = $stmt->fetchAll();
+
+        // Average messages per lead
+        $stmt = $this->db->prepare(
+            "SELECT COALESCE(AVG(mc), 0) AS avg_msgs
+             FROM (
+                 SELECT lead_id, COUNT(*) AS mc
+                 FROM mia_client_messages
+                 WHERE client_id = ?
+                 GROUP BY lead_id
+             ) sub"
+        );
+        $stmt->execute([$clientId]);
+        $avgMsgs = round((float)$stmt->fetchColumn(), 1);
+
+        // Conversion rate: won / total
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) AS total,
+                    SUM(status = 'closed_won') AS won
+             FROM mia_client_leads WHERE client_id = ?"
+        );
+        $stmt->execute([$clientId]);
+        $conv = $stmt->fetch();
+        $convRate = ($conv['total'] > 0)
+            ? round(($conv['won'] / $conv['total']) * 100, 1)
+            : 0;
+
+        return [
+            'leads_per_week'   => $leadsPerWeek,
+            'status_breakdown' => $statusBreakdown,
+            'messages_per_day' => $messagesPerDay,
+            'avg_msgs'         => $avgMsgs,
+            'conv_rate'        => $convRate,
+            'total_leads'      => (int)($conv['total'] ?? 0),
+            'won_leads'        => (int)($conv['won']   ?? 0),
+        ];
+    }
 }

@@ -96,6 +96,24 @@ class ClientService
         $stmt->execute([$plan, $status, $clientId]);
     }
 
+    public function updateSettings(int $clientId, array $data): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE mia_clients
+             SET contact_name = ?, phone = ?, notify_email = ?,
+                 notify_on_capture = ?, notify_daily_summary = ?, updated_at = NOW()
+             WHERE id = ?'
+        );
+        $stmt->execute([
+            trim($data['contact_name']         ?? ''),
+            trim($data['phone']                ?? ''),
+            trim($data['notify_email']         ?? '') ?: null,
+            (int)(bool)($data['notify_on_capture']    ?? 0),
+            (int)(bool)($data['notify_daily_summary'] ?? 0),
+            $clientId,
+        ]);
+    }
+
     public function updateStripeCustomer(int $clientId, string $stripeCustomerId): void
     {
         $stmt = $this->db->prepare(

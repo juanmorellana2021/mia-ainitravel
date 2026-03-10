@@ -12,9 +12,9 @@ class Database
     private static ?PDO $instance = null;
 
     private const HOST = 'localhost';
-    private const NAME = 'hotel_booking_system';
-    private const USER = 'hoteluser';
-    private const PASS = 'hotelpass123';
+    private const NAME = 'mia_db';
+    private const USER = 'miauser';
+    private const PASS = 'MiaPass2026!';
 
     public static function get(): PDO
     {
