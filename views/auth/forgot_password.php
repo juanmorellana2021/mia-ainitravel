@@ -1,6 +1,6 @@
 <?php
 /**
- * mia/views/auth/login.php — Client login page
+ * mia/views/auth/forgot_password.php — Request password reset link
  */
 $base = App::basePath();
 ?>
@@ -9,7 +9,7 @@ $base = App::basePath();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión — Mia</title>
+    <title>Recuperar contraseña — Mia</title>
     <link rel="stylesheet" href="<?= App::asset('css/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= App::asset('css/bootstrap-icons.min.css') ?>">
     <style>
@@ -26,15 +26,15 @@ $base = App::basePath();
 <body>
 <div class="auth-card">
     <div class="auth-brand">
-        <div class="brand-icon"><i class="bi bi-whatsapp"></i></div>
-        <h4 class="fw-bold mb-1">Mia by AiniTravel</h4>
-        <p class="mb-0 opacity-75 small">Panel de gestión de leads</p>
+        <div class="brand-icon"><i class="bi bi-key"></i></div>
+        <h4 class="fw-bold mb-1">Recuperar contraseña</h4>
+        <p class="mb-0 opacity-75 small">Te enviaremos un enlace por email</p>
     </div>
     <div class="auth-body">
 
-        <?php if (!empty($_GET['reset'])): ?>
+        <?php if (!empty($success)): ?>
             <div class="alert alert-success small py-2 mb-3">
-                <i class="bi bi-check-circle me-1"></i>Contraseña actualizada. Ya puedes iniciar sesión.
+                <i class="bi bi-check-circle me-1"></i><?= htmlspecialchars($success) ?>
             </div>
         <?php endif; ?>
 
@@ -44,11 +44,14 @@ $base = App::basePath();
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="<?= $base ?>/login">
+        <?php if (empty($success)): ?>
+        <p class="text-muted small mb-3">Ingresa el email de tu cuenta y te enviaremos un enlace para crear una nueva contraseña.</p>
+
+        <form method="POST" action="<?= $base ?>/forgot-password">
             <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
 
-            <div class="mb-3">
-                <label class="form-label fw-medium small">Email</label>
+            <div class="mb-4">
+                <label class="form-label fw-medium small">Email de tu cuenta</label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-envelope"></i></span>
                     <input type="email" name="email" class="form-control"
@@ -57,33 +60,18 @@ $base = App::basePath();
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-medium small">Contraseña</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                </div>
-            </div>
-
             <button type="submit" class="btn btn-mia w-100">
-                <i class="bi bi-box-arrow-in-right me-2"></i>Entrar al Panel
+                <i class="bi bi-send me-2"></i>Enviar enlace de recuperación
             </button>
         </form>
+        <?php endif; ?>
 
         <hr class="my-3">
-        <div class="d-flex justify-content-between align-items-center">
-            <p class="text-muted small mb-0">
-                ¿No tienes cuenta?
-                <a href="<?= $base ?>/register" class="text-decoration-none fw-medium" style="color:#25d366">
-                    Prueba gratis 7 días
-                </a>
-            </p>
-            <p class="text-muted small mb-0">
-                <a href="<?= $base ?>/forgot-password" class="text-decoration-none" style="color:#6c757d">
-                    ¿Olvidaste tu contraseña?
-                </a>
-            </p>
-        </div>
+        <p class="text-center text-muted small mb-0">
+            <a href="<?= $base ?>/login" class="text-decoration-none fw-medium" style="color:#25d366">
+                <i class="bi bi-arrow-left me-1"></i>Volver al login
+            </a>
+        </p>
     </div>
 </div>
 <script src="<?= App::asset('js/bootstrap.bundle.min.js') ?>"></script>

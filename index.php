@@ -86,6 +86,18 @@ match (true) {
     $uri === 'logout'
         => (new AuthController())->logout(),
 
+    $uri === 'forgot-password' && $method === 'GET'
+        => (new AuthController())->forgotForm(),
+
+    $uri === 'forgot-password' && $method === 'POST'
+        => (new AuthController())->forgotSubmit(),
+
+    $uri === 'reset-password' && $method === 'GET'
+        => (new AuthController())->resetForm(),
+
+    $uri === 'reset-password' && $method === 'POST'
+        => (new AuthController())->resetSubmit(),
+
     // ── Client dashboard ─────────────────────────────────────────────────
     $uri === 'dashboard'
         => (new DashboardController())->index(),
