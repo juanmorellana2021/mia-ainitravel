@@ -34,7 +34,7 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Traspaso humano inteligente</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hasta 500 conversaciones/mes</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>1 usuario incluido</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Bilingüe (ES + EN)</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Multilingüe (ES · EN · PT · FR · DE · IT + 50 idiomas más)</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Módulo Ventas</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Módulo Gestión de negocio</li>
                         </ul>
