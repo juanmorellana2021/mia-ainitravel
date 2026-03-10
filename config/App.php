@@ -17,10 +17,11 @@ class App
 
     // ── Pricing (PEN — Soles) ────────────────────────────────────────────
     public const CURRENCY        = 'S/';
+    public const PLAN_STARTER    = 199;
     public const PLAN_BASIC      = 399;
     public const PLAN_PRO        = 699;
     public const PLAN_ENTERPRISE = 1199;
-    public const SETUP_FEE       = 1000;
+    public const SETUP_FEE       = 0;
     public const FREE_TRIAL_DAYS = 7;
 
     // ── Asset base path (auto-detect local vs subdomain) ─────────────────

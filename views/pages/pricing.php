@@ -17,6 +17,36 @@ ob_start();
 
         <div class="row g-4 justify-content-center">
 
+            <!-- Starter -->
+            <div class="col-lg-3">
+                <div class="card h-100 border shadow-sm">
+                    <div class="card-header bg-white text-center py-4">
+                        <h5 class="fw-bold mb-1">Starter</h5>
+                        <p class="text-muted small mb-0">Para probar y empezar sin riesgo</p>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_STARTER) ?></div>
+                        <p class="text-muted">/ mes</p>
+                        <hr>
+                        <ul class="list-unstyled text-start">
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Módulo Soporte 24/7</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Respuestas automáticas por WhatsApp</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hasta 200 conversaciones/mes</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>1 usuario incluido</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Multilingüe (50+ idiomas)</li>
+                            <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Traspaso humano inteligente</li>
+                            <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Módulo Ventas</li>
+                            <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Módulo Gestión</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer bg-white text-center py-3">
+                        <a href="<?= $base ?>/register?plan=starter" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-rocket me-1"></i>Empezar Gratis
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Basic -->
             <div class="col-lg-4">
                 <div class="card h-100 border shadow-sm">
@@ -32,7 +62,7 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Módulo Soporte 24/7</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Respuestas automáticas por WhatsApp</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Traspaso humano inteligente</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hasta 500 conversaciones/mes</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hasta 1,000 conversaciones/mes</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>1 usuario incluido</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Multilingüe (ES · EN · PT · FR · DE · IT + 50 idiomas más)</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Módulo Ventas</li>
@@ -108,15 +138,20 @@ ob_start();
             </div>
         </div>
 
-        <!-- Setup fee note -->
+        <!-- Footer notes -->
         <div class="text-center mt-5">
             <p class="text-muted">
-                <i class="bi bi-info-circle me-1"></i>
-                Configuración única: <strong><?= App::CURRENCY ?><?= number_format(App::SETUP_FEE) ?></strong>
-                (incluye onboarding y personalización inicial)
+                <i class="bi bi-check2-circle me-1 text-success"></i>
+                <strong>Sin costo de configuración</strong> — onboarding y personalización inicial incluidos en todos los planes.
             </p>
             <p class="text-muted small">Integraciones personalizadas (por ejemplo, PMS/CRM privados) se cotizan según alcance y acceso técnico.</p>
-            <p class="text-muted small">Todos los precios en Soles peruanos (PEN). IVA no incluido.</p>
+            <p class="text-muted small">Todos los precios en Soles peruanos (PEN) · Sin FX · Soporte local en español · IVA no incluido.</p>
+            <div class="d-inline-flex gap-3 flex-wrap justify-content-center mt-3">
+                <span class="badge bg-light text-dark border"><i class="bi bi-flag me-1"></i>Hecho en Perú</span>
+                <span class="badge bg-light text-dark border"><i class="bi bi-chat-dots me-1"></i>Soporte en español</span>
+                <span class="badge bg-light text-dark border"><i class="bi bi-currency-exchange me-1"></i>Precios en Soles (PEN)</span>
+                <span class="badge bg-light text-dark border"><i class="bi bi-headset me-1"></i>Sin call centers en India</span>
+            </div>
         </div>
     </div>
 </section>
