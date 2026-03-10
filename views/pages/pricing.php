@@ -32,7 +32,7 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Módulo Soporte 24/7</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Respuestas automáticas por WhatsApp</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Traspaso humano inteligente</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hasta 200 conversaciones/mes</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Hasta 500 conversaciones/mes</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>1 usuario incluido</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Bilingüe (ES + EN)</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Módulo Ventas</li>
