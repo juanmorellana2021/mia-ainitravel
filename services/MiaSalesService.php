@@ -589,29 +589,52 @@ PROMPT;
 
     private function callGroq(array $messages): string
     {
-        // Use the shared AI gateway (Ollama 3s → Groq fallback) just like Sofia
-        require_once '/var/www/html/ainitravel.com/ai_gateway.php';
-
-        $result = ai_chat($messages, [
+        // Direct Groq API call — no Ollama hop
+        $apiKey = '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';
+        $payload = json_encode([
+            'model'       => 'llama-3.3-70b-versatile',
+            'messages'    => $messages,
             'temperature' => 0.72,
-            'num_predict' => 100,   // hard cap: ~75 words = physically one short paragraph
-            'max_tokens'  => 100,   // for Groq side
+            'max_tokens'  => 100,
             'top_p'       => 0.9,
         ]);
 
-        if (!empty($result['response'])) {
-            error_log("[Mia] AI response via {$result['source']}");
-            // Hard-enforce single paragraph: strip everything after first blank line
-            $text = trim($result['response']);
-            $firstBreak = strpos($text, "\n\n");
-            if ($firstBreak !== false) {
-                $text = trim(substr($text, 0, $firstBreak));
-            }
-            return $text;
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey,
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $err      = curl_error($ch);
+        curl_close($ch);
+
+        if ($err) {
+            error_log("[Mia] Groq curl error: $err");
+            return "Lo siento, tuve un pequeño problema técnico. Intenta de nuevo en un momento 🙏";
         }
 
-        error_log("[Mia] Both Ollama and Groq failed");
-        return "Lo siento, tuve un pequeño problema técnico. Intenta de nuevo en un momento 🙏";
+        $data = json_decode($response, true);
+        $text = $data['choices'][0]['message']['content'] ?? '';
+
+        if (empty($text)) {
+            error_log("[Mia] Groq empty response: $response");
+            return "Lo siento, tuve un pequeño problema técnico. Intenta de nuevo en un momento 🙏";
+        }
+
+        error_log("[Mia] AI response via Groq direct");
+        // Hard-enforce single paragraph: strip everything after first blank line
+        $text = trim($text);
+        $firstBreak = strpos($text, "\n\n");
+        if ($firstBreak !== false) {
+            $text = trim(substr($text, 0, $firstBreak));
+        }
+        return $text;
     }
 
     // ════════════════════════════════════════════════════════════════════════
