@@ -13,7 +13,7 @@ class App
     public const NAME       = 'Mia by AiniTravel';
     public const TAGLINE    = 'Responde todos tus leads de WhatsApp automáticamente. 24/7.';
     public const URL        = 'https://mia.ainitravel.com';
-    public const WHATSAPP   = '+51XXXXXXXXX';  // Sales demo number
+    public const WHATSAPP   = '+51920076034';  // Mia WhatsApp Business number
 
     // ── Pricing (PEN — Soles) ────────────────────────────────────────────
     public const CURRENCY        = 'S/';

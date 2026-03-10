@@ -1,0 +1,209 @@
+================================================================================
+  MIA WHATSAPP SALES BOT — STATUS REPORT
+  Date: March 9, 2026
+================================================================================
+
+--------------------------------------------------------------------------------
+1. WHAT IS MIA?
+--------------------------------------------------------------------------------
+Mia is an AI-powered WhatsApp sales bot for AiniDesk — a B2B SaaS that sells
+AI receptionist software to hotels and small hospitality businesses.
+
+Mia lives on WhatsApp. When a potential customer texts the Mia number, the bot
+receives the message, passes it to a PHP AI service, and sends back a sales reply.
+Her goal: qualify leads and capture name + email for follow-up/demo booking.
+
+--------------------------------------------------------------------------------
+2. ARCHITECTURE — HOW EVERYTHING FITS TOGETHER
+--------------------------------------------------------------------------------
+
+  [WhatsApp] ← → [bot.js on VPS] ← → [MiaSalesService.php on VPS]
+                                               ↓
+                                    [ai_gateway.php (shared)]
+                                         /          \
+                              [Ollama on AI VPS]   [Groq API]
+                                (3s timeout)       (fallback)
+
+A. WhatsApp Bot (Node.js)
+   - File:    /root/mia-whatsapp-bot/bot.js
+   - Process: PM2 process named "mia-bot"
+   - Library: whatsapp-web.js (Puppeteer-based)
+   - Receives inbound messages → POST to PHP API (15s timeout, intentional)
+   - Sends outbound replies back via WhatsApp
+   - Admin server: http://127.0.0.1:3001/send (POST) for outbound messaging
+
+B. PHP Sales Service
+   - File:    /var/www/html/mia.ainitravel.com/services/MiaSalesService.php
+   - Local:   C:\xampp\htdocs\testapp\mia\services\MiaSalesService.php
+   - Core brain: state machine + sales AI prompting + AI calls
+
+C. AI Gateway (shared with Sofia bot)
+   - File:    /var/www/html/ainitravel.com/ai_gateway.php
+   - Logic:   Try Ollama (http://72.60.1.16:11434, 3s timeout)
+              → if timeout/fail, fallback to Groq automatically
+   - The bot.js 15s timeout is INTENTIONAL: lets Ollama fail → PHP falls back to Groq
+
+D. AI Models
+   - Primary:  Ollama on AI VPS → model: qwen2.5:7b
+   - Fallback: Groq API → model: llama-3.3-70b-versatile
+   - Groq key: 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
+
+--------------------------------------------------------------------------------
+3. STATE MACHINE — MIA'S CONVERSATION FLOW
+--------------------------------------------------------------------------------
+
+new → intro → qualifying_size → qualifying_method → qualifying_pain
+    → roi_pitch → demo → benefits → closing
+    → collecting_name → collecting_email → captured
+
+State descriptions:
+  new              - First message ever received
+  intro            - Mia introduces herself, asks about business type
+  qualifying_size  - Asks how many rooms/staff
+  qualifying_method- Asks current booking/reception method
+  qualifying_pain  - Asks about biggest pain point
+  roi_pitch        - Presents ROI/value based on pain
+  demo             - Offers to show product
+  benefits         - Explains key features
+  closing          - Asks for commitment / trial
+  collecting_name  - Captures lead's name
+  collecting_email - Captures lead's email
+  captured         - Lead fully captured, hands off to human team
+
+Database: MySQL table "mia_sales_sessions" on VPS
+  Columns: phone, state, business_name, contact_name, email,
+           business_type, room_count, current_method, pain_point,
+           conv_history (full JSON history for AI context), timestamps
+
+--------------------------------------------------------------------------------
+4. SALES INTELLIGENCE — FRAMEWORKS BUILT INTO MIA
+--------------------------------------------------------------------------------
+MiaSalesService.php system prompt encodes these proven sales frameworks:
+
+  - Challenger Sale: teach → tailor → take control of conversation
+  - SPIN Selling: Situation → Problem → Implication → Need-Payoff questions
+  - Loss Aversion: frame pain/loss 2x more than gain (prospect psychology)
+  - Micro-commitments: progressive yes ladder before asking for the big yes
+  - Feel/Felt/Found: objection handling ("I understand... others felt... they found...")
+  - Choice Close: never yes/no → always option A or option B
+  - Social Proof: reference similar businesses that succeeded
+  - Future Pacing: help prospect imagine life after the product
+  - Cinematic Demo: paint vivid picture, don't just list features
+
+--------------------------------------------------------------------------------
+5. BREVITY ENFORCEMENT — HOW WE KEEP MIA SHORT
+--------------------------------------------------------------------------------
+Problem: LLMs naturally write long, formal responses. WhatsApp texting requires
+short, human, conversational messages.
+
+Three-layer solution (all active):
+
+  Layer 1 — Identity reframe in system prompt
+    "Brevity is your superpower. The best salespeople speak LESS, not more."
+    Pascal quote framing: short = smart. Long = lazy.
+    ✅/❌ few-shot examples showing correct vs. wrong message style.
+
+  Layer 2 — Token cap
+    num_predict: 100 (Ollama) + max_tokens: 100 (Groq)
+    Equivalent to ~75 words — tight but enough for one punchy sales message.
+
+  Layer 3 — PHP post-processor (definitive hard cut)
+    After AI responds, PHP finds the first blank line (\n\n) and discards
+    everything after it. Physically impossible to show 2 paragraphs.
+    Code in callGroq() method:
+      $firstBreak = strpos($text, "\n\n");
+      if ($firstBreak !== false) {
+          $text = trim(substr($text, 0, $firstBreak));
+      }
+
+--------------------------------------------------------------------------------
+6. WHAT WAS BUILT / FIXED THIS SESSION (March 9, 2026)
+--------------------------------------------------------------------------------
+
+[FEATURE] Outbound WhatsApp messaging
+  - Added HTTP admin server on 127.0.0.1:3001 to bot.js
+  - POST /send {"to":"40774945911","message":"..."} sends outbound messages
+  - Used to initiate conversations proactively
+
+[BUG FIX] Ghost error message after outbound send
+  - Problem: Sending outbound triggered a message event with empty body
+  - Bot thought it was an inbound message → called PHP → got error → replied
+  - Fix: Added guards in bot.js message handler:
+      if (msg.type !== 'chat') return;
+      if (!msg.body || msg.body.trim() === '') return;
+
+[BUG FIX] Groq fallback not wired
+  - Problem: MiaSalesService.callGroq() was calling Ollama with 60s timeout
+  - The bot's 15s timeout fired first → PHP never got to Groq fallback
+  - Fix: Replaced callGroq() to use shared ai_gateway.php's ai_chat()
+    which does Ollama (3s) → Groq automatically — same as Sofia bot
+
+[UPGRADE] Full sales intelligence system prompt
+  - Rewrote entire system prompt with all frameworks above
+  - Upgraded every state handler's "turn goal" with specific tactics
+  - Sales-first approach: every message has one clear objective
+
+[TUNING] Brevity enforcement (multiple iterations)
+  - Shortened handleNew turn goal (intro only)
+  - Added brevity rules to system prompt
+  - Moved brevity rules to TOP of system prompt as priority
+  - Added Pascal identity reframe + ✅/❌ few-shot examples
+  - Reduced token cap from 420 → 100
+  - Added PHP \n\n paragraph stripper (final definitive fix)
+
+--------------------------------------------------------------------------------
+7. VPS DEPLOYMENT INFO
+--------------------------------------------------------------------------------
+Server:      108.175.12.152 (root SSH access)
+PHP app:     /var/www/html/mia.ainitravel.com/
+Bot:         /root/mia-whatsapp-bot/bot.js
+
+Deploy command (PHP):
+  scp "C:\xampp\htdocs\testapp\mia\services\MiaSalesService.php" \
+      root@108.175.12.152:/var/www/html/mia.ainitravel.com/services/MiaSalesService.php
+
+Deploy command (bot):
+  scp "C:\xampp\htdocs\testapp\mia-whatsapp-bot\bot.js" \
+      root@108.175.12.152:/root/mia-whatsapp-bot/bot.js
+  ssh root@108.175.12.152 "pm2 restart mia-bot"
+
+Check bot status:
+  ssh root@108.175.12.152 "pm2 logs mia-bot --lines 30"
+
+Monitor PHP errors:
+  ssh root@108.175.12.152 "tail -f /var/www/html/mia.ainitravel.com/logs/error.log"
+
+Send outbound message manually:
+  ssh root@108.175.12.152 "curl -s -X POST http://127.0.0.1:3001/send \
+    -H 'Content-Type: application/json' \
+    -d '{\"to\":\"40774945911\",\"message\":\"Hola! Soy Mia 😊\"}'"
+
+Reset a test conversation:
+  ssh root@108.175.12.152 "mysql -e \
+    \"DELETE FROM mia_sales_sessions WHERE phone LIKE '%YOUR_NUMBER%'\" mia_db"
+
+--------------------------------------------------------------------------------
+8. CURRENT STATUS
+--------------------------------------------------------------------------------
+✅ Bot running on VPS (PM2 process: mia-bot)
+✅ Outbound messaging working
+✅ Inbound → PHP → AI → reply pipeline working
+✅ Groq fallback wired (Ollama 3s → Groq auto-fallback)
+✅ Full sales frameworks active in system prompt
+✅ Single-paragraph brevity enforced (token cap + PHP stripper)
+✅ All changes deployed to VPS
+
+--------------------------------------------------------------------------------
+9. NEXT POSSIBLE IMPROVEMENTS
+--------------------------------------------------------------------------------
+- Add lead notification: email/Telegram alert when a lead reaches "captured" state
+- Admin dashboard: view all leads captured by Mia with their info
+- A/B test: try different opening messages and track conversion rate
+- Handoff flow: when lead is captured, auto-send a calendar link for demo booking
+- Language detection: respond in English if user writes in English
+- Rate limiting: prevent spam/abuse on the WhatsApp number
+- Stripe integration: allow leads to sign up and pay directly from WhatsApp chat
+
+================================================================================
+  END OF REPORT
+================================================================================

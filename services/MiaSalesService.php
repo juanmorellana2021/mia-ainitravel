@@ -2,13 +2,15 @@
 /**
  * mia/services/MiaSalesService.php
  *
- * Stateful WhatsApp sales assistant — "Mia"
+ * AI-powered WhatsApp B2B sales assistant — "Mia"
  *
- * Manages the full B2B sales conversation flow:
- *   intro → qualifying (size, method, pain) → ROI pitch → demo → benefits → close → captured
+ * Uses Groq LLM (llama-3.3-70b) for natural conversational responses.
+ * State machine tracks what has been collected (size, method, pain, name, email).
+ * Full conversation history is stored per-phone and passed to the AI for context.
  *
- * Each phone number gets a session row tracking their position in the funnel.
- * Returns either a direct reply or AI instructions for the LLM.
+ * Flow: new → intro → qualifying_size → qualifying_method → qualifying_pain
+ *       → roi_pitch → demo → benefits → closing → collecting_name
+ *       → collecting_email → captured
  */
 
 declare(strict_types=1);
@@ -16,6 +18,14 @@ declare(strict_types=1);
 class MiaSalesService
 {
     private PDO $pdo;
+
+    // ── AI config (Ollama on AI VPS, same as Sofia) ────────────────────────
+    private const OLLAMA_URL   = 'http://72.60.1.16:11434/api/chat';
+    private const OLLAMA_MODEL = 'qwen2.5:7b';
+    private const AI_TIMEOUT   = 60;
+
+    // How many recent messages to pass as context to the AI
+    private const MAX_HISTORY = 14;
 
     public function __construct()
     {
@@ -29,7 +39,7 @@ class MiaSalesService
             CREATE TABLE IF NOT EXISTS mia_sales_sessions (
                 id              INT AUTO_INCREMENT PRIMARY KEY,
                 phone           VARCHAR(50) NOT NULL,
-                state           VARCHAR(30) DEFAULT 'intro',
+                state           VARCHAR(30) DEFAULT 'new',
                 business_name   VARCHAR(255) NULL,
                 contact_name    VARCHAR(255) NULL,
                 email           VARCHAR(255) NULL,
@@ -37,22 +47,22 @@ class MiaSalesService
                 room_count      INT          NULL,
                 current_method  VARCHAR(50)  NULL,
                 pain_point      VARCHAR(100) NULL,
+                conv_history    MEDIUMTEXT   NULL,
                 created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY idx_phone (phone)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+        // Add conv_history column to existing tables (ignore if already exists)
+        try {
+            $this->pdo->exec("ALTER TABLE mia_sales_sessions ADD COLUMN conv_history MEDIUMTEXT NULL");
+        } catch (\Throwable $e) { /* already exists */ }
     }
 
     // ════════════════════════════════════════════════════════════════════════
     //  PUBLIC API
     // ════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Process an incoming WhatsApp message from a prospect.
-     * Returns ['reply' => string] for a direct reply, or
-     *         ['sofiaInstructions' => string, 'context' => string] for AI.
-     */
     public function process(string $phone, string $message): array
     {
         $phone   = $this->normalizePhone($phone);
@@ -62,416 +72,591 @@ class MiaSalesService
         // Reset command
         if (in_array($msg, ['reset', 'reiniciar', 'empezar de nuevo'], true)) {
             $this->resetSession($phone);
-            return $this->introReply();
+            $session = $this->getOrCreateSession($phone);
         }
 
-        return match ($session['state']) {
-            'intro'             => $this->handleIntro($phone, $msg),
-            'qualifying_size'   => $this->handleQualifySize($phone, $msg),
-            'qualifying_method' => $this->handleQualifyMethod($phone, $msg),
-            'qualifying_pain'   => $this->handleQualifyPain($phone, $msg),
-            'roi_pitch'         => $this->handleRoiPitch($phone, $msg, $session),
-            'demo'              => $this->handleDemo($phone, $msg),
-            'benefits'          => $this->handleBenefits($phone, $msg),
-            'closing'           => $this->handleClosing($phone, $msg, $session),
-            'collecting_name'   => $this->handleCollectName($phone, $message),
-            'collecting_email'  => $this->handleCollectEmail($phone, $msg),
-            'captured'          => $this->handleCaptured($phone, $msg),
-            default             => $this->introReply(),
+        // Human handoff shortcut — any state
+        if (preg_match('/\bhumano|agente|persona|hablar con|speak to\b/i', $msg)) {
+            $this->appendHistory($phone, 'user', $message);
+            $reply = "Por supuesto, te conecto con nuestro equipo ahora mismo 🙋\n\n" .
+                     "Puedes escribirnos en *mia.ainitravel.com* o al WhatsApp de soporte — alguien te atiende en minutos.\n\n" .
+                     "¡También puedo seguir ayudándote aquí si prefieres! 😊";
+            $this->appendHistory($phone, 'assistant', $reply);
+            return ['reply' => $reply];
+        }
+
+        $state = $session['state'] ?? 'new';
+
+        return match ($state) {
+            'new'               => $this->handleNew($phone, $session, $message),
+            'intro'             => $this->handleIntro($phone, $session, $message),
+            'qualifying_size'   => $this->handleQualifySize($phone, $session, $message),
+            'qualifying_method' => $this->handleQualifyMethod($phone, $session, $message),
+            'qualifying_pain'   => $this->handleQualifyPain($phone, $session, $message),
+            'roi_pitch'         => $this->handleRoiPitch($phone, $session, $message),
+            'demo'              => $this->handleDemo($phone, $session, $message),
+            'benefits'          => $this->handleBenefits($phone, $session, $message),
+            'closing'           => $this->handleClosing($phone, $session, $message),
+            'collecting_name'   => $this->handleCollectName($phone, $session, $message),
+            'collecting_email'  => $this->handleCollectEmail($phone, $session, $message),
+            'captured'          => $this->handleCaptured($phone, $session, $message),
+            default             => $this->handleNew($phone, $session, $message),
         };
     }
 
     // ════════════════════════════════════════════════════════════════════════
     //  STATE HANDLERS
+    //
+    //  Pattern: extract data from user message → update session state →
+    //           call aiReply() with goal instructions for this turn
     // ════════════════════════════════════════════════════════════════════════
 
-    private function handleIntro(string $phone, string $msg): array
+    private function handleNew(string $phone, array $session, string $message): array
     {
-        // Any reply to intro → move to qualifying size
-        $this->updateSession($phone, ['state' => 'qualifying_size']);
-
-        return ['reply' =>
-            "¡Genial! Solo 3 preguntas rápidas para entender tu negocio 😊\n\n" .
-            "📊 *Pregunta 1:* ¿Cuántas habitaciones tiene tu hotel?\n" .
-            "(Si eres agencia, ¿cuántos clientes manejas al mes?)\n\n" .
-            "1️⃣ Menos de 20 habitaciones / hasta 50 clientes\n" .
-            "2️⃣ 20-50 hab. / 50-200 clientes\n" .
-            "3️⃣ Más de 50 hab. / más de 200 clientes"
-        ];
+        $this->updateSession($phone, ['state' => 'intro']);
+        $session['state'] = 'intro';
+        return $this->aiReply($phone, $session, $message,
+            "Primera vez que escribe. Saludo MUY corto y directo — máximo 3 líneas en total. " .
+            "Preséntate: Mia de AiniDesk. Una frase de qué hacemos (WhatsApp automático para negocios). " .
+            "Termina con UNA sola pregunta: ¿qué tipo de negocio tienes? " .
+            "NADA de stats, NADA de casos de éxito aún, NADA de listas. " .
+            "Tono: persona real que acaba de conocerte, no vendedor. Breve, cálido, curioso."
+        );
     }
 
-    private function handleQualifySize(string $phone, string $msg): array
+    private function handleIntro(string $phone, array $session, string $message): array
     {
-        $roomCount = 0;
-        $bizType = 'hotel';
+        $msg = mb_strtolower(trim($message));
 
-        if (str_contains($msg, 'agencia') || str_contains($msg, 'agency')) {
+        if (preg_match('/\bno\b|no gracias|not interested|no me interesa|no necesito/i', $msg)) {
+            return $this->aiReply($phone, $session, $message,
+                "El usuario no está interesado por ahora. Despídete con genuina calidez y sin presión. " .
+                "Deja la puerta abierta para el futuro. Una respuesta corta y humana."
+            );
+        }
+
+        // Capture business type from their reply if mentioned
+        $bizType = 'business';
+        if (preg_match('/\bagencia|agencia de viajes|travel agency\b/i', $msg)) {
             $bizType = 'agency';
-        } elseif (str_contains($msg, 'hostal') || str_contains($msg, 'hostel')) {
-            $bizType = 'hostel';
-        } elseif (str_contains($msg, 'restaurante') || str_contains($msg, 'restaurant')) {
+        } elseif (preg_match('/\bhotel|hostal|hostel|lodge|resort\b/i', $msg)) {
+            $bizType = 'hotel';
+        } elseif (preg_match('/\brestaurante|restaurant|cafe|cafetería\b/i', $msg)) {
             $bizType = 'restaurant';
+        } elseif (preg_match('/\btienda|shop|boutique|store\b/i', $msg)) {
+            $bizType = 'retail';
+        } elseif (preg_match('/\bconsultora|consultora|servicios|services\b/i', $msg)) {
+            $bizType = 'services';
         }
 
-        if (str_contains($msg, '1') || str_contains($msg, 'menos') || str_contains($msg, 'less')) {
-            $roomCount = 15;
-        } elseif (str_contains($msg, '2') || str_contains($msg, 'medio') || str_contains($msg, 'medium')) {
-            $roomCount = 35;
-        } elseif (str_contains($msg, '3') || str_contains($msg, 'mas') || str_contains($msg, 'más') || str_contains($msg, 'more')) {
-            $roomCount = 75;
-        } else {
-            // Try to extract a number
-            if (preg_match('/(\d+)/', $msg, $m)) {
-                $roomCount = (int) $m[1];
-            }
-        }
-
-        $this->updateSession($phone, [
-            'state'         => 'qualifying_method',
-            'room_count'    => $roomCount,
-            'business_type' => $bizType,
-        ]);
-
-        return ['reply' =>
-            "Perfecto 👍\n\n" .
-            "📋 *Pregunta 2:* ¿Cómo reciben reservas actualmente?\n\n" .
-            "1️⃣ Por llamadas / WhatsApp manual\n" .
-            "2️⃣ Por formulario en la web\n" .
-            "3️⃣ Por OTAs (Booking.com, Airbnb, Expedia...)\n" .
-            "4️⃣ Una mezcla de todo"
-        ];
+        $this->updateSession($phone, ['state' => 'qualifying_size', 'business_type' => $bizType]);
+        $session = array_merge($session, ['state' => 'qualifying_size', 'business_type' => $bizType]);
+        return $this->aiReply($phone, $session, $message,
+            "Acaba de decirte su tipo de negocio ({$bizType}). Reacciona con interés genuino — demuestra que " .
+            "CONOCES ese tipo de negocio y sus desafíos. No repitas lo que dijeron. " .
+            "Luego haz la pregunta de tamaño con maestría: NO preguntes 'cuántas habitaciones tienes' — " .
+            "pregunta algo que haga pensar: por ejemplo para hotel: '¿cuántas noches al mes se te van sin reservar?', " .
+            "para restaurante: '¿cuántos pedidos por WhatsApp manejan en una semana normal?', " .
+            "para agencia: '¿cuántas consultas de viaje les llegan al día que no pueden atender a tiempo?'. " .
+            "La pregunta debe hacer que empiecen a calcular su propia pérdida. Una sola pregunta."
+        );
     }
 
-    private function handleQualifyMethod(string $phone, string $msg): array
+    private function handleQualifySize(string $phone, array $session, string $message): array
     {
+        $msg = mb_strtolower(trim($message));
+
+        // Extract number (consultations/clients/rooms per month)
+        $roomCount = 30; // default
+        if (preg_match('/(\d+)\s*(hab|room|cuarto)/i', $msg, $m)) {
+            $roomCount = (int) $m[1];
+        } elseif (preg_match('/(\d+)/', $msg, $m)) {
+            $roomCount = (int) $m[1];
+        } elseif (preg_match('/\bpoco|chico|pequeño|small|menos de 10\b/i', $msg)) {
+            $roomCount = 10;
+        } elseif (preg_match('/\bgrande|muchos|large|cientos\b/i', $msg)) {
+            $roomCount = 100;
+        }
+
+        // Also detect biz type if not already set
+        $bizType = $session['business_type'] ?? 'business';
+        if ($bizType === 'business') {
+            if (preg_match('/\bagencia|travel\b/i', $msg)) $bizType = 'agency';
+            elseif (preg_match('/\bhotel|hostal|hostel\b/i', $msg)) $bizType = 'hotel';
+            elseif (preg_match('/\brestaurante|restaurant\b/i', $msg)) $bizType = 'restaurant';
+        }
+
+        $this->updateSession($phone, ['state' => 'qualifying_method', 'room_count' => $roomCount, 'business_type' => $bizType]);
+        $session = array_merge($session, ['state' => 'qualifying_method', 'room_count' => $roomCount, 'business_type' => $bizType]);
+
+        return $this->aiReply($phone, $session, $message,
+            "Tienes su volumen (~{$roomCount} unidades). Usa esto para implicar pérdida (SPIN — pregunta de implicación): " .
+            "brevemente saca una cuenta mental visible para ellos. Ej: 'Con eso, si pierdes solo el 10% de consultas " .
+            "sin respuesta, son X clientes al mes.' Hazlos calcular su propia pérdida. " .
+            "Luego pregunta cómo manejan WhatsApp HOY — una persona, un sistema, o nadie lo gestiona. " .
+            "El objetivo de esta pregunta es revelar que no tienen un sistema formal (la mayoría no lo tiene). " .
+            "Adapta el lenguaje a su tipo de negocio ({$bizType})."
+        );
+    }
+
+    private function handleQualifyMethod(string $phone, array $session, string $message): array
+    {
+        $msg = mb_strtolower(trim($message));
+
         $method = 'mixed';
-        if (str_contains($msg, '1') || str_contains($msg, 'manual') || str_contains($msg, 'llamada') || str_contains($msg, 'whatsapp')) {
+        if (preg_match('/\bmanual|llamada|llamadas|whatsapp\b/i', $msg) || str_contains($msg, '1')) {
             $method = 'manual';
-        } elseif (str_contains($msg, '2') || str_contains($msg, 'formulario') || str_contains($msg, 'web')) {
+        } elseif (preg_match('/\bformulario|web|página\b/i', $msg) || str_contains($msg, '2')) {
             $method = 'web_form';
-        } elseif (str_contains($msg, '3') || str_contains($msg, 'booking') || str_contains($msg, 'airbnb') || str_contains($msg, 'ota')) {
+        } elseif (preg_match('/\bbooking|airbnb|expedia|ota\b/i', $msg) || str_contains($msg, '3')) {
             $method = 'otas';
         }
 
-        $this->updateSession($phone, [
-            'state'          => 'qualifying_pain',
-            'current_method' => $method,
-        ]);
+        $this->updateSession($phone, ['state' => 'qualifying_pain', 'current_method' => $method]);
+        $session = array_merge($session, ['state' => 'qualifying_pain', 'current_method' => $method]);
 
-        return ['reply' =>
-            "Entendido ✅\n\n" .
-            "🎯 *Última pregunta:* ¿Qué es lo que más te frustra con las reservas?\n\n" .
-            "1️⃣ Pierdo clientes fuera del horario de oficina 🌙\n" .
-            "2️⃣ Me toma mucho tiempo responder mensajes ⏰\n" .
-            "3️⃣ Los clientes preguntan pero nunca confirman 😤\n" .
-            "4️⃣ Pago comisiones altas a Booking/Airbnb 💸"
-        ];
+        $bizType = $session['business_type'] ?? 'business';
+        return $this->aiReply($phone, $session, $message,
+            "Sabes cómo atienden WhatsApp (método: {$method}). Ahora ejecuta la pregunta de dolor más poderosa que tienes. " .
+            "No des opciones como un formulario — haz UNA pregunta abierta que los haga SENTIR el problema: " .
+            "Ej: '¿Cuándo fue la última vez que un cliente te escribió y no pudiste responder a tiempo?' " .
+            "O: '¿Qué crees que pasa con los clientes que te escriben a las 11pm y no reciben respuesta hasta el día siguiente?' " .
+            "Adapta a su negocio ({$bizType}) y método actual ({$method}). " .
+            "El objetivo: que ELLOS digan el dolor con sus propias palabras — eso vale más que cualquier argumento tuyo. " .
+            "Hazlo sentir como una conversación genuina entre expertos, no como un cuestionario."
+        );
     }
 
-    private function handleQualifyPain(string $phone, string $msg): array
+    private function handleQualifyPain(string $phone, array $session, string $message): array
     {
+        $msg = mb_strtolower(trim($message));
+
         $pain = 'general';
-        if (str_contains($msg, '1') || str_contains($msg, 'horario') || str_contains($msg, 'noche') || str_contains($msg, 'after')) {
+        if (preg_match('/\bhorario|noche|fuera de\b/i', $msg) || str_contains($msg, '1')) {
             $pain = 'after_hours';
-        } elseif (str_contains($msg, '2') || str_contains($msg, 'tiempo') || str_contains($msg, 'slow') || str_contains($msg, 'lento')) {
+        } elseif (preg_match('/\btiempo|lento|demora|tardo|rápido\b/i', $msg) || str_contains($msg, '2')) {
             $pain = 'slow_replies';
-        } elseif (str_contains($msg, '3') || str_contains($msg, 'confirman') || str_contains($msg, 'nunca') || str_contains($msg, 'no confirm')) {
+        } elseif (preg_match('/\bconfirman|no reservan|nunca compran\b/i', $msg) || str_contains($msg, '3')) {
             $pain = 'no_confirm';
-        } elseif (str_contains($msg, '4') || str_contains($msg, 'comision') || str_contains($msg, 'comisión') || str_contains($msg, 'commission') || str_contains($msg, 'booking')) {
+        } elseif (preg_match('/\bcomision|comisión|booking\.com|porcentaje\b/i', $msg) || str_contains($msg, '4')) {
             $pain = 'high_commissions';
         }
 
-        $this->updateSession($phone, [
-            'state'      => 'roi_pitch',
-            'pain_point' => $pain,
-        ]);
+        $this->updateSession($phone, ['state' => 'roi_pitch', 'pain_point' => $pain]);
+        $session = array_merge($session, ['state' => 'roi_pitch', 'pain_point' => $pain]);
 
-        // Build ROI message based on their pain + size
-        $session = $this->getSession($phone);
-        return $this->buildRoiPitch($session);
-    }
+        // Build ROI numbers for the context
+        $rooms        = (int) ($session['room_count'] ?? 25);
+        $lostPerNight = max(2, (int) ($rooms * 0.15));
+        $monthlyLost  = $lostPerNight * 180 * 30;
+        $captured     = (int) ($monthlyLost * 0.30);
+        $roi          = max(2, (int) ($captured / 399));
 
-    private function buildRoiPitch(array $s): array
-    {
-        $rooms = (int) ($s['room_count'] ?? 20);
-        $pain  = $s['pain_point'] ?? 'general';
+        $bizType = $session['business_type'] ?? 'business';
 
-        // Calculate personalized ROI
-        $lostPerNight  = max(2, (int) ($rooms * 0.15));  // ~15% of rooms as missed inquiries
-        $avgNightPrice = 180; // PEN average
-        $monthlyLost   = $lostPerNight * $avgNightPrice * 30;
-        $captured      = (int) ($monthlyLost * 0.30);  // Conservative 30% capture rate
-
-        $painMessages = [
-            'after_hours'      => "📊 Tu hotel recibe aproximadamente *$lostPerNight consultas por noche* fuera de horario. Sin respuesta automática, se van a la competencia.",
-            'slow_replies'     => "📊 Cada minuto que tardas en responder, la probabilidad de cerrar la reserva baja un 10%. Con Mia, la respuesta es *instantánea*.",
-            'no_confirm'       => "📊 El 70% de consultas por WhatsApp no se convierten en reserva porque el seguimiento es manual. Mia guía al cliente hasta el pago.",
-            'high_commissions' => "📊 Booking.com cobra entre 15-25% de comisión. Mia te trae reservas directas a *costo fijo* — sin comisiones por reserva.",
-            'general'          => "📊 En promedio, un hotel pierde *30% de sus reservas potenciales* por no responder mensajes a tiempo.",
+        $painContextMap = [
+            'after_hours'      => 'pierden clientes/ventas cuando escriben fuera del horario de atención',
+            'slow_replies'     => 'no pueden responder rápido a todas las consultas y pierden ventas por velocidad de respuesta',
+            'no_confirm'       => 'los clientes preguntan por WhatsApp pero no concretan la compra porque el seguimiento es lento o manual',
+            'high_commissions' => 'dependen de plataformas de terceros con comisiones altas y quieren vender directamente',
+            'general'          => 'tienen consultas sin atender en WhatsApp que representan ventas perdidas',
         ];
 
-        $painMsg = $painMessages[$pain] ?? $painMessages['general'];
-
-        return ['reply' =>
-            "Gracias por tus respuestas 🙏\n\n" .
-            "Déjame mostrarte los números reales de tu negocio:\n\n" .
-            $painMsg . "\n\n" .
-            "💰 *Estimación para tu hotel:*\n" .
-            "• Reservas potenciales perdidas/mes: ~S/" . number_format($monthlyLost) . "\n" .
-            "• Con Mia podrías recuperar: ~*S/" . number_format($captured) . "/mes*\n" .
-            "• Mia cuesta: *S/399/mes*\n\n" .
-            "📈 *Retorno: por cada S/1 que inviertes, recuperas S/" . max(2, (int) ($captured / 399)) . "*\n\n" .
-            "¿Quieres ver una demo en vivo de cómo funciona? Te muestro en 2 minutos 🎬\n\n" .
-            "Escribe *demo* para verlo en acción"
-        ];
+        return $this->aiReply($phone, $session, $message,
+            "MOMENTO DE VERDAD — el prospecto acaba de articular su dolor. Ahora ejecuta el pitch de ROI perfecto. " .
+            "Negocio: {$bizType} | Volumen: ~{$rooms} | Dolor: {$painContextMap[$pain]}. " .
+            "PASO 1 — Valida su dolor con empatía real, no corporativa. Demuestra que entiendes exactamente QUÉ les cuesta. " .
+            "PASO 2 — Ponle número a su pérdida: 'Con {$rooms} clientes/mes y un 15% sin respuesta, " .
+            "estás dejando ir ~S/" . number_format($monthlyLost) . " al mes — no porque no quieras atenderlos, " .
+            "sino porque físicamente no puedes estar las 24h.' Haz que SIENTAN ese número. " .
+            "PASO 3 — El contraste: Mia cuesta S/399/mes. Si solo captura 1 de cada 3 clientes perdidos, " .
+            "tienes S/{$roi} de retorno por cada sol invertido. No es un gasto — es la inversión más obvia del año. " .
+            "PASO 4 — Usa el caso de éxito más relevante para SU tipo de negocio del system prompt. " .
+            "PASO 5 — Cierra este turno con UNA pregunta de micro-compromiso: '¿Quieres que te muestre exactamente " .
+            "cómo funciona para un negocio como el tuyo en 2 minutos?' — espera su respuesta."
+        );
     }
 
-    private function handleRoiPitch(string $phone, string $msg, array $session): array
+    private function handleRoiPitch(string $phone, array $session, string $message): array
     {
-        if (str_contains($msg, 'demo') || str_contains($msg, 'si') || str_contains($msg, 'sí') || str_contains($msg, 'yes') || str_contains($msg, 'ver') || str_contains($msg, 'muestra')) {
+        $msg = mb_strtolower(trim($message));
+
+        if (preg_match('/\bdemo|ver|muestra|show\b/i', $msg) ||
+            preg_match('/\bsí\b|\bsi\b|\byes\b|\bok\b|\bdale\b|\bclaro\b|\bbueno\b|\binteresa\b|\bquiero\b/i', $msg)) {
+
             $this->updateSession($phone, ['state' => 'demo']);
-            return $this->showDemo();
+            $session['state'] = 'demo';
+
+            $bizType = $session['business_type'] ?? 'business';
+            return $this->aiReply($phone, $session, $message,
+                "DEMO TIME — haz esto cinematográfico, no un manual de instrucciones. " .
+                "Pon contexto: 'Son las 11:30pm. El dueño de {$bizType} está dormido. Un cliente escribe...' " .
+                "Luego muestra la conversación REAL entre cliente y Mia — con nombres inventados pero realistas, " .
+                "mensajes naturales, respuestas rápidas e inteligentes de Mia. " .
+                "Para hotel/agencia: cliente consulta disponibilidad → Mia pregunta fechas → confirma precio → reserva hecha. " .
+                "Para restaurante: cliente pide delivery → Mia toma pedido → confirma tiempo de entrega. " .
+                "Para retail/servicios: cliente pregunta precio → Mia responde + ofrece variante → cliente compra. " .
+                "Al final de la demo: 'Y mientras eso pasaba, {$bizType} recibió esta notificación: " .
+                "[muestra el WhatsApp de alerta al dueño con nombre, pedido y datos del cliente].' " .
+                "Pausa dramática. Luego: '¿Qué te pareció?' — espera su reacción."
+            );
         }
 
-        // Not interested yet — re-pitch
-        return ['reply' =>
-            "Entiendo que quieras pensarlo. Pero mira — aquí hay un dato:\n\n" .
-            "🏨 El *85% de viajeros* contactan hoteles por WhatsApp antes de reservar.\n" .
-            "Si no respondes en *5 minutos*, se van al siguiente hotel.\n\n" .
-            "¿Te muestro cómo Mia resuelve esto? Solo escribe *demo* 😊"
-        ];
+        // Objection or hesitation
+        return $this->aiReply($phone, $session, $message,
+            "El prospecto tiene dudas o no respondió con un sí claro. Técnica Feel/Felt/Found: " .
+            "1. 'Entiendo cómo te sientes — [parafrasea su duda específica]' " .
+            "2. 'Otros dueños de {$bizType} sentían lo mismo cuando los conocí' " .
+            "3. 'Lo que encontraron fue...' [usa un caso de éxito específico del system prompt]. " .
+            "NO repitas números ya mencionados. NO lances más features. " .
+            "PRIMERO pregunta qué es exactamente lo que le genera dudas — puede que sea algo simple. " .
+            "Escucha la objeción real antes de responder. Termina con UNA pregunta suave de avance."
+        );
     }
 
-    private function showDemo(): array
+    private function handleDemo(string $phone, array $session, string $message): array
     {
-        return ['reply' =>
-            "🎬 *DEMO EN VIVO — Así ve tu huésped el bot:*\n\n" .
-            "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" .
-            "🤖 *Mia (tu asistente):*\n" .
-            "¡Hola! Bienvenido al Hotel Sol de Cusco ☀️\n" .
-            "¿En qué puedo ayudarte?\n\n" .
-            "👤 *Huésped:*\n" .
-            "Hola quiero reservar una habitación para 2 personas\n\n" .
-            "🤖 *Mia:*\n" .
-            "¡Con gusto! ¿Para qué fechas sería la reserva?\n\n" .
-            "👤 *Huésped:*\n" .
-            "Del 15 al 18 de abril\n\n" .
-            "🤖 *Mia:*\n" .
-            "Perfecto — 3 noches (15-18 abril). Tenemos disponible:\n\n" .
-            "1️⃣ Habitación Doble — S/180/noche\n" .
-            "2️⃣ Suite Premium — S/320/noche\n\n" .
-            "👤 *Huésped:*\n" .
-            "La doble\n\n" .
-            "🤖 *Mia:*\n" .
-            "Excelente. Hab. Doble × 3 noches = *S/540*\n" .
-            "Para confirmar necesito tu email y una foto de tu DNI/pasaporte 📸\n\n" .
-            "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" .
-            "✅ Al final, *tú recibes* una notificación con:\n" .
-            "• Nombre del huésped\n" .
-            "• Fechas exactas y habitación\n" .
-            "• Total a cobrar\n" .
-            "• Foto del documento de identidad\n" .
-            "• Email del huésped\n\n" .
-            "Todo *automático*, 24/7, sin que hagas nada 🚀\n\n" .
-            "¿Qué te pareció? Escribe *beneficios* para ver todo lo incluido,\n" .
-            "o *empezar* si ya quieres activar tu prueba gratis 🎁"
-        ];
-    }
+        $msg = mb_strtolower(trim($message));
 
-    private function handleDemo(string $phone, string $msg): array
-    {
-        if (str_contains($msg, 'beneficio') || str_contains($msg, 'incluido') || str_contains($msg, 'incluye') || str_contains($msg, 'feature')) {
+        if (preg_match('/\bbenefi|incluye|incluido|feature|funcional\b/i', $msg)) {
             $this->updateSession($phone, ['state' => 'benefits']);
-            return $this->showBenefits();
+            $session['state'] = 'benefits';
+            return $this->aiReply($phone, $session, $message,
+                "El usuario quiere saber todo lo que incluye Mia. Presenta los beneficios clave con entusiasmo: " .
+                "reservas 24/7, bilingüe automático, traspaso humano inteligente, notificaciones instantáneas, " .
+                "email de confirmación con logo, verificación de identidad, panel web, sin comisiones por reserva, " .
+                "configuración en 48h. Termina con mención de la prueba gratis de 7 días."
+            );
         }
 
-        if (str_contains($msg, 'empezar') || str_contains($msg, 'activar') || str_contains($msg, 'prueba') || str_contains($msg, 'start') || str_contains($msg, 'trial') || str_contains($msg, 'si') || str_contains($msg, 'sí') || str_contains($msg, 'yes')) {
-            $this->updateSession($phone, ['state' => 'closing']);
-            return $this->showPricing();
-        }
-
-        // Default — show benefits
-        $this->updateSession($phone, ['state' => 'benefits']);
-        return $this->showBenefits();
-    }
-
-    private function showBenefits(): array
-    {
-        return ['reply' =>
-            "✨ *Todo lo que incluye Mia:*\n\n" .
-            "📱 *Reservas Automáticas 24/7*\n" .
-            "Tu WhatsApp toma reservas incluso a las 3am\n\n" .
-            "🗣️ *Bilingüe (Español + Inglés)*\n" .
-            "Detecta el idioma del huésped automáticamente\n\n" .
-            "👤 *Traspaso Humano Inteligente*\n" .
-            "Si tú respondes, el bot se pausa — tú tomas el control\n\n" .
-            "🔔 *Notificaciones Instantáneas*\n" .
-            "Recibes un WhatsApp + email con cada reserva nueva\n\n" .
-            "📧 *Email de Confirmación al Huésped*\n" .
-            "Automático con logo de tu hotel\n\n" .
-            "🆔 *Verificación de Identidad*\n" .
-            "Pide foto de DNI/pasaporte antes de confirmar\n\n" .
-            "📊 *Panel Web de Control*\n" .
-            "Ve todas tus reservas, ingresos y estadísticas online\n" .
-            "Consulta datos de tu negocio directamente por WhatsApp\n\n" .
-            "💬 *Historial de Conversaciones*\n" .
-            "Todas las charlas guardadas y accesibles\n\n" .
-            "🚫 *Sin Comisiones por Reserva*\n" .
-            "Tarifa fija mensual — no importa cuántas reservas hagas\n\n" .
-            "⚡ *Configuración en 48 horas*\n" .
-            "No necesitas nada técnico — nosotros lo hacemos todo\n\n" .
-            "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" .
-            "🎁 *7 días GRATIS* para probarlo sin compromiso\n\n" .
-            "¿Listo para empezar? Escribe *empezar* 🚀"
-        ];
-    }
-
-    private function handleBenefits(string $phone, string $msg): array
-    {
-        if (str_contains($msg, 'empezar') || str_contains($msg, 'activar') || str_contains($msg, 'start') || str_contains($msg, 'precio') || str_contains($msg, 'cuanto') || str_contains($msg, 'cuánto') || str_contains($msg, 'precio') || str_contains($msg, 'cost') || str_contains($msg, 'si') || str_contains($msg, 'sí') || str_contains($msg, 'yes')) {
-            $this->updateSession($phone, ['state' => 'closing']);
-            return $this->showPricing();
-        }
-
-        if (str_contains($msg, 'demo')) {
-            $this->updateSession($phone, ['state' => 'demo']);
-            return $this->showDemo();
-        }
-
-        // Default — show pricing
         $this->updateSession($phone, ['state' => 'closing']);
-        return $this->showPricing();
+        $session['state'] = 'closing';
+        $bizType = $session['business_type'] ?? 'negocio';
+        $rooms   = (int)($session['room_count'] ?? 30);
+        return $this->aiReply($phone, $session, $message,
+            "Acaban de ver la demo. Capitaliza el momento emocional — están en su pico de interés AHORA. " .
+            "NO presentes los 3 planes como lista genérica. Recomienda UNO basado en lo que sabes de su negocio: " .
+            "si tienen volumen alto o son agencia/hotel → Pro S/699. Si son pequeños o acaban de arrancar → Básico S/399. " .
+            "Di algo como: 'Para un {$bizType} de tu tamaño, el plan Pro tiene más sentido porque...' " .
+            "Menciona los 7 días gratis como eliminador de riesgo: 'No arriesgas nada — pruébalo gratis 7 días " .
+            "y si no ves resultados, cancelas con un mensaje.' " .
+            "Cierre de elección (no sí/no): '¿Empezamos con el Pro o prefieres el Básico para la prueba?' " .
+            "La primera persona que habla después de esa pregunta, pierde."
+        );
     }
 
-    private function showPricing(): array
+    private function handleBenefits(string $phone, array $session, string $message): array
     {
-        return ['reply' =>
-            "💳 *Planes Mia — WhatsApp AI para tu Negocio:*\n\n" .
-            "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" .
-            "1️⃣ *BÁSICO — S/399/mes*\n" .
-            "• Reservas automáticas 24/7\n" .
-            "• Notificaciones WhatsApp + email\n" .
-            "• Traspaso humano\n" .
-            "• Hasta 200 conversaciones/mes\n" .
-            "• Ideal para hostales y hoteles pequeños\n\n" .
-            "2️⃣ *PRO — S/699/mes*\n" .
-            "• Todo lo del Básico +\n" .
-            "• Panel web de control completo\n" .
-            "• Consulta datos de tu negocio por WhatsApp\n" .
-            "• Conversaciones ilimitadas\n" .
-            "• Reportes mensuales automáticos\n" .
-            "• Ideal para hoteles medianos y agencias\n\n" .
-            "3️⃣ *ENTERPRISE — S/1,199/mes*\n" .
-            "• Todo lo del Pro +\n" .
-            "• Múltiples números WhatsApp\n" .
-            "• Integración con tu sistema de gestión\n" .
-            "• Soporte prioritario\n" .
-            "• Personalización del asistente\n" .
-            "• Ideal para cadenas y agencias grandes\n\n" .
-            "━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" .
-            "⚙️ Configuración única: *S/500*\n" .
-            "🎁 *Primeros 7 días GRATIS*\n\n" .
-            "¿Cuál plan te interesa? Escribe *1*, *2*, o *3*\n" .
-            "O escribe *prueba* para activar los 7 días gratis del plan Básico"
-        ];
+        $this->updateSession($phone, ['state' => 'closing']);
+        $session['state'] = 'closing';
+        return $this->aiReply($phone, $session, $message,
+            "Después de mostrar los beneficios, es momento de cerrar. " .
+            "Presenta los planes (Básico S/399, Pro S/699, Enterprise S/1,199) de forma concisa. " .
+            "Destaca la prueba de 7 días gratis sin compromiso. " .
+            "Basándote en lo que sabes de su negocio, sugiere cuál plan le encajaría mejor."
+        );
     }
 
-    private function handleClosing(string $phone, string $msg, array $session): array
+    private function handleClosing(string $phone, array $session, string $message): array
     {
-        $plan = 'basic';
-        if (str_contains($msg, '2') || str_contains($msg, 'pro')) {
-            $plan = 'pro';
-        } elseif (str_contains($msg, '3') || str_contains($msg, 'enterprise') || str_contains($msg, 'empresa')) {
-            $plan = 'enterprise';
+        $msg = mb_strtolower(trim($message));
+
+        if (preg_match('/\bempezar|activar|prueba|quiero|lo quiero|start|trial|básico|pro|enterprise\b/i', $msg) ||
+            preg_match('/\b1\b|\b2\b|\b3\b/', $msg)) {
+
+            $this->updateSession($phone, ['state' => 'collecting_name']);
+            $session['state'] = 'collecting_name';
+            return $this->aiReply($phone, $session, $message,
+                "El usuario quiere empezar. Exprésate con entusiasmo genuino — tomó una buena decisión. " .
+                "Para activar la prueba necesitas el nombre de su hotel o agencia. " .
+                "Pídelo de forma cálida y natural, como si fuera el primer paso de algo emocionante."
+            );
         }
 
-        $this->updateSession($phone, ['state' => 'collecting_name']);
-        $this->pdo->prepare("UPDATE mia_sales_sessions SET business_type = COALESCE(business_type, 'hotel') WHERE phone = ?")
-            ->execute([$phone]);
-
-        $planNames = ['basic' => 'Básico', 'pro' => 'Pro', 'enterprise' => 'Enterprise'];
-        return ['reply' =>
-            "¡Excelente elección! 🎉 Plan *" . ($planNames[$plan] ?? 'Básico') . "*\n\n" .
-            "Para activar tu prueba gratuita de 7 días, necesito algunos datos.\n\n" .
-            "📝 *¿Cuál es el nombre de tu hotel o agencia?*"
-        ];
+        // Objection or hesitation at closing
+        $bizType = $session['business_type'] ?? 'negocio';
+        return $this->aiReply($phone, $session, $message,
+            "Objeción en fase de cierre — momento más crítico de la venta. NO des lista de objeciones genéricas. " .
+            "PRIMERO: diagnostica qué tipo de objeción es basándote en lo que dijeron: " .
+            "¿precio? ¿tiempo? ¿incertidumbre? ¿necesitan convencer a su socio/esposo/a? " .
+            "Luego aplica Find/Felt/Found + elimina el riesgo específico: " .
+            "• Precio → '¿Cuánto cobra Booking.com por una reserva? S/399 al mes es menos que 1 comisión.' " .
+            "• Tiempo/técnico → 'No tocas nada — el equipo lo monta en 48h mientras tú sigues con tu negocio.' " .
+            "• Incertidumbre → '7 días gratis, sin tarjeta. Si en una semana no ves 1 cliente extra, " .
+            "cancelas con un WhatsApp y punto.' " .
+            "• Debo hablarlo → 'Claro. ¿Qué información necesitas para presentárselo a [él/ella]? Te lo preparo.' " .
+            "Siempre termina con UNA pregunta de cierre suave — elección, no sí/no."
+        );
     }
 
-    private function handleCollectName(string $phone, string $message): array
+    private function handleCollectName(string $phone, array $session, string $message): array
     {
         $name = trim($message);
+
         if (strlen($name) < 2) {
-            return ['reply' => "Necesito el nombre de tu negocio para continuar. ¿Cómo se llama? 🏨"];
+            return $this->aiReply($phone, $session, $message,
+                "No pudo capturar el nombre del negocio. Pide de nuevo el nombre de su empresa/negocio, de forma amigable."
+            );
         }
 
-        $this->updateSession($phone, [
-            'state'         => 'collecting_email',
-            'business_name' => $name,
-        ]);
+        $this->updateSession($phone, ['state' => 'collecting_email', 'business_name' => $name]);
+        $session = array_merge($session, ['state' => 'collecting_email', 'business_name' => $name]);
 
-        return ['reply' =>
-            "Perfecto — *$name* ✅\n\n" .
-            "📧 ¿Y tu email de contacto? (para enviarte los accesos)"
-        ];
+        $bizType = $session['business_type'] ?? 'negocio';
+        return $this->aiReply($phone, $session, $message,
+            "Tienes el nombre del negocio: {$name} ({$bizType}). Celebra brevemente — hazlos sentir que tomaron " .
+            "una buena decisión. Crea anticipación: menciona que en 48h el equipo los contactará para configurar todo. " .
+            "Pide el email de forma natural: es para enviarles los accesos + un resumen de lo que conversaron. " .
+            "Hazlo sentir como el primer paso de algo importante, no como llenar un formulario."
+        );
     }
 
-    private function handleCollectEmail(string $phone, string $msg): array
+    private function handleCollectEmail(string $phone, array $session, string $message): array
     {
-        if (!preg_match('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $msg, $m)) {
-            return ['reply' => "Hmm, no detecté un email válido. ¿Puedes escribirlo de nuevo? 📧"];
+        if (!preg_match('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $message, $m)) {
+            return $this->aiReply($phone, $session, $message,
+                "No detectaste un email válido. Pide de nuevo el email de contacto amigablemente — " .
+                "es para enviarle los accesos a la prueba gratuita de 7 días."
+            );
         }
 
         $email = $m[0];
-        $this->updateSession($phone, [
-            'state' => 'captured',
-            'email' => $email,
+        $this->updateSession($phone, ['state' => 'captured', 'email' => $email]);
+        $session = array_merge($session, ['state' => 'captured', 'email' => $email]);
+
+        try {
+            $leadService = new LeadService();
+            $s = SalesSession::fromRow($this->getSession($phone));
+            $leadService->createFromSession($s);
+        } catch (\Throwable $e) {
+            error_log('[Mia] Lead creation error: ' . $e->getMessage());
+        }
+
+        $bizName = $session['business_name'] ?? 'tu negocio';
+        $bizType = $session['business_type'] ?? 'negocio';
+        return $this->aiReply($phone, $session, $message,
+            "¡CIERRE EXITOSO! Datos completos: {$bizName} ({$bizType}), email: {$email}. " .
+            "Momento final más importante de toda la conversación — hazlo memorable. " .
+            "1. Confirma con energía genuina — no exagerada, real. Ellos acaban de tomar una buena decisión. " .
+            "2. Pinta el futuro en 48h: 'Mañana el equipo te escribe para definir cómo suena Mia para {$bizName}. " .
+            "Pasado mañana, Mia ya está respondiendo tus clientes mientras tú duermes.' " .
+            "3. Dales un insight final de regalo — algo que puedan hacer ya: " .
+            "'Mientras tanto, anota las 5 preguntas que más te hacen tus clientes por WhatsApp. " .
+            "Eso ayudará al equipo a configurar Mia perfectamente para ti.' " .
+            "4. Cierra con calidez, brevedad y confianza. Tú sabes que tomaron la decisión correcta."
+        );
+    }
+
+    private function handleCaptured(string $phone, array $session, string $message): array
+    {
+        return $this->aiReply($phone, $session, $message,
+            "El cliente ya está registrado y esperando ser contactado por el equipo de AiniDesk. " .
+            "Responde a su mensaje de forma útil y amigable. Si tiene preguntas sobre el producto, " .
+            "respóndelas con precisión. Si quiere hablar con alguien ya mismo, indica mia.ainitravel.com. " .
+            "Sé su asistente personal mientras llega el equipo."
+        );
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  AI ENGINE — Groq LLM with conversation history
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Generate an AI reply using full conversation history as context.
+     * Appends user message to history before calling, appends AI reply after.
+     */
+    private function aiReply(
+        string $phone,
+        array  $session,
+        string $userMessage,
+        string $turnGoal = ''
+    ): array {
+        $this->appendHistory($phone, 'user', $userMessage);
+
+        $history  = $this->loadHistory($phone);
+        $messages = array_merge(
+            [['role' => 'system', 'content' => $this->buildSystemPrompt($session, $turnGoal)]],
+            $history
+        );
+
+        $reply = $this->callGroq($messages);
+        $this->appendHistory($phone, 'assistant', $reply);
+
+        return ['reply' => $reply];
+    }
+
+    private function buildSystemPrompt(array $session, string $turnGoal): string
+    {
+        $state   = $session['state']          ?? 'new';
+        $volume  = $session['room_count']     ? "{$session['room_count']} unidades/clientes/mes" : 'desconocido';
+        $method  = $session['current_method'] ? $this->methodLabel($session['current_method']) : 'desconocido';
+        $pain    = $session['pain_point']     ? $this->painLabel($session['pain_point']) : 'desconocido';
+        $bizName = $session['business_name']  ?? 'desconocido';
+        $email   = $session['email']          ?? 'pendiente';
+        $bizType = $session['business_type']  ?? 'negocio';
+
+        $goalBlock = $turnGoal
+            ? "\n\n═══ TU MISIÓN EN ESTE TURNO ═══\n{$turnGoal}"
+            : '';
+
+        return <<<PROMPT
+Eres *Mia*, la mejor consultora de ventas de AiniDesk — y las mejores vendedoras hablan MENOS, no más.
+
+Tu superpoder es la precisión. Un mensaje corto y elegido con cuidado cierra más ventas que tres párrafos. Como dijo Pascal: "Hubiera escrito una carta más corta, pero no tuve el tiempo." Tú SÍ tienes el tiempo — y la inteligencia para elegir la única cosa que importa decir ahora.
+
+ASÍ ESCRIBES TÚ (WhatsApp humano, no email corporativo):
+✅ "Hola! Soy Mia 😊 ¿Qué tipo de negocio tienes?"
+✅ "Entiendo. Y cuando no hay nadie — ¿cuántos clientes crees que se van sin respuesta?"
+✅ "Perfecto. ¿Quieres probarlo gratis 7 días, sin compromiso?"
+
+ASÍ NUNCA ESCRIBES:
+❌ Dos o más párrafos separados por una línea en blanco
+❌ Listas con viñetas para responder una pregunta simple
+❌ "¡Hola! Me alegra que hayas escrito. Soy Mia de AiniDesk y me especializo en..."
+❌ Explicar tu razonamiento — solo da el resultado
+
+REGLA DE ORO: Si escribiste más de 3 líneas, borra y elige solo lo más importante. Eso es pensar, no escribir más.
+
+═══ TU FILOSOFÍA DE VENTAS (INTERIORIZA ESTO) ═══
+• *Diagnostica antes de recetar*: Haz preguntas inteligentes. Un buen médico no receta sin escuchar.
+• *Amplifica la consecuencia*: No solo describes el problema — haces que sientan lo que les CUESTA cada día sin solución. "¿Cuántos clientes crees que se fueron porque respondiste 4 horas tarde?" golpea más que cualquier feature.
+• *Enseña antes de vender* (Challenger Sale): Comparte un insight que no habían considerado. Ej: "El 67% de los clientes por WhatsApp no vuelven a escribir si no responden en 5 minutos."
+• *Micro-compromisos* (Sí progresivos): Consigue pequeños "sí" antes del gran "sí". "¿Te pasa eso?" → "¿Cuánto crees que pierdes?" → "¿Querrías ver cómo lo resolvemos?"
+• *Pérdidas antes que ganancias*: La pérdida duele 2x más que la ganancia. No digas "gana más" — di "deja de perder X al mes".
+• *Historias reales, no features*: "Un restaurante en Lima que tenía el mismo problema que tú ahora recibe 23 pedidos extra al mes por WhatsApp" vende más que cualquier lista de funciones.
+• *Objeciones = preguntas disfrazadas*: Si dicen "está caro" realmente preguntan "¿vale la pena?". Si dicen "lo pensaré" realmente dicen "no me convencí aún". Responde a lo que NO dijeron.
+• *Un paso a la vez*: Nunca intentes cerrar antes de tiempo. Tu única tarea en cada turno es llevarlos al SIGUIENTE paso, no al final.
+• *Silencio después del cierre*: Cuando hagas la pregunta de cierre, quédate callada. La primera persona que habla pierde.
+
+═══ PRODUCTO: MIA POR AINIDESK ═══
+Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
+• Responde clientes 24/7 — incluso a las 2am cuando el dueño duerme
+• Maneja preguntas frecuentes, muestra catálogo/servicios/precios, toma pedidos y reservas
+• Bilingüe automático (español/inglés sin configuración)
+• *Traspaso inteligente*: cuando el dueño toma el control, el bot se aparta solo — natural y sin fricción
+• Notificaciones al instante: cada venta/reserva/pedido llega por WhatsApp y email
+• *Seguimiento automático*: persigue a los que preguntaron y no compraron (recupera el 30% de leads perdidos)
+• Panel web: historial de conversaciones, ingresos, estadísticas en tiempo real
+• Sin comisiones por venta — tarifa fija mensual predecible
+• Configuración completa en 48h — el equipo lo hace todo, el cliente no toca nada técnico
+
+═══ CASOS DE ÉXITO REALES (usa estos en conversación) ═══
+• *Hotel Cusco* (40 hab): Pasó de 12 a 17 reservas directas semanales en el primer mes. Ahorra S/2,800/mes en comisiones de Booking.com. ROI: 700%.
+• *Agencia de viajes Lima*: Mia atiende 180 consultas/mes fuera de horario. Cierra 22% de esas consultas sin intervención humana.
+• *Restaurante Miraflores*: 31 pedidos adicionales/mes por WhatsApp que antes se perdían porque no había quien respondiera a tiempo.
+• *Consultora de servicios*: Agenda 14 citas automáticamente al mes que antes se caían por respuesta lenta.
+
+═══ PLANES ═══
+• *Básico S/399/mes* — hasta 200 conversaciones/mes. Ideal para empezar.
+• *Pro S/699/mes* — conversaciones ilimitadas + panel completo + reportes automáticos. El más popular.
+• *Enterprise S/1,199/mes* — múltiples números WhatsApp, integraciones personalizadas, soporte VIP.
+• Configuración: S/500 pago único (incluye toda la personalización)
+• 🎁 *7 días GRATIS* — sin tarjeta, sin compromiso, cancela cuando quieras.
+
+═══ OBJECIONES FRECUENTES Y CÓMO MANEJARLAS ═══
+• "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? S/399 al mes es menos de S/14 al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
+• "Lo voy a pensar" → "Claro, es una decisión importante. Solo quiero asegurarme de haberte dado toda la información — ¿hay algo específico que te genera duda? Prefiero resolver eso ahora."
+• "No tengo tiempo para configurarlo" → "Por eso lo hacemos nosotros. Tú no tocas nada — en 48h está listo y funcionando."
+• "Ya tenemos alguien respondiendo WhatsApp" → "Genial. ¿Esa persona responde a las 2am? ¿Los domingos? ¿En menos de 60 segundos siempre? Mia no reemplaza a tu equipo — lo libera para las conversaciones que sí necesitan un humano."
+• "No sé si funcionará para mi negocio" → "Por eso existe la prueba de 7 días — para que lo veas funcionando en TU negocio, con TUS clientes, antes de comprometer un sol."
+
+═══ CONTEXTO ACTUAL DEL PROSPECTO ═══
+Etapa: {$state} | Tipo de negocio: {$bizType}
+Volumen: {$volume} | Método actual: {$method} | Dolor principal: {$pain}
+Nombre del negocio: {$bizName} | Email: {$email}
+
+═══ REGLAS DE COMUNICACIÓN ═══
+• Español natural; inglés si el usuario escribe en inglés
+• 1-2 emojis máximo, solo si suman
+• Termina con UNA sola pregunta o acción — nunca dos
+• NUNCA repitas lo que ya dijiste en el historial — avanza
+• NUNCA suenes a script corporativo. Cada mensaje fresco, como un humano real
+• Si no sabes algo, ofrece conectarlos con el equipo: *mia.ainitravel.com*
+• Si dicen que no les interesa, respeta su decisión con elegancia y cierra bien
+• Listas con viñetas: SOLO para mostrar planes/precios cuando el cliente lo pide{$goalBlock}
+PROMPT;
+    }
+
+    private function callGroq(array $messages): string
+    {
+        // Use the shared AI gateway (Ollama 3s → Groq fallback) just like Sofia
+        require_once '/var/www/html/ainitravel.com/ai_gateway.php';
+
+        $result = ai_chat($messages, [
+            'temperature' => 0.72,
+            'num_predict' => 100,   // hard cap: ~75 words = physically one short paragraph
+            'max_tokens'  => 100,   // for Groq side
+            'top_p'       => 0.9,
         ]);
 
-        // Convert session to lead
-        $session = $this->getSession($phone);
-        $leadService = new LeadService();
-        $s = SalesSession::fromRow($session);
-        $leadService->createFromSession($s);
+        if (!empty($result['response'])) {
+            error_log("[Mia] AI response via {$result['source']}");
+            // Hard-enforce single paragraph: strip everything after first blank line
+            $text = trim($result['response']);
+            $firstBreak = strpos($text, "\n\n");
+            if ($firstBreak !== false) {
+                $text = trim(substr($text, 0, $firstBreak));
+            }
+            return $text;
+        }
 
-        return ['reply' =>
-            "🎉 *¡Listo! Tu prueba gratuita de 7 días está activada!*\n\n" .
-            "📋 *Resumen:*\n" .
-            "• Negocio: *" . ($session['business_name'] ?? '-') . "*\n" .
-            "• Email: *$email*\n" .
-            "• WhatsApp: *$phone*\n\n" .
-            "📞 Nuestro equipo te contactará en las próximas *24 horas* para:\n" .
-            "1. Configurar tu número de WhatsApp\n" .
-            "2. Personalizar tu asistente con tus habitaciones y precios\n" .
-            "3. Dejarlo funcionando\n\n" .
-            "¿Tienes alguna pregunta mientras tanto? Estoy aquí para ayudarte 😊\n\n" .
-            "También puedes visitar: *mia.ainitravel.com* para más info"
-        ];
-    }
-
-    private function handleCaptured(string $phone, string $msg): array
-    {
-        return ['reply' =>
-            "¡Ya tenemos tus datos registrados! 🎉\n\n" .
-            "Nuestro equipo se pondrá en contacto contigo pronto para la configuración.\n\n" .
-            "Si tienes alguna pregunta adicional, escríbeme con toda confianza 😊\n\n" .
-            "📞 O si prefieres hablar con una persona, escribe *humano* y te conecto con nuestro equipo."
-        ];
+        error_log("[Mia] Both Ollama and Groq failed");
+        return "Lo siento, tuve un pequeño problema técnico. Intenta de nuevo en un momento 🙏";
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  INTRO (first message / cold open)
+    //  CONVERSATION HISTORY
     // ════════════════════════════════════════════════════════════════════════
 
-    private function introReply(): array
+    private function loadHistory(string $phone): array
     {
-        return ['reply' =>
-            "¡Hola! 👋 Soy *Mia*, asistente virtual de *AiniDesk*\n\n" .
-            "Ayudamos a hoteles y agencias de viajes a tomar *reservas automáticas por WhatsApp* — 24/7, sin perder un solo cliente. 🚀\n\n" .
-            "🏨 Uno de nuestros hoteles aumentó sus reservas directas un *40%* en el primer mes.\n\n" .
-            "¿Puedo hacerte 3 preguntas rápidas para ver si podemos ayudarte?\n" .
-            "Solo toma 2 minutos 😊\n\n" .
-            "Escribe *sí* para empezar"
-        ];
+        $stmt = $this->pdo->prepare("SELECT conv_history FROM mia_sales_sessions WHERE phone = ?");
+        $stmt->execute([$phone]);
+        $data = $stmt->fetchColumn();
+        if (!$data) {
+            return [];
+        }
+        $history = json_decode($data, true) ?? [];
+        return array_slice($history, -self::MAX_HISTORY);
+    }
+
+    private function appendHistory(string $phone, string $role, string $content): void
+    {
+        $stmt = $this->pdo->prepare("SELECT conv_history FROM mia_sales_sessions WHERE phone = ?");
+        $stmt->execute([$phone]);
+        $data    = $stmt->fetchColumn();
+        $history = $data ? (json_decode($data, true) ?? []) : [];
+
+        $history[] = ['role' => $role, 'content' => $content];
+        $history   = array_slice($history, -30); // keep last 30 entries (15 turns)
+
+        $this->pdo->prepare("UPDATE mia_sales_sessions SET conv_history = ? WHERE phone = ?")
+            ->execute([json_encode($history, JSON_UNESCAPED_UNICODE), $phone]);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  HELPERS
+    // ════════════════════════════════════════════════════════════════════════
+
+    private function methodLabel(string $method): string
+    {
+        return match ($method) {
+            'manual'   => 'llamadas/WhatsApp manual',
+            'web_form' => 'formulario web',
+            'otas'     => 'OTAs (Booking/Airbnb)',
+            default    => 'múltiples canales',
+        };
+    }
+
+    private function painLabel(string $pain): string
+    {
+        return match ($pain) {
+            'after_hours'      => 'pierde clientes fuera de horario',
+            'slow_replies'     => 'respuestas lentas',
+            'no_confirm'       => 'huéspedes que no confirman reserva',
+            'high_commissions' => 'comisiones altas en OTAs',
+            default            => 'problemas generales de reservas',
+        };
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -484,10 +669,8 @@ class MiaSalesService
         if ($session) {
             return $session;
         }
-
-        $this->pdo->prepare("INSERT INTO mia_sales_sessions (phone, state) VALUES (?, 'intro')")
+        $this->pdo->prepare("INSERT INTO mia_sales_sessions (phone, state) VALUES (?, 'new')")
             ->execute([$phone]);
-
         return $this->getSession($phone);
     }
 
@@ -521,3 +704,4 @@ class MiaSalesService
         return preg_replace('/[^0-9+]/', '', $phone);
     }
 }
+

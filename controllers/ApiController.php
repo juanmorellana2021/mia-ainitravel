@@ -14,9 +14,12 @@ class ApiController
     {
         header('Content-Type: application/json');
 
-        // Security: localhost-only
-        $caller = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
-        if (!in_array($caller, ['127.0.0.1', '::1', 'localhost'], true)) {
+        // Security: localhost-only OR valid bot secret key
+        $caller    = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+        $botKey    = $_SERVER['HTTP_X_MIA_BOT_KEY'] ?? '';
+        $validKey  = ($botKey === 'mia-bot-secret-2026');
+        $localhost = in_array($caller, ['127.0.0.1', '::1', 'localhost'], true);
+        if (!$localhost && !$validKey) {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'Forbidden']);
             return;
