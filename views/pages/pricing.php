@@ -138,6 +138,102 @@ ob_start();
             </div>
         </div>
 
+        <!-- Corporate tiers -->
+        <div class="mt-5 pt-4 border-top">
+            <h3 class="text-center fw-bold mb-2">¿Cadena, franquicia o corporación?</h3>
+            <p class="text-center text-muted mb-4">Planes diseñados para operar múltiples sedes, alto volumen y equipos grandes.</p>
+            <div class="row g-4 justify-content-center">
+
+                <!-- Duo -->
+                <div class="col-lg-4">
+                    <div class="card h-100 border-secondary shadow-sm">
+                        <div class="card-header bg-secondary text-white text-center py-4">
+                            <h5 class="fw-bold mb-1">Enterprise Duo</h5>
+                            <p class="small mb-0 opacity-75">2 sedes: hoteles boutique, agencias con sucursal, parejas de negocios</p>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_ENTERPRISE_DUO) ?></div>
+                            <p class="text-muted">/ mes &middot; 2 sedes</p>
+                            <hr>
+                            <ul class="list-unstyled text-start">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>Todo lo del Enterprise</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i><strong>2 sedes / n&uacute;meros WhatsApp</strong></li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>15,000 conversaciones/mes incluidas</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>Dashboard unificado por sede</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>Onboarding en 48h</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>SLA 99.9% uptime</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer bg-white text-center py-3">
+                            <a href="<?= $base ?>/register?plan=enterprise-duo" class="btn btn-secondary w-100">
+                                <i class="bi bi-building me-1"></i>Contactar Ventas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cadena -->
+                <div class="col-lg-5">
+                    <div class="card h-100 border-primary shadow">
+                        <div class="card-header bg-primary text-white text-center py-4">
+                            <h5 class="fw-bold mb-1">Enterprise Cadena</h5>
+                            <p class="small mb-0 opacity-75">Cadenas hoteleras, agencias con franquicias, grupos de negocios</p>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_ENTERPRISE_CHAIN) ?></div>
+                            <p class="text-muted">/ mes · hasta 5 sedes</p>
+                            <hr>
+                            <ul class="list-unstyled text-start">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Todo lo del Enterprise</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i><strong>Hasta 5 sedes / números WhatsApp</strong></li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>30,000 conversaciones/mes incluidas</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Dashboard unificado multi-sede</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Reportes consolidados por sede</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Onboarding prioritario (24h)</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>SLA 99.9% + soporte 24/7</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer bg-white text-center py-3">
+                            <a href="<?= $base ?>/register?plan=enterprise-chain" class="btn btn-primary w-100">
+                                <i class="bi bi-building me-1"></i>Contactar Ventas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Corporativo -->
+                <div class="col-lg-5">
+                    <div class="card h-100 border-dark shadow">
+                        <div class="card-header bg-dark text-white text-center py-4">
+                            <span class="badge bg-warning text-dark mb-2">Alto Volumen</span>
+                            <h5 class="fw-bold mb-1">Enterprise Corporativo</h5>
+                            <p class="small mb-0 opacity-75">Grandes corporaciones, cadenas nacionales, operadores turísticos</p>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_ENTERPRISE_CORP) ?></div>
+                            <p class="text-muted">/ mes · sedes ilimitadas</p>
+                            <hr>
+                            <ul class="list-unstyled text-start">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-dark me-2"></i>Todo lo del Enterprise Cadena</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-dark me-2"></i><strong>Sedes y números WhatsApp ilimitados</strong></li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-dark me-2"></i><strong>Conversaciones ilimitadas</strong></li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-dark me-2"></i>Infraestructura dedicada</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-dark me-2"></i>Integraciones con PMS/CRM propietario</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-dark me-2"></i>Account manager exclusivo</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-dark me-2"></i>SLA personalizado + contrato anual</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer bg-white text-center py-3">
+                            <a href="<?= $base ?>/register?plan=enterprise-corp" class="btn btn-dark w-100">
+                                <i class="bi bi-buildings me-1"></i>Contactar Ventas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
         <!-- Footer notes -->
         <div class="text-center mt-5">
             <p class="text-muted">

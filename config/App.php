@@ -20,8 +20,11 @@ class App
     public const PLAN_STARTER    = 199;
     public const PLAN_BASIC      = 399;
     public const PLAN_PRO        = 699;
-    public const PLAN_ENTERPRISE = 1199;
-    public const SETUP_FEE       = 0;
+    public const PLAN_ENTERPRISE       = 1199;
+    public const PLAN_ENTERPRISE_DUO   = 1999;
+    public const PLAN_ENTERPRISE_CHAIN = 3599;
+    public const PLAN_ENTERPRISE_CORP  = 11999;
+    public const SETUP_FEE             = 0;
     public const FREE_TRIAL_DAYS = 7;
 
     // ── Asset base path (auto-detect local vs subdomain) ─────────────────
