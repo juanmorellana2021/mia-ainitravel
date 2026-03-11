@@ -52,17 +52,33 @@ function makeWaClient(clientId) {
 // ═════════════════════════════════════════════════════════════════════════════
 const miaClient = makeWaClient('mia-bot');
 
-miaClient.on('qr', (qr) => {
+// Store Mia bot QR so superadmin can display it via /qr/mia
+let miaBotQrData   = null;
+let miaBotStatus   = 'initializing';
+let miaBotPhone    = null;
+
+miaClient.on('qr', async (qr) => {
     qrcodeTerminal.generate(qr, { small: true });
     console.log('[mia-bot] Scan QR to connect Mia sales bot');
+    miaBotStatus = 'qr_pending';
+    try {
+        miaBotQrData = await qrcodeImage.toDataURL(qr, { width: 300 });
+    } catch (e) {
+        miaBotQrData = null;
+    }
 });
 
 miaClient.on('ready', () => {
     console.log('[mia-bot] ✅ Sales bot connected and ready');
+    miaBotStatus = 'connected';
+    miaBotQrData = null;
+    try { miaClient.info && (miaBotPhone = miaClient.info.wid.user); } catch(_) {}
 });
 
 miaClient.on('disconnected', (reason) => {
     console.log('[mia-bot] ❌ Disconnected:', reason);
+    miaBotStatus = 'disconnected';
+    miaBotQrData = null;
     process.exit(1); // pm2 restarts the whole process
 });
 
@@ -337,6 +353,15 @@ const adminServer = http.createServer((req, res) => {
         destroyClientSession(disconnectMatch[1])
             .then(() => respond(res, 200, { success: true }));
         return;
+    }
+
+    // GET /qr/mia  — QR for the Mia sales bot itself
+    if (method === 'GET' && url === '/qr/mia') {
+        return respond(res, 200, {
+            status:   miaBotStatus,
+            qr_image: miaBotQrData,
+            phone:    miaBotPhone,
+        });
     }
 
     // GET /qr/:clientId

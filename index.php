@@ -196,6 +196,13 @@ match (true) {
     str_starts_with($uri, 'superadmin/clients/') && $method === 'POST'
         => (new SuperAdminController())->clientSave((int)basename($uri)),
 
+    // ── Superadmin — Mia Bot ──────────────────────────────────────────────────
+    $uri === 'superadmin/mia-bot'
+        => (new SuperAdminController())->miaBot(),
+
+    $uri === 'superadmin/mia-bot-status' && $method === 'GET'
+        => (new SuperAdminController())->miaBotStatus(),
+
     // ── Superadmin — Prospects ────────────────────────────────────────────────
     $uri === 'superadmin/prospects' && $method === 'GET'
         => (new SuperAdminController())->prospects(),

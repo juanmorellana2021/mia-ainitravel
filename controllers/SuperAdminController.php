@@ -131,6 +131,35 @@ class SuperAdminController
         exit;
     }
 
+    // ── Mia bot connection (QR scan) ──────────────────────────────────────────
+
+    public function miaBot(): void
+    {
+        $this->requireSuperAdmin();
+        $pageTitle    = 'Conectar Bot Mia';
+        $pageTopTitle = 'Bot Mia — Conexión WhatsApp';
+        $activeNav    = 'mia_bot';
+        require __DIR__ . '/../views/superadmin/mia_bot.php';
+    }
+
+    /** JSON proxy — polls the bot server and returns status+QR to the browser. */
+    public function miaBotStatus(): void
+    {
+        $this->requireSuperAdmin();
+        header('Content-Type: application/json');
+
+        $ctx = stream_context_create(['http' => ['timeout' => 4]]);
+        $raw = @file_get_contents('http://127.0.0.1:3001/qr/mia', false, $ctx);
+
+        if ($raw === false) {
+            echo json_encode(['status' => 'disconnected', 'qr_image' => null, 'phone' => null]);
+            return;
+        }
+
+        $data = json_decode($raw, true);
+        echo json_encode($data ?: ['status' => 'disconnected', 'qr_image' => null, 'phone' => null]);
+    }
+
     // ── Prospects list ────────────────────────────────────────────────────────
 
     public function prospects(): void
