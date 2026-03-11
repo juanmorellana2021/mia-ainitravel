@@ -99,16 +99,26 @@ require __DIR__ . '/_sidebar.php';
                     </a>
                 <?php else: ?>
                     <p class="text-muted small mb-3">
-                        Escanea el código QR con tu WhatsApp para conectarlo a Mia.
-                        Una vez conectado, Mia responderá automáticamente a tus clientes.
+                        Conecta tu WhatsApp de negocio para que Mia responda automáticamente a tus clientes.
                     </p>
-                    <div class="text-center p-3 border rounded-3 bg-light" id="waConnectBox">
-                        <div class="spinner-border spinner-border-sm text-success mb-2" role="status"></div>
-                        <div class="text-muted small">Cargando código QR...</div>
+                    <!-- Step 1: connect button -->
+                    <div id="waStep1">
+                        <button type="button" class="btn btn-success w-100"
+                                id="waConnectBtn"
+                                style="background:#25d366;border-color:#25d366">
+                            <i class="bi bi-whatsapp me-2"></i>Iniciar conexión WhatsApp
+                        </button>
                     </div>
-                    <div class="form-text mt-2">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo → escanea el QR.
+                    <!-- Step 2: QR box (hidden until connect clicked) -->
+                    <div id="waStep2" class="d-none">
+                        <div class="text-center p-3 border rounded-3 bg-light" id="waConnectBox">
+                            <div class="spinner-border spinner-border-sm text-success mb-2" role="status"></div>
+                            <div class="text-muted small">Iniciando sesión...</div>
+                        </div>
+                        <div class="form-text mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo → escanea el QR.
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -302,31 +312,70 @@ require __DIR__ . '/_sidebar.php';
 
 <?php if ($client->bot_wa_status !== 'connected'): ?>
 <script>
-// Poll bot server for QR code (via PHP proxy)
 (function() {
-    const box = document.getElementById('waConnectBox');
-    if (!box) return;
+    const btn   = document.getElementById('waConnectBtn');
+    const step1 = document.getElementById('waStep1');
+    const step2 = document.getElementById('waStep2');
+    const box   = document.getElementById('waConnectBox');
+    if (!btn) return;
 
-    function loadQr() {
+    let polling = false;
+
+    function pollQr() {
+        if (!polling) return;
         fetch('<?= $base ?>/dashboard/settings/wa-qr')
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'connected') {
-                    box.innerHTML = '<div class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>¡WhatsApp conectado! Recarga la página.</div>';
+                    box.innerHTML = '<div class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>¡WhatsApp conectado! Recargando...</div>';
+                    polling = false;
                     setTimeout(() => location.reload(), 1500);
                 } else if (data.qr_image) {
-                    box.innerHTML = '<img src="' + data.qr_image + '" class="img-fluid" style="max-width:220px" alt="QR Code"><div class="text-muted small mt-2">Escanea con WhatsApp → Dispositivos vinculados</div>';
-                    setTimeout(loadQr, 20000); // refresh every 20s (QR expires)
+                    box.innerHTML = '<img src="' + data.qr_image + '" class="img-fluid" style="max-width:220px" alt="QR Code">' +
+                        '<div class="text-muted small mt-2">Escanea con WhatsApp → Dispositivos vinculados</div>';
+                    setTimeout(pollQr, 20000); // QR refreshes every 20s
                 } else {
-                    box.innerHTML = '<div class="text-muted small"><i class="bi bi-hourglass-split me-1"></i>Preparando QR... <a href="" onclick="location.reload();return false;">recargar</a></div>';
-                    setTimeout(loadQr, 5000);
+                    box.innerHTML = '<div class="spinner-border spinner-border-sm text-success mb-2" role="status"></div>' +
+                        '<div class="text-muted small mt-1">Preparando QR...</div>';
+                    setTimeout(pollQr, 4000);
                 }
             })
             .catch(() => {
-                box.innerHTML = '<div class="text-muted small">No se pudo cargar el QR. <a href="" onclick="location.reload();return false;">Intentar de nuevo</a></div>';
+                box.innerHTML = '<div class="text-muted small">No se pudo cargar el QR. <a href="" onclick="location.reload();return false;">Recargar</a></div>';
             });
     }
-    loadQr();
+
+    btn.addEventListener('click', function() {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Iniciando...';
+
+        fetch('<?= $base ?>/dashboard/settings/wa-connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    '{}',
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success === false) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-whatsapp me-2"></i>Reintentar conexión';
+                box.innerHTML = '<div class="text-danger small">' + (data.error || 'Error al iniciar') + '</div>';
+                step1.classList.remove('d-none');
+                step2.classList.add('d-none');
+                return;
+            }
+            // Session started — show QR box and begin polling
+            step1.classList.add('d-none');
+            step2.classList.remove('d-none');
+            polling = true;
+            pollQr();
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-whatsapp me-2"></i>Reintentar conexión';
+            alert('No se pudo conectar con el servidor del bot.');
+        });
+    });
 })();
 </script>
 <?php endif; ?>

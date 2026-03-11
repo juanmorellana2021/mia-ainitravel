@@ -121,26 +121,28 @@ class ApiController
             ], JSON_UNESCAPED_UNICODE);
         }
     }
-}
 
+    // ── WA status callback (called by bot.js when client session connects/disconnects) ─
+    // POST /api/client-status  { client_id, status, phone? }
+    public function clientStatus(): void
+    {
+        if (!$this->guardBotRequest()) return;
 
-        try {
-            $service = new MiaSalesService();
-            $result  = $service->process($phone, $message);
+        $raw  = file_get_contents('php://input');
+        $data = json_decode($raw ?: '', true);
 
-            echo json_encode([
-                'success' => true,
-                'reply'   => $result['reply'] ?? '',
-                'from'    => $phone,
-            ], JSON_UNESCAPED_UNICODE);
-        } catch (Throwable $e) {
-            error_log('[Mia ApiController] Error: ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'error'   => $e->getMessage(),
-                'reply'   => 'Lo siento, estoy teniendo problemas técnicos. Intenta de nuevo en un momento. 🙏',
-            ], JSON_UNESCAPED_UNICODE);
+        if (!is_array($data) || empty($data['client_id']) || empty($data['status'])) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'error' => 'Missing client_id or status']);
+            return;
         }
+
+        $clientId = (int) $data['client_id'];
+        $status   = trim((string) $data['status']);   // 'connected' | 'disconnected'
+        $phone    = isset($data['phone']) ? trim((string) $data['phone']) : null;
+
+        (new ClientService())->updateWaStatus($clientId, $status, $phone ?: null);
+
+        echo json_encode(['success' => true], JSON_UNESCAPED_UNICODE);
     }
 }

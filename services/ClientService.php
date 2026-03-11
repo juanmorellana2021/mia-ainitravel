@@ -137,4 +137,19 @@ class ClientService
         );
         $stmt->execute([$whatsappNumber, $clientId]);
     }
+
+    public function updateWaStatus(int $clientId, string $status, ?string $phone = null): void
+    {
+        if ($phone !== null) {
+            $stmt = $this->db->prepare(
+                'UPDATE mia_clients SET bot_wa_status = ?, whatsapp_number = ?, updated_at = NOW() WHERE id = ?'
+            );
+            $stmt->execute([$status, $phone, $clientId]);
+        } else {
+            $stmt = $this->db->prepare(
+                'UPDATE mia_clients SET bot_wa_status = ?, updated_at = NOW() WHERE id = ?'
+            );
+            $stmt->execute([$status, $clientId]);
+        }
+    }
 }

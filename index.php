@@ -75,6 +75,10 @@ match (true) {
     $uri === 'api/client-chat' && $method === 'POST'
         => (new ApiController())->clientChat(),
 
+    // WhatsApp status callback from bot server (connected / disconnected)
+    $uri === 'api/client-status' && $method === 'POST'
+        => (new ApiController())->clientStatus(),
+
     // ── Client auth ───────────────────────────────────────────────────────
     $uri === 'login' && $method === 'GET'
         => (new AuthController())->loginForm(),
@@ -152,6 +156,9 @@ match (true) {
 
     $uri === 'dashboard/settings/wa-qr' && $method === 'GET'
         => (new SettingsController())->waQr(),
+
+    $uri === 'dashboard/settings/wa-connect' && $method === 'POST'
+        => (new SettingsController())->waConnect(),
 
     // ── Admin — leads ─────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'

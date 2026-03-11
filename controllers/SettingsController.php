@@ -30,19 +30,36 @@ class SettingsController
         header('Content-Type: application/json');
         $client = $this->requireClient();
 
-        // Ask bot server for QR or status for this client
-        $ctx = stream_context_create(['http' => [
-            'timeout' => 5,
-            'ignore_errors' => true,
-        ]]);
-        $url      = 'http://127.0.0.1:3001/qr/' . $client->id;
-        $response = @file_get_contents($url, false, $ctx);
+        $ctx      = stream_context_create(['http' => ['timeout' => 5, 'ignore_errors' => true]]);
+        $response = @file_get_contents('http://127.0.0.1:3001/qr/' . $client->id, false, $ctx);
 
         if ($response === false) {
             echo json_encode(['status' => 'unavailable']);
             return;
         }
-        echo $response; // bot server returns {status, qr_image} JSON directly
+        echo $response; // bot server returns {status, qr_image} JSON
+    }
+
+    public function waConnect(): void
+    {
+        header('Content-Type: application/json');
+        $client = $this->requireClient();
+
+        $ctx = stream_context_create(['http' => [
+            'method'        => 'POST',
+            'header'        => "Content-Type: application/json\r\nContent-Length: 2",
+            'content'       => '{}',
+            'timeout'       => 10,
+            'ignore_errors' => true,
+        ]]);
+        $response = @file_get_contents('http://127.0.0.1:3001/connect/' . $client->id, false, $ctx);
+
+        if ($response === false) {
+            http_response_code(503);
+            echo json_encode(['success' => false, 'error' => 'Bot server unavailable']);
+            return;
+        }
+        echo $response;
     }
 
     public function index(): void
