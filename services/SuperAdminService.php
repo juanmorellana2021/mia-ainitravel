@@ -275,7 +275,7 @@ class SuperAdminService
                 s.pain_point, s.created_at, s.updated_at,
                 c.id AS client_id
              FROM mia_sales_sessions s
-             LEFT JOIN mia_clients c ON c.phone = s.phone
+             LEFT JOIN mia_clients c ON c.phone COLLATE utf8mb4_unicode_ci = s.phone
              {$whereClause}
              ORDER BY s.updated_at DESC"
         );
@@ -291,7 +291,7 @@ class SuperAdminService
         $stmt = $this->db->prepare(
             "SELECT s.*, c.id AS client_id
              FROM mia_sales_sessions s
-             LEFT JOIN mia_clients c ON c.phone = s.phone
+             LEFT JOIN mia_clients c ON c.phone COLLATE utf8mb4_unicode_ci = s.phone
              WHERE s.id = ? LIMIT 1"
         );
         $stmt->execute([$id]);
@@ -338,8 +338,7 @@ class SuperAdminService
 
         // Check email uniqueness if email exists
         if (!empty($session['email'])) {
-            $ck = $this->db->prepare('SELECT id FROM mia_clients WHERE email = ? LIMIT 1');
-            $ck->execute([strtolower(trim($session['email']))]);
+            $ck = $this->db->prepare('SELECT id FROM mia_clients WHERE email = ? LIMIT 1');            $ck->execute([strtolower(trim($session['email']))]);
             if ($ck->fetchColumn()) {
                 return ['error' => 'Ya existe un cliente con ese correo electrónico.'];
             }
