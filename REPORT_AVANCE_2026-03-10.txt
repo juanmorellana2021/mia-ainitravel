@@ -1,0 +1,75 @@
+REPORTE DE AVANCE - MIA
+Fecha: 2026-03-10
+Estado general: OPERATIVO
+
+============================================================
+1) OBJETIVOS CUMPLIDOS
+============================================================
+- Dashboard funcionando en produccion (se resolvio HTTP 500).
+- Flujo de recuperacion de contrasena implementado y desplegado.
+- Data demo cargada para visualizar metricas reales.
+- Pricing actualizado y bot Mia con Groq directo funcionando.
+
+============================================================
+2) TRABAJO REALIZADO
+============================================================
+A. Recuperacion de contrasena
+- Endpoint GET /forgot-password (formulario solicitud de enlace)
+- Endpoint POST /forgot-password (genera token y envia email)
+- Endpoint GET /reset-password?token=... (formulario nueva contrasena)
+- Endpoint POST /reset-password (valida token y actualiza password)
+- Token con hash SHA-256, expiracion 30 minutos, uso unico
+- Link agregado en login: "Olvidaste tu contrasena?"
+
+B. Seed/demo data para dashboard
+- Tabla usada: mia_client_leads
+- Tabla usada: mia_client_messages
+- Inserts aplicados para client_id = 1 (Samay Wasi)
+- Resultado final:
+  - total_leads: 20
+  - total_messages: 13
+  - today_messages: 4
+
+C. Correccion error HTTP 500
+- Sintoma: Dashboard caia con 500
+- Causa: TypeError en modelo ClientLead por tipado estricto
+  (value_estimate era float tipado pero llegaba como string desde PDO)
+- Solucion: casteo explicito en ClientLead::fromRow()
+  - id/client_id -> int
+  - value_estimate -> float
+
+============================================================
+3) DESPLIEGUES Y COMMITS
+============================================================
+- Commit: 587600a
+  Auth: add forgot/reset password flow with 30-min token, secure hash, email
+- Commit: fa85c6c
+  Fix: cast PDO string values to typed properties in ClientLead::fromRow()
+
+============================================================
+4) ESTADO ACTUAL DE MODULOS
+============================================================
+- Landing/Pricing: OK
+- Registro/Login: OK
+- Forgot/Reset password: OK
+- Dashboard: OK
+- Leads/Messages stats: OK
+- Bot Mia (Groq): OK
+- Billing base: OK
+
+============================================================
+5) PENDIENTES RECOMENDADOS
+============================================================
+1. Cambiar label de registro "WhatsApp / Telefono" por "Telefono de contacto".
+2. Agregar rate limit en forgot-password (IP/email) para seguridad.
+3. Optimizar prompt de Mia para reducir costo por tokens.
+4. Versionar seed SQL como script reutilizable para staging/demo.
+
+============================================================
+6) NOTAS TECNICAS
+============================================================
+- El error 500 NO fue por conexion de base de datos.
+- El error fue por conversion de tipos al mapear resultados PDO.
+- Se verifico rendering de dashboard luego del fix (respuesta HTML correcta).
+
+FIN DEL REPORTE

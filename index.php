@@ -19,6 +19,7 @@ require_once __DIR__ . '/models/Lead.php';
 require_once __DIR__ . '/models/SalesSession.php';
 require_once __DIR__ . '/services/LeadService.php';
 require_once __DIR__ . '/services/MiaSalesService.php';
+require_once __DIR__ . '/services/ClientBotService.php';
 require_once __DIR__ . '/models/Client.php';
 require_once __DIR__ . '/models/ClientLead.php';
 require_once __DIR__ . '/models/ClientMessage.php';
@@ -66,9 +67,13 @@ match (true) {
     $uri === 'features'
         => (new PageController())->features(),
 
-    // WhatsApp bot API (Mia sales conversations)
+    // WhatsApp bot API (Mia sales conversations — Juan's number)
     $uri === 'api/chat' && $method === 'POST'
         => (new ApiController())->chat(),
+
+    // WhatsApp bot API (client's bot — answers their guests)
+    $uri === 'api/client-chat' && $method === 'POST'
+        => (new ApiController())->clientChat(),
 
     // ── Client auth ───────────────────────────────────────────────────────
     $uri === 'login' && $method === 'GET'
@@ -144,6 +149,9 @@ match (true) {
 
     $uri === 'dashboard/settings/save' && $method === 'POST'
         => (new SettingsController())->save(),
+
+    $uri === 'dashboard/settings/wa-qr' && $method === 'GET'
+        => (new SettingsController())->waQr(),
 
     // ── Admin — leads ─────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'

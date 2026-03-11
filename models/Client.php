@@ -23,6 +23,10 @@ class Client
     public string $created_at      = '';
     public string $updated_at      = '';
 
+    // ── Bot configuration ──────────────────────────────────────────────────
+    public ?string $bot_config            = null;
+    public string  $bot_wa_status         = 'disconnected';
+
     // ── Notification settings ──────────────────────────────────────────────
     public ?string $notify_email          = null;
     public int     $notify_on_capture     = 1;

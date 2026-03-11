@@ -98,15 +98,31 @@ class ClientService
 
     public function updateSettings(int $clientId, array $data): void
     {
+        // Build bot_config JSON from structured fields
+        $botConfig = json_encode([
+            'business_type'  => trim($data['business_type']  ?? 'other'),
+            'description'    => trim($data['bot_description']  ?? ''),
+            'services'       => trim($data['bot_services']     ?? ''),
+            'pricing'        => trim($data['bot_pricing']      ?? ''),
+            'hours'          => trim($data['bot_hours']        ?? ''),
+            'faqs'           => trim($data['bot_faqs']         ?? ''),
+            'language'       => trim($data['bot_language']     ?? 'es'),
+            'tone'           => trim($data['bot_tone']         ?? 'friendly'),
+        ], JSON_UNESCAPED_UNICODE);
+
         $stmt = $this->db->prepare(
             'UPDATE mia_clients
-             SET contact_name = ?, phone = ?, notify_email = ?,
-                 notify_on_capture = ?, notify_daily_summary = ?, updated_at = NOW()
+             SET contact_name = ?, phone = ?, business_type = ?,
+                 bot_config = ?,
+                 notify_email = ?, notify_on_capture = ?, notify_daily_summary = ?,
+                 updated_at = NOW()
              WHERE id = ?'
         );
         $stmt->execute([
             trim($data['contact_name']         ?? ''),
             trim($data['phone']                ?? ''),
+            trim($data['business_type']        ?? 'other'),
+            $botConfig,
             trim($data['notify_email']         ?? '') ?: null,
             (int)(bool)($data['notify_on_capture']    ?? 0),
             (int)(bool)($data['notify_daily_summary'] ?? 0),

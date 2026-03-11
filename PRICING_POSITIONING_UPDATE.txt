@@ -1,0 +1,191 @@
+================================================================================
+                    PRICING PAGE - HORIZONTAL POSITIONING UPDATE
+                         From Vertical (Hotels/Travel) to Horizontal
+                              March 10, 2026
+================================================================================
+
+OBJECTIVE
+================================================================================
+Reposition Mia from a hotel/travel-specific product to a horizontal WhatsApp
+sales automation platform for ANY business type that closes deals via WhatsApp.
+
+FILE UPDATED: mia/views/pages/pricing.php
+
+
+CHANGES MADE
+================================================================================
+
+1. PAGE INTRO TEXT
+   ─────────────────────────────────────────────────────────────────────────
+   BEFORE:
+   "Elige el plan que mejor se adapte a tu negocio. Todos incluyen 7 días gratis."
+   
+   AFTER:
+   "Automatiza tus ventas en WhatsApp. Elige el plan que mejor se adapte a tu negocio. Todos incluyen 7 días gratis."
+   
+   Impact: Explicitly states the core value proposition (automate sales) in WhatsApp
+   Benefit: More compelling hook that works across all industries
+
+
+2. PLAN TARGET SEGMENTS
+   ─────────────────────────────────────────────────────────────────────────
+   
+   BÁSICO Plan
+   BEFORE: "Hostales y hoteles pequeños"
+   AFTER:  "Negocios en inicio"
+   Rationale: Removes hospitality focus, targets early-stage companies
+   
+   PRO Plan (Most Popular)
+   BEFORE: "Hoteles medianos y agencias"
+   AFTER:  "Negocios en crecimiento"
+   Rationale: Removes "agencias" language, targets growing companies
+   
+   ENTERPRISE Plan
+   BEFORE: "Cadenas y agencias grandes"
+   AFTER:  "Empresas grandes y cadenas"
+   Rationale: Removes industry-specific language, keeps "cadenas" but more generic
+
+
+3. FEATURE COPY
+   ─────────────────────────────────────────────────────────────────────────
+   
+   BÁSICO Features
+   BEFORE: "Reservas automáticas 24/7"
+   AFTER:  "Respuestas automáticas 24/7"
+   Rationale: Hospitality language ("reservas") → generic "respuestas" (responses)
+   Impact: Works for travel agencies, real estate, clinics, ecommerce, coaching
+   
+   ENTERPRISE Features
+   BEFORE: "Integración con tu PMS"
+   AFTER:  "Integración con tu software"
+   Rationale: PMS = Property Management System (hotel-specific)
+   Impact: Now supports CRM, ERP, booking systems, any software
+
+
+POSITIONING STRATEGY
+================================================================================
+
+Core Message:
+  "Automatiza tus ventas en WhatsApp — Para cualquier negocio"
+  (Automate your sales on WhatsApp — For any business)
+
+Primary ICP: Travel agencies (strongest use case, existing market presence)
+Secondary ICPs: Real estate, clinics, ecommerce, coaching, education, services
+
+Pricing Positioning:
+  • Not by industry, but by business scale and capability needs
+  • Same three tiers for all verticals
+  • Features remain generic (conversations, panel, reporting, integrations, SLA)
+  • Onboarding templates customized per industry (as optional add-on)
+
+
+MESSAGING FRAMEWORK
+================================================================================
+
+Básico ("Negocios en inicio")
+├─ Target: Founders testing product-market fit
+├─ Use case: 1-2 person team, validating WhatsApp sales channel
+├─ Limit: 200 conversations/month (budget constraint, not capability)
+└─ Positioning: "Test drive Mia risk-free"
+
+Pro ("Negocios en crecimiento")
+├─ Target: Scale-ups and SMBs with established sales process
+├─ Use case: Team of 3+ people relying on WhatsApp revenue
+├─ Feature: Unlimited conversations (signal: you've unlocked the channel)
+└─ Positioning: "Your sales team on steroids"
+
+Enterprise ("Empresas grandes y cadenas")
+├─ Target: Multi-location companies and chains
+├─ Use case: Complex integrations, compliance, SLA requirements
+├─ Feature: Multi-number, API, dedicated support, 99.9% SLA
+└─ Positioning: "Infrastructure-grade reliability"
+
+
+NEXT STEPS
+================================================================================
+
+1. Update Features page (if exists) to be industry-agnostic
+   - Replace hospitality-specific examples
+   - Add travel agency, real estate, clinic, ecommerce use cases
+
+2. Update Marketing Copy (homepage, demos, etc.)
+   - Lead with travel, but explicitly open to other industries
+   - Add case studies from non-travel verticals
+
+3. Add Industry Templates (optional enhancement)
+   - Onboarding playbooks per industry (travel, real estate, clinic, etc.)
+   - Customizable system prompts for each vertical
+   - Could charge as add-on (S/200-500 per template)
+
+4. Analytics Dashboard Enhancement
+   - Track which industry Mia instance is deployed for
+   - Show vertical-specific metrics (e.g., booking rate for travel, close rate for real estate)
+
+5. Sales Messaging
+   - Train sales team on horizontal positioning
+   - Use travel as reference, but position Mia as "WhatsApp sales for any business"
+
+
+COMPETITIVE ADVANTAGE
+================================================================================
+
+Before: "We help hotels sell more on WhatsApp"
+  • Narrow TAM
+  • Competing on hospitality features (PMS integration, etc.)
+  • Vulnerable to vertical-specific competitors
+
+After: "We automate sales on WhatsApp for any business"
+  • 5-10x bigger TAM (all SMBs using WhatsApp for sales)
+  • Competing on platform capability (conversations, AI, integrations)
+  • Travel becomes a beachhead, not the whole market
+  • Blue ocean vs. Respond.io, Zendesk, etc. (they focus on support, we focus on sales)
+
+
+PRICE-TO-VALUE ALIGNMENT
+================================================================================
+
+Pricing now aligns with business growth stage, not industry:
+
+Básico (S/399):
+✓ No PMS integration needed (early stage businesses don't have complex systems)
+✓ 200 conversations enough to validate product-market fit
+✓ Low risk for buyer (easy to switch if it doesn't work)
+
+Pro (S/699):
+✓ Unlimited conversations (company has validated WhatsApp channel)
+✓ Dashboard, reporting, integrations (operational scale requirements)
+✓ Priority support (relying on this for revenue)
+
+Enterprise (S/1,199 + S/500 setup):
+✓ Multi-number (managing multiple channels or locations)
+✓ API access (building custom workflows)
+✓ Dedicated AM and SLA (mission-critical to operations)
+
+
+FILE LOCATION
+================================================================================
+Web: https://mia.ainitravel.com/pricing
+Local: c:\xampp\htdocs\testapp\mia\views\pages\pricing.php
+Structure: PHP view file with Bootstrap 5 cards
+
+
+DEPLOYMENT NOTES
+================================================================================
+✅ Changes are live immediately on next page load (no rebuild needed)
+✅ No database changes (purely cosmetic/messaging)
+✅ Backward compatible (all plan logic unchanged)
+✅ Same pricing, only the positioning text changed
+
+Deployment Checklist:
+  [ ] Test pricing page loads correctly: https://mia.ainitravel.com/pricing
+  [ ] Verify all 3 plan cards display correctly
+  [ ] Check signup buttons work with new plan names
+  [ ] Screenshot for marketing materials
+  [ ] Update email templates if they reference plans
+  [ ] Notify sales team of positioning change
+
+
+================================================================================
+                              END OF UPDATE
+                              March 10, 2026
+================================================================================
