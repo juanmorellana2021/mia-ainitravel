@@ -19,7 +19,6 @@ class Client
     public string $whatsapp_number = '';
     public string $plan            = 'trial';
     public string $plan_status     = 'trial';
-    public ?string $stripe_customer_id = null;
     public ?string $trial_ends_at  = null;
     public string $created_at      = '';
     public string $updated_at      = '';

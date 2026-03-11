@@ -2,17 +2,16 @@
 /**
  * mia/services/BillingService.php
  *
- * Handles subscription management via Stripe Checkout.
+ * Handles subscription management via Mercado Pago Preapproval API.
  *
  * Flow:
- *   1. createCheckoutSession()  → returns a Stripe-hosted checkout URL
- *   2. User pays on Stripe
- *   3. Stripe redirects back → confirmFromSession() activates the subscription
- *   4. (Optional) Stripe webhook → handleWebhookEvent() for server-side confirmation
+ *   1. createSubscription()  → creates MP preapproval, returns redirect URL
+ *   2. User authorizes on Mercado Pago
+ *   3. MP redirects back → confirmSubscription() activates in our DB
+ *   4. Webhook → handleWebhookEvent() for server-side payment confirmation
  *
  * Setup:
- *   - Set STRIPE_SECRET in App.php (sk_test_... or sk_live_...)
- *   - Create Products + Prices in your Stripe Dashboard, paste price IDs in App.php
+ *   - Set MP_ACCESS_TOKEN in App.php (TEST-... for sandbox, APP_USR-... for prod)
  */
 
 declare(strict_types=1);
@@ -21,89 +20,94 @@ class BillingService
 {
     private PDO $db;
 
-    private const STRIPE_API = 'https://api.stripe.com/v1/';
+    private const MP_API = 'https://api.mercadopago.com/';
 
     public function __construct()
     {
         $this->db = Database::get();
     }
 
-    // ── Stripe Checkout ───────────────────────────────────────────────────────
+    // ── Mercado Pago Subscriptions (Preapproval) ──────────────────────────────
 
     /**
-     * Create a Stripe Checkout Session and return the hosted URL.
+     * Create a Mercado Pago preapproval (recurring subscription).
      * Returns ['url' => '...'] on success, ['error' => '...'] on failure.
      */
-    public function createCheckoutSession(Client $client, string $plan): array
+    public function createSubscription(Client $client, string $plan): array
     {
-        $priceId = $this->priceIdForPlan($plan);
-        if (!$priceId) {
-            return ['error' => 'Plan desconocido o sin configurar.'];
+        $planInfo = self::planOptions()[$plan] ?? null;
+        if (!$planInfo) {
+            return ['error' => 'Plan desconocido.'];
         }
 
         $base = App::URL;
 
-        $params = [
-            'mode'                           => 'subscription',
-            'customer_email'                 => $client->email,
-            'line_items[0][price]'           => $priceId,
-            'line_items[0][quantity]'        => '1',
-            'success_url'                    => $base . '/dashboard/billing?payment=success&session_id={CHECKOUT_SESSION_ID}',
-            'cancel_url'                     => $base . '/dashboard/billing?payment=cancelled',
-            'metadata[client_id]'            => (string)$client->id,
-            'metadata[plan]'                 => $plan,
-            'subscription_data[metadata][client_id]' => (string)$client->id,
+        $body = [
+            'reason'         => 'Mia ' . $planInfo['label'] . ' — ' . htmlspecialchars($client->business_name),
+            'external_reference' => 'mia_client_' . $client->id . '_' . $plan,
+            'payer_email'    => $client->email,
+            'auto_recurring' => [
+                'frequency'          => 1,
+                'frequency_type'     => 'months',
+                'transaction_amount' => (float)$planInfo['price'],
+                'currency_id'        => 'PEN',
+            ],
+            'back_url' => $base . '/dashboard/billing?payment=success',
+            'status'   => 'pending',
         ];
 
-        if ($client->stripe_customer_id) {
-            unset($params['customer_email']);
-            $params['customer'] = $client->stripe_customer_id;
-        }
+        $response = $this->mpPost('preapproval', $body);
 
-        $response = $this->stripePost('checkout/sessions', $params);
-
-        if (isset($response['error'])) {
-            error_log('[BillingService] Stripe error: ' . json_encode($response['error']));
-            return ['error' => $response['error']['message'] ?? 'Error al conectar con Stripe.'];
+        if (!empty($response['error']) || empty($response['id'])) {
+            $msg = $response['message'] ?? $response['error'] ?? 'Error al conectar con Mercado Pago.';
+            error_log('[BillingService] MP error: ' . json_encode($response));
+            return ['error' => is_string($msg) ? $msg : 'Error al crear suscripción.'];
         }
 
         // Store pending subscription record
-        $this->createPendingRecord($client->id, $plan, $response['id'] ?? '');
+        $this->createPendingRecord($client->id, $plan, $response['id'], $response['init_point'] ?? '');
 
-        return ['url' => $response['url'] ?? ''];
+        return ['url' => $response['init_point'] ?? $response['sandbox_init_point'] ?? ''];
     }
 
     /**
-     * After Stripe redirects back with ?session_id=..., confirm it and activate.
+     * Check a preapproval status and activate if authorized.
      */
-    public function confirmFromSession(int $clientId, string $sessionId): bool
+    public function confirmSubscription(int $clientId, string $mpPreapprovalId): bool
     {
-        $session = $this->stripeGet('checkout/sessions/' . urlencode($sessionId));
+        $preapproval = $this->mpGet('preapproval/' . urlencode($mpPreapprovalId));
 
-        if (empty($session['payment_status']) || $session['payment_status'] !== 'paid') {
+        $status = $preapproval['status'] ?? '';
+        if (!in_array($status, ['authorized', 'active'], true)) {
             return false;
         }
 
-        $plan = $session['metadata']['plan'] ?? 'basic';
-        $stripeCustomer = $session['customer'] ?? null;
-        $stripeSub = $session['subscription'] ?? null;
-
-        // Update subscription record
+        // Find the pending subscription for this client
         $stmt = $this->db->prepare(
-            'UPDATE mia_subscriptions
-             SET status = "active", stripe_customer_id = ?, stripe_subscription_id = ?,
+            "SELECT * FROM mia_subscriptions
+             WHERE client_id = ? AND mp_preapproval_id = ? AND status = 'pending'
+             LIMIT 1"
+        );
+        $stmt->execute([$clientId, $mpPreapprovalId]);
+        $row = $stmt->fetch();
+        if (!$row) return false;
+
+        $plan = $row['plan'];
+        $payerEmail = $preapproval['payer_email'] ?? '';
+
+        // Activate subscription
+        $stmt = $this->db->prepare(
+            "UPDATE mia_subscriptions
+             SET status = 'active', mp_payer_email = ?,
                  paid_at = NOW(), billing_period_start = NOW(),
                  billing_period_end = DATE_ADD(NOW(), INTERVAL 1 MONTH)
-             WHERE client_id = ? AND stripe_session_id = ?'
+             WHERE id = ?"
         );
-        $stmt->execute([$stripeCustomer, $stripeSub, $clientId, $sessionId]);
+        $stmt->execute([$payerEmail, $row['id']]);
 
         // Activate client plan
         $clientService = new ClientService();
         $clientService->updatePlan($clientId, $plan, 'active');
-        if ($stripeCustomer) {
-            $clientService->updateStripeCustomer($clientId, $stripeCustomer);
-        }
 
         // Refresh session
         $client = $clientService->findById($clientId);
@@ -115,34 +119,53 @@ class BillingService
     }
 
     /**
-     * Handle Stripe webhook events (checkout.session.completed, etc.)
+     * Handle Mercado Pago webhook notifications.
+     * MP sends: { "type": "subscription_preapproval", "data": { "id": "..." } }
      */
-    public function handleWebhookEvent(string $payload, string $sigHeader): void
+    public function handleWebhookEvent(string $payload): void
     {
-        $secret = App::STRIPE_WEBHOOK;
-        if (!$secret || $secret === 'whsec_placeholder') return;
-
-        // Verify webhook signature
-        $computedSig = $this->computeWebhookSignature($payload, $sigHeader, $secret);
-        if (!$computedSig) return;
-
         $event = json_decode($payload, true);
         if (!$event) return;
 
-        switch ($event['type'] ?? '') {
-            case 'checkout.session.completed':
-                $session = $event['data']['object'] ?? [];
-                $clientId = (int)($session['metadata']['client_id'] ?? 0);
-                $sessionId = $session['id'] ?? '';
-                if ($clientId && $sessionId) {
-                    $this->confirmFromSession($clientId, $sessionId);
-                }
-                break;
+        $type = $event['type'] ?? '';
+        $dataId = $event['data']['id'] ?? '';
 
-            case 'customer.subscription.deleted':
-                $sub = $event['data']['object'] ?? [];
-                $this->cancelByStripeSubId($sub['id'] ?? '');
-                break;
+        if (!$dataId) return;
+
+        if (in_array($type, ['subscription_preapproval', 'subscription_authorized_payment'], true)) {
+            // Fetch the preapproval to get current status
+            $preapproval = $this->mpGet('preapproval/' . urlencode($dataId));
+            $status = $preapproval['status'] ?? '';
+            $externalRef = $preapproval['external_reference'] ?? '';
+
+            // Parse client_id from external_reference: mia_client_{id}_{plan}
+            if (preg_match('/^mia_client_(\d+)_/', $externalRef, $m)) {
+                $clientId = (int)$m[1];
+            } else {
+                return;
+            }
+
+            if (in_array($status, ['authorized', 'active'], true)) {
+                $this->confirmSubscription($clientId, $dataId);
+            } elseif (in_array($status, ['cancelled', 'paused'], true)) {
+                $this->cancelByMpPreapprovalId($dataId);
+            }
+        }
+
+        if ($type === 'payment') {
+            // A recurring payment was made — check if it's linked to a preapproval
+            $payment = $this->mpGet('v1/payments/' . urlencode($dataId));
+            $preapprovalId = $payment['metadata']['preapproval_id'] ?? '';
+            if ($preapprovalId) {
+                // Update billing_period_end to extend by 1 month
+                $stmt = $this->db->prepare(
+                    "UPDATE mia_subscriptions
+                     SET billing_period_end = DATE_ADD(NOW(), INTERVAL 1 MONTH),
+                         paid_at = NOW()
+                     WHERE mp_preapproval_id = ? AND status = 'active'"
+                );
+                $stmt->execute([$preapprovalId]);
+            }
         }
     }
 
@@ -174,9 +197,11 @@ class BillingService
         $sub = $this->activeSubscription($clientId);
         if (!$sub) return false;
 
-        // Cancel on Stripe if we have the subscription ID
-        if ($sub->stripe_subscription_id) {
-            $this->stripeDelete('subscriptions/' . urlencode($sub->stripe_subscription_id));
+        // Cancel on Mercado Pago
+        if ($sub->mp_preapproval_id) {
+            $this->mpPut('preapproval/' . urlencode($sub->mp_preapproval_id), [
+                'status' => 'cancelled',
+            ]);
         }
 
         $stmt = $this->db->prepare(
@@ -193,111 +218,107 @@ class BillingService
     public static function planOptions(): array
     {
         return [
-            'basic'      => ['label' => 'Básico',      'price' => App::PLAN_BASIC,      'price_id' => App::STRIPE_PRICE_BASIC],
-            'pro'        => ['label' => 'Pro',         'price' => App::PLAN_PRO,        'price_id' => App::STRIPE_PRICE_PRO],
-            'enterprise' => ['label' => 'Enterprise',  'price' => App::PLAN_ENTERPRISE, 'price_id' => App::STRIPE_PRICE_ENTERPRISE],
+            'starter'    => ['label' => 'Starter',     'price' => App::PLAN_STARTER],
+            'basic'      => ['label' => 'Básico',      'price' => App::PLAN_BASIC],
+            'pro'        => ['label' => 'Pro',          'price' => App::PLAN_PRO],
+            'enterprise' => ['label' => 'Enterprise',   'price' => App::PLAN_ENTERPRISE],
         ];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private function priceIdForPlan(string $plan): ?string
-    {
-        $options = self::planOptions();
-        $priceId = $options[$plan]['price_id'] ?? '';
-        return ($priceId && $priceId !== 'price_placeholder') ? $priceId : null;
-    }
-
-    private function createPendingRecord(int $clientId, string $plan, string $sessionId): void
+    private function createPendingRecord(int $clientId, string $plan, string $mpPreapprovalId, string $initPoint): void
     {
         $plans = self::planOptions();
-        $amountCents = ($plans[$plan]['price'] ?? 0) * 100;
+        $amountCents = (int)(($plans[$plan]['price'] ?? 0) * 100);
 
         $stmt = $this->db->prepare(
-            'INSERT INTO mia_subscriptions (client_id, plan, amount_cents, currency, status, stripe_session_id)
-             VALUES (?, ?, ?, ?, "pending", ?)'
+            'INSERT INTO mia_subscriptions (client_id, plan, amount_cents, currency, status, mp_preapproval_id, mp_init_point)
+             VALUES (?, ?, ?, ?, "pending", ?, ?)'
         );
-        $stmt->execute([$clientId, $plan, $amountCents, App::CURRENCY === 'S/' ? 'PEN' : 'USD', $sessionId]);
+        $stmt->execute([$clientId, $plan, $amountCents, 'PEN', $mpPreapprovalId, $initPoint]);
     }
 
-    private function cancelByStripeSubId(string $stripeSubId): void
+    private function cancelByMpPreapprovalId(string $mpPreapprovalId): void
     {
+        // Find client_id before updating
         $stmt = $this->db->prepare(
-            "UPDATE mia_subscriptions SET status = 'cancelled' WHERE stripe_subscription_id = ?"
+            "SELECT client_id FROM mia_subscriptions WHERE mp_preapproval_id = ? AND status = 'active' LIMIT 1"
         );
-        $stmt->execute([$stripeSubId]);
+        $stmt->execute([$mpPreapprovalId]);
+        $clientId = (int)($stmt->fetchColumn() ?: 0);
+
+        $stmt = $this->db->prepare(
+            "UPDATE mia_subscriptions SET status = 'cancelled' WHERE mp_preapproval_id = ?"
+        );
+        $stmt->execute([$mpPreapprovalId]);
+
+        if ($clientId) {
+            (new ClientService())->updatePlan($clientId, 'trial', 'cancelled');
+        }
     }
 
-    // ── Stripe REST calls (no library needed) ─────────────────────────────────
+    // ── Mercado Pago REST calls (no SDK needed) ───────────────────────────────
 
-    private function stripePost(string $endpoint, array $params): array
+    private function mpPost(string $endpoint, array $body): array
     {
-        return $this->stripeRequest('POST', $endpoint, $params);
+        return $this->mpRequest('POST', $endpoint, $body);
     }
 
-    private function stripeGet(string $endpoint): array
+    private function mpGet(string $endpoint): array
     {
-        return $this->stripeRequest('GET', $endpoint, []);
+        return $this->mpRequest('GET', $endpoint, []);
     }
 
-    private function stripeDelete(string $endpoint): array
+    private function mpPut(string $endpoint, array $body): array
     {
-        return $this->stripeRequest('DELETE', $endpoint, []);
+        return $this->mpRequest('PUT', $endpoint, $body);
     }
 
-    private function stripeRequest(string $method, string $endpoint, array $params): array
+    private function mpRequest(string $method, string $endpoint, array $body): array
     {
-        $secret = App::STRIPE_SECRET;
-        if (!$secret || str_starts_with($secret, 'sk_placeholder')) {
-            return ['error' => ['message' => 'Stripe no configurado. Agrega tu STRIPE_SECRET en App.php.']];
+        $token = App::MP_ACCESS_TOKEN;
+        if (!$token || str_starts_with($token, 'PLACEHOLDER')) {
+            return ['error' => 'Mercado Pago no configurado. Agrega MP_ACCESS_TOKEN en App.php.'];
         }
 
-        $ch = curl_init(self::STRIPE_API . $endpoint);
+        $url = self::MP_API . ltrim($endpoint, '/');
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_USERPWD        => $secret . ':',
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+            ],
             CURLOPT_TIMEOUT        => 15,
             CURLOPT_SSL_VERIFYPEER => true,
         ]);
 
         if ($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        } elseif ($method === 'DELETE') {
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+        } elseif ($method === 'PUT') {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
         }
 
-        $body = curl_exec($ch);
-        $err  = curl_error($ch);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
         curl_close($ch);
 
         if ($err) {
-            return ['error' => ['message' => 'cURL error: ' . $err]];
+            error_log('[BillingService] cURL error: ' . $err);
+            return ['error' => 'Error de conexión: ' . $err];
         }
 
-        return json_decode($body ?: '{}', true) ?: [];
-    }
+        $data = json_decode($response ?: '{}', true) ?: [];
 
-    private function computeWebhookSignature(string $payload, string $sigHeader, string $secret): bool
-    {
-        // Parse Stripe-Signature header: t=...,v1=...
-        $parts = [];
-        foreach (explode(',', $sigHeader) as $part) {
-            [$k, $v] = array_pad(explode('=', $part, 2), 2, '');
-            $parts[$k] = $v;
+        if ($httpCode >= 400) {
+            error_log('[BillingService] MP HTTP ' . $httpCode . ': ' . $response);
         }
 
-        $timestamp = $parts['t'] ?? '';
-        $signature = $parts['v1'] ?? '';
-
-        if (!$timestamp || !$signature) return false;
-
-        // Tolerance: 5 minutes
-        if (abs(time() - (int)$timestamp) > 300) return false;
-
-        $expected = hash_hmac('sha256', $timestamp . '.' . $payload, $secret);
-        return hash_equals($expected, $signature);
+        return $data;
     }
 
     public function clientToSession(Client $client): array

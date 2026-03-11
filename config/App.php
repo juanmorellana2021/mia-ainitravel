@@ -42,12 +42,9 @@ class App
         return self::basePath() . '/assets/' . ltrim($path, '/');
     }
 
-    // ── Stripe (fill in your keys from dashboard.stripe.com) ─────────────
-    public const STRIPE_SECRET          = 'sk_placeholder_add_your_key_here';
-    public const STRIPE_WEBHOOK         = 'whsec_placeholder_add_webhook_secret';
-    public const STRIPE_PRICE_BASIC     = 'price_placeholder_basic';
-    public const STRIPE_PRICE_PRO       = 'price_placeholder_pro';
-    public const STRIPE_PRICE_ENTERPRISE = 'price_placeholder_enterprise';
+    // ── Mercado Pago (mercadopago.com.pe) ─────────────────────────────────
+    public const MP_PUBLIC_KEY    = 'TEST-6aa3bc15-4bed-4a59-8667-3c1ce8f0ffe5';
+    public const MP_ACCESS_TOKEN  = 'TEST-3903199140335229-031021-e2ddbb7209dea2f4b2d951846d55b9ad-465470205';
 
     // ── Admin credentials (hash in production) ────────────────────────────
     public const ADMIN_USER = 'admin';

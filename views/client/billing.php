@@ -120,6 +120,16 @@ require __DIR__ . '/_sidebar.php';
     <div class="col-md-7">
         <h6 class="fw-bold mb-3"><i class="bi bi-grid me-2 text-muted"></i>Elige tu plan</h6>
 
+        <?php
+        $mpConfigured = !str_starts_with(App::MP_ACCESS_TOKEN, 'PLACEHOLDER');
+        $features = [
+            'starter'    => ['Hasta 200 conversaciones/mes', '1 número de WhatsApp', 'Panel de leads básico', 'Soporte por email'],
+            'basic'      => ['Hasta 500 conversaciones/mes', '1 número de WhatsApp', 'Panel de leads básico', 'Soporte por chat'],
+            'pro'        => ['Hasta 2,000 conversaciones/mes', '3 números de WhatsApp', 'Panel avanzado + estadísticas', 'Soporte prioritario 24/7', 'Respuestas personalizadas'],
+            'enterprise' => ['Conversaciones ilimitadas', 'Números ilimitados', 'Dashboard personalizado', 'Gerente de cuenta dedicado', 'Integración con tu CRM'],
+        ];
+        ?>
+
         <?php foreach ($plans as $planKey => $plan): ?>
         <?php
         $isCurrent  = $currentPlan === $planKey && $planStatus === 'active';
@@ -153,13 +163,6 @@ require __DIR__ . '/_sidebar.php';
                 <?php endif; ?>
             </div>
 
-            <?php
-            $features = [
-                'basic'      => ['Hasta 500 conversaciones/mes', '1 número de WhatsApp', 'Panel de leads básico', 'Soporte por chat'],
-                'pro'        => ['Hasta 2,000 conversaciones/mes', '3 números de WhatsApp', 'Panel avanzado + estadísticas', 'Soporte prioritario 24/7', 'Respuestas personalizadas'],
-                'enterprise' => ['Conversaciones ilimitadas', 'Números ilimitados', 'Dashboard personalizado', 'Gerente de cuenta dedicado', 'Integración con tu CRM'],
-            ];
-            ?>
             <ul class="list-unstyled small text-muted mb-3">
                 <?php foreach ($features[$planKey] ?? [] as $feat): ?>
                 <li class="mb-1"><i class="bi bi-check2 text-success me-2"></i><?= htmlspecialchars($feat) ?></li>
@@ -167,29 +170,26 @@ require __DIR__ . '/_sidebar.php';
             </ul>
 
             <?php if (!$isCurrent): ?>
-            <?php
-            $stripeConfigured = !str_starts_with(App::STRIPE_PRICE_BASIC, 'price_placeholder');
-            ?>
-            <?php if ($stripeConfigured): ?>
-            <form method="POST" action="<?= $base ?>/dashboard/billing/subscribe">
-                <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
-                <input type="hidden" name="plan" value="<?= $planKey ?>">
-                <button type="submit" class="btn w-100 fw-medium"
-                        style="<?= $planKey === 'pro' ? 'background:#25d366;color:#fff;' : 'background:#1a1a2e;color:#fff;' ?>">
-                    <i class="bi bi-credit-card me-2"></i>
-                    <?= $planStatus === 'active' ? 'Cambiar a ' . $plan['label'] : 'Suscribirse — ' . $plan['label'] ?>
-                </button>
-            </form>
-            <?php else: ?>
-            <div class="alert alert-info small py-2 mb-0">
-                <i class="bi bi-info-circle me-1"></i>
-                Stripe no configurado aún. Agrega tus claves en <code>App.php</code> para activar pagos.
-                <br><a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', App::WHATSAPP) ?>?text=Quiero%20suscribirme%20al%20plan%20<?= $plan['label'] ?>"
-                       class="fw-medium" style="color:#0d6efd" target="_blank">
-                    O escríbenos por WhatsApp para pago manual →
-                </a>
-            </div>
-            <?php endif; ?>
+                <?php if ($mpConfigured): ?>
+                <form method="POST" action="<?= $base ?>/dashboard/billing/subscribe">
+                    <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
+                    <input type="hidden" name="plan" value="<?= $planKey ?>">
+                    <button type="submit" class="btn w-100 fw-medium"
+                            style="<?= $planKey === 'pro' ? 'background:#25d366;color:#fff;' : 'background:#1a1a2e;color:#fff;' ?>">
+                        <i class="bi bi-credit-card me-2"></i>
+                        <?= $planStatus === 'active' ? 'Cambiar a ' . $plan['label'] : 'Suscribirse — ' . $plan['label'] ?>
+                    </button>
+                </form>
+                <?php else: ?>
+                <div class="alert alert-info small py-2 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Pagos no configurados aún.
+                    <br><a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', App::WHATSAPP) ?>?text=Quiero%20suscribirme%20al%20plan%20<?= urlencode($plan['label']) ?>"
+                           class="fw-medium" style="color:#0d6efd" target="_blank">
+                        Escríbenos por WhatsApp para pago manual →
+                    </a>
+                </div>
+                <?php endif; ?>
             <?php else: ?>
             <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-check-circle-fill text-success"></i>
@@ -200,7 +200,7 @@ require __DIR__ . '/_sidebar.php';
         <?php endforeach; ?>
 
         <p class="text-muted small text-center mt-2">
-            <i class="bi bi-lock me-1"></i>Pago seguro vía Stripe. Cancela en cualquier momento.
+            <i class="bi bi-lock me-1"></i>Pago seguro vía Mercado Pago. Cancela en cualquier momento.
         </p>
     </div>
 </div>

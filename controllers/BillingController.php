@@ -2,7 +2,7 @@
 /**
  * mia/controllers/BillingController.php
  *
- * Subscription management, Stripe Checkout, and webhook handler.
+ * Subscription management via Mercado Pago Preapproval API.
  */
 
 declare(strict_types=1);
@@ -35,19 +35,25 @@ class BillingController
         $history      = $billing->historyForClient($client->id);
         $plans        = BillingService::planOptions();
 
-        // Handle Stripe redirect back
+        // Handle Mercado Pago redirect back
         $paymentStatus = $_GET['payment'] ?? '';
-        if ($paymentStatus === 'success' && !empty($_GET['session_id'])) {
-            $billing->confirmFromSession($client->id, $_GET['session_id']);
-            // Re-fetch client after activation
-            $client = (new ClientService())->findById($client->id);
+        if ($paymentStatus === 'success') {
+            // Preapproval was authorized — look for pending sub and try to confirm
+            $pendingSubs = $billing->historyForClient($client->id);
+            foreach ($pendingSubs as $sub) {
+                if ($sub->status === 'pending' && $sub->mp_preapproval_id) {
+                    $billing->confirmSubscription($client->id, $sub->mp_preapproval_id);
+                }
+            }
+            $client    = (new ClientService())->findById($client->id);
             $activeSub = $billing->activeSubscription($client->id);
+            $history   = $billing->historyForClient($client->id);
         }
 
         require __DIR__ . '/../views/client/billing.php';
     }
 
-    // ── Initiate Stripe Checkout ──────────────────────────────────────────────
+    // ── Initiate Mercado Pago subscription ─────────────────────────────────────
 
     public function subscribe(): void
     {
@@ -55,17 +61,23 @@ class BillingController
         $client = $this->requireClient();
 
         $plan = $_POST['plan'] ?? '';
-        if (!in_array($plan, ['basic', 'pro', 'enterprise'], true)) {
-            header('Location: ' . App::basePath() . '/dashboard/billing?error=invalid_plan');
+        $validPlans = array_keys(BillingService::planOptions());
+        if (!in_array($plan, $validPlans, true)) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?error=Plan%20inv%C3%A1lido');
             exit;
         }
 
         $billing = new BillingService();
-        $result  = $billing->createCheckoutSession($client, $plan);
+        $result  = $billing->createSubscription($client, $plan);
 
         if (!empty($result['error'])) {
             $msg = urlencode($result['error']);
             header('Location: ' . App::basePath() . '/dashboard/billing?error=' . $msg);
+            exit;
+        }
+
+        if (empty($result['url'])) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?error=No%20se%20recibi%C3%B3%20URL%20de%20pago');
             exit;
         }
 
@@ -86,20 +98,19 @@ class BillingController
         exit;
     }
 
-    // ── Stripe webhook (no session, no CSRF — uses Stripe signature) ──────────
+    // ── Mercado Pago webhook (no session, no CSRF) ────────────────────────────
 
     public function webhook(): void
     {
-        $payload   = file_get_contents('php://input');
-        $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
+        $payload = file_get_contents('php://input');
 
-        if (!$payload || !$sigHeader) {
+        if (!$payload) {
             http_response_code(400);
-            echo json_encode(['error' => 'Bad request']);
+            echo json_encode(['error' => 'Empty payload']);
             return;
         }
 
-        (new BillingService())->handleWebhookEvent($payload, $sigHeader);
+        (new BillingService())->handleWebhookEvent($payload);
 
         http_response_code(200);
         echo json_encode(['received' => true]);

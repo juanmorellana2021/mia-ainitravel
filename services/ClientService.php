@@ -114,14 +114,6 @@ class ClientService
         ]);
     }
 
-    public function updateStripeCustomer(int $clientId, string $stripeCustomerId): void
-    {
-        $stmt = $this->db->prepare(
-            'UPDATE mia_clients SET stripe_customer_id = ?, updated_at = NOW() WHERE id = ?'
-        );
-        $stmt->execute([$stripeCustomerId, $clientId]);
-    }
-
     public function updateWhatsApp(int $clientId, string $whatsappNumber): void
     {
         $stmt = $this->db->prepare(

@@ -15,9 +15,9 @@ class Subscription
     public int    $amount_cents           = 0;
     public string $currency               = 'PEN';
     public string $status                 = 'pending';  // pending, active, failed, cancelled
-    public ?string $stripe_customer_id    = null;
-    public ?string $stripe_subscription_id = null;
-    public ?string $stripe_session_id     = null;
+    public ?string $mp_preapproval_id  = null;
+    public ?string $mp_payer_email     = null;
+    public ?string $mp_init_point      = null;
     public ?string $billing_period_start  = null;
     public ?string $billing_period_end    = null;
     public ?string $paid_at               = null;
