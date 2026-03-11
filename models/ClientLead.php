@@ -25,7 +25,12 @@ class ClientLead
         $l = new self();
         foreach ($row as $key => $val) {
             if (property_exists($l, $key)) {
-                $l->$key = $val;
+                $l->$key = match (true) {
+                    is_null($val) && (new \ReflectionProperty(self::class, $key))->getType()?->allowsNull() => $val,
+                    in_array($key, ['id', 'client_id'], true) => (int) $val,
+                    $key === 'value_estimate' => (float) $val,
+                    default => $val,
+                };
             }
         }
         return $l;
