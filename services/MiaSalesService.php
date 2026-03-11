@@ -246,13 +246,20 @@ class MiaSalesService
         $session = array_merge($session, ['state' => 'roi_pitch', 'pain_point' => $pain]);
 
         // Build ROI numbers for the context
-        $rooms        = (int) ($session['room_count'] ?? 25);
-        $lostPerNight = max(2, (int) ($rooms * 0.15));
-        $monthlyLost  = $lostPerNight * 180 * 30;
+        $rooms      = (int) ($session['room_count'] ?? 25);
+        $bizType    = $session['business_type'] ?? 'business';
+        $avgTicket  = match ($bizType) {
+            'hotel'      => 180,
+            'agency'     => 250,
+            'restaurant' => 40,
+            'retail'     => 60,
+            'services'   => 200,
+            default      => 100,
+        };
+        $lostPerMonth = max(2, (int) ($rooms * 0.15));
+        $monthlyLost  = $lostPerMonth * $avgTicket;
         $captured     = (int) ($monthlyLost * 0.30);
         $roi          = max(2, (int) ($captured / 399));
-
-        $bizType = $session['business_type'] ?? 'business';
 
         $painContextMap = [
             'after_hours'      => 'pierden clientes/ventas cuando escriben fuera del horario de atención',
@@ -368,7 +375,7 @@ class MiaSalesService
             $session['state'] = 'collecting_name';
             return $this->aiReply($phone, $session, $message,
                 "El usuario quiere empezar. Exprésate con entusiasmo genuino — tomó una buena decisión. " .
-                "Para activar la prueba necesitas el nombre de su hotel o agencia. " .
+                "Para activar la prueba necesitas el nombre de su negocio ({$bizType}). " .
                 "Pídelo de forma cálida y natural, como si fuera el primer paso de algo emocionante."
             );
         }
@@ -686,9 +693,9 @@ PROMPT;
         return match ($pain) {
             'after_hours'      => 'pierde clientes fuera de horario',
             'slow_replies'     => 'respuestas lentas',
-            'no_confirm'       => 'huéspedes que no confirman reserva',
-            'high_commissions' => 'comisiones altas en OTAs',
-            default            => 'problemas generales de reservas',
+            'no_confirm'       => 'clientes que preguntan pero no concretan la compra o reserva',
+            'high_commissions' => 'dependencia de plataformas de terceros con comisiones altas',
+            default            => 'consultas sin atender que representan ventas perdidas',
         };
     }
 
