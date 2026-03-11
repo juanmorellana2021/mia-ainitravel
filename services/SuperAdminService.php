@@ -228,6 +228,28 @@ class SuperAdminService
      */
     public function allProspects(string $search = '', string $stateFilter = ''): array
     {
+        // Table is created lazily by MiaSalesService; ensure it exists before querying.
+        try {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS mia_sales_sessions (
+                    id              INT AUTO_INCREMENT PRIMARY KEY,
+                    phone           VARCHAR(50) NOT NULL,
+                    state           VARCHAR(30) DEFAULT 'new',
+                    business_name   VARCHAR(255) NULL,
+                    contact_name    VARCHAR(255) NULL,
+                    email           VARCHAR(255) NULL,
+                    business_type   VARCHAR(50)  NULL,
+                    room_count      INT          NULL,
+                    current_method  VARCHAR(50)  NULL,
+                    pain_point      VARCHAR(100) NULL,
+                    conv_history    MEDIUMTEXT   NULL,
+                    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY idx_phone (phone)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        } catch (\Throwable $e) { /* already exists */ }
+
         $where  = [];
         $params = [];
 
