@@ -21,6 +21,8 @@ class BillingController
             header('Location: ' . App::basePath() . '/login');
             exit;
         }
+        // Always refresh session from DB so trial_ends_at is current
+        $_SESSION['mia_client'] = (new BillingService())->clientToSession($client);
         return $client;
     }
 
@@ -34,6 +36,15 @@ class BillingController
         $activeSub    = $billing->activeSubscription($client->id);
         $history      = $billing->historyForClient($client->id);
         $plans        = BillingService::planOptions();
+
+        // Auto-expire trial when trial_ends_at has passed
+        $clientService = new ClientService();
+        $trialTs = $client->trial_ends_at ? strtotime($client->trial_ends_at) : false;
+        if ($client->plan_status === 'trial' && $trialTs !== false && $trialTs < time()) {
+            $clientService->updatePlan($client->id, 'trial', 'expired');
+            $client = $clientService->findById($client->id);
+            $_SESSION['mia_client'] = $billing->clientToSession($client);
+        }
 
         // Handle Mercado Pago redirect back
         $paymentStatus = $_GET['payment'] ?? '';
