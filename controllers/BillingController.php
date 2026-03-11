@@ -9,6 +9,13 @@ declare(strict_types=1);
 
 class BillingController
 {
+    private BillingService $billing;
+
+    public function __construct()
+    {
+        $this->billing = new BillingService();
+    }
+
     private function requireClient(): Client
     {
         if (empty($_SESSION['mia_client_id'])) {
@@ -21,6 +28,8 @@ class BillingController
             header('Location: ' . App::basePath() . '/login');
             exit;
         }
+        // Keep session in sync with DB on every request
+        $_SESSION['mia_client'] = $this->billing->clientToSession($client);
         return $client;
     }
 
@@ -28,21 +37,29 @@ class BillingController
 
     public function index(): void
     {
-        $client  = $this->requireClient();
-        $billing = new BillingService();
-
-        $activeSub    = $billing->activeSubscription($client->id);
-        $history      = $billing->historyForClient($client->id);
-        $plans        = BillingService::planOptions();
+        $client        = $this->requireClient();
+        $clientService = new ClientService();
 
         // Handle Stripe redirect back
         $paymentStatus = $_GET['payment'] ?? '';
         if ($paymentStatus === 'success' && !empty($_GET['session_id'])) {
-            $billing->confirmFromSession($client->id, $_GET['session_id']);
-            // Re-fetch client after activation
-            $client = (new ClientService())->findById($client->id);
-            $activeSub = $billing->activeSubscription($client->id);
+            $this->billing->confirmFromSession($client->id, $_GET['session_id']);
+            // Re-fetch client after activation and refresh session
+            $client = $clientService->findById($client->id);
+            $_SESSION['mia_client'] = $this->billing->clientToSession($client);
         }
+
+        // Auto-expire trial when trial_ends_at has passed
+        $trialTs = $client->trial_ends_at ? strtotime($client->trial_ends_at) : false;
+        if ($client->plan_status === 'trial' && $trialTs !== false && $trialTs < time()) {
+            $clientService->updatePlan($client->id, 'trial', 'expired');
+            $client = $clientService->findById($client->id);
+            $_SESSION['mia_client'] = $this->billing->clientToSession($client);
+        }
+
+        $activeSub = $this->billing->activeSubscription($client->id);
+        $history   = $this->billing->historyForClient($client->id);
+        $plans     = BillingService::planOptions();
 
         require __DIR__ . '/../views/client/billing.php';
     }
@@ -60,8 +77,7 @@ class BillingController
             exit;
         }
 
-        $billing = new BillingService();
-        $result  = $billing->createCheckoutSession($client, $plan);
+        $result = $this->billing->createCheckoutSession($client, $plan);
 
         if (!empty($result['error'])) {
             $msg = urlencode($result['error']);
@@ -80,7 +96,7 @@ class BillingController
         App::csrfVerify();
         $client = $this->requireClient();
 
-        (new BillingService())->cancelSubscription($client->id);
+        $this->billing->cancelSubscription($client->id);
 
         header('Location: ' . App::basePath() . '/dashboard/billing?cancelled=1');
         exit;

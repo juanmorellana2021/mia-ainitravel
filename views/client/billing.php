@@ -8,8 +8,8 @@ $pageTopTitle = 'Suscripción y Pagos';
 $activeNav    = 'billing';
 
 $sessionClient = $_SESSION['mia_client'] ?? [];
-$currentPlan   = $sessionClient['plan']        ?? 'trial';
-$planStatus    = $sessionClient['plan_status'] ?? 'trial';
+$currentPlan   = $client->plan;
+$planStatus    = $client->plan_status;
 
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
@@ -43,13 +43,22 @@ require __DIR__ . '/_sidebar.php';
             <?php if ($planStatus === 'trial'): ?>
                 <div class="text-center py-3 mb-3" style="background:#f8f9fa;border-radius:10px">
                     <div style="font-size:2.5rem;font-weight:800;color:#25d366">
-                        <?= max(0, (int)ceil((strtotime($sessionClient['trial_ends_at'] ?? 'now') - time()) / 86400)) ?>
+                        <?= $client->trialDaysLeft() ?>
                     </div>
                     <div class="text-muted small">días de prueba restantes</div>
                 </div>
                 <p class="text-muted small mb-3">
                     Estás en tu período de prueba gratuita de <?= App::FREE_TRIAL_DAYS ?> días.
                     Activa un plan para continuar después.
+                </p>
+            <?php elseif ($planStatus === 'expired'): ?>
+                <div class="text-center py-3 mb-3" style="background:rgba(220,53,69,0.08);border-radius:10px;border:1px solid rgba(220,53,69,0.25)">
+                    <div style="font-size:2rem;color:#dc3545"><i class="bi bi-clock-history"></i></div>
+                    <div class="fw-bold mt-1" style="color:#dc3545">Prueba vencida</div>
+                </div>
+                <p class="text-muted small mb-3">
+                    Tu período de prueba gratuita de <?= App::FREE_TRIAL_DAYS ?> días ha finalizado.
+                    Elige un plan para seguir usando Mia.
                 </p>
             <?php elseif ($planStatus === 'active'): ?>
                 <div class="text-center py-3 mb-3" style="background:rgba(37,211,102,0.08);border-radius:10px;border:1px solid rgba(37,211,102,0.2)">
