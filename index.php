@@ -37,6 +37,8 @@ require_once __DIR__ . '/controllers/SettingsController.php';
 require_once __DIR__ . '/controllers/BroadcastController.php';
 require_once __DIR__ . '/services/BroadcastService.php';
 require_once __DIR__ . '/services/NotificationService.php';
+require_once __DIR__ . '/services/SuperAdminService.php';
+require_once __DIR__ . '/controllers/SuperAdminController.php';
 
 // ── Route resolution ─────────────────────────────────────────────────────────
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -166,7 +168,35 @@ match (true) {
     $uri === 'dashboard/settings/wa-connect' && $method === 'POST'
         => (new SettingsController())->waConnect(),
 
-    // ── Admin — leads ─────────────────────────────────────────────────────
+    // ── Superadmin ─────────────────────────────────────────────────────────
+    $uri === 'superadmin' || ($uri === 'superadmin/' )
+        => (function() { header('Location: ' . App::basePath() . '/superadmin/dashboard'); exit; })(),
+
+    $uri === 'superadmin/login' && $method === 'GET'
+        => (new SuperAdminController())->loginForm(),
+
+    $uri === 'superadmin/login' && $method === 'POST'
+        => (new SuperAdminController())->loginSubmit(),
+
+    $uri === 'superadmin/logout'
+        => (new SuperAdminController())->logout(),
+
+    $uri === 'superadmin/dashboard'
+        => (new SuperAdminController())->dashboard(),
+
+    $uri === 'superadmin/clients' && $method === 'GET'
+        => (new SuperAdminController())->clients(),
+
+    str_starts_with($uri, 'superadmin/clients/') && str_ends_with($uri, '/delete') && $method === 'POST'
+        => (new SuperAdminController())->clientDelete((int)(explode('/', $uri)[2] ?? 0)),
+
+    str_starts_with($uri, 'superadmin/clients/') && $method === 'GET'
+        => (new SuperAdminController())->clientDetail((int)basename($uri)),
+
+    str_starts_with($uri, 'superadmin/clients/') && $method === 'POST'
+        => (new SuperAdminController())->clientSave((int)basename($uri)),
+
+    // ── Admin — leads ─────────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'
         => (new LeadController())->loginForm(),
 
