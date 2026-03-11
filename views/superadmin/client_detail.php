@@ -24,6 +24,18 @@ require __DIR__ . '/_sidebar.php';
     <i class="bi bi-check-circle me-1"></i> Cambios guardados correctamente.
 </div>
 <?php endif; ?>
+<?php if (isset($_GET['converted'])): ?>
+<div class="alert border-0 mb-3" style="background:rgba(99,102,241,0.12);color:#c7d2fe;border-radius:10px;font-size:0.88rem;border:1px solid rgba(99,102,241,0.3);">
+    <i class="bi bi-person-plus-fill me-1" style="color:#818cf8;"></i>
+    <strong>¡Prospecto convertido en cliente!</strong>
+    <?php if (!empty($_GET['tmp'])): ?>
+    Contraseña temporal: <code style="background:rgba(0,0,0,0.3);padding:2px 7px;border-radius:5px;font-size:0.9em;color:#fde68a;">
+        <?= htmlspecialchars($_GET['tmp']) ?>
+    </code>
+    <span style="color:#64748b;font-size:0.82rem;margin-left:5px;">— Compártela y pídele que la cambie al ingresar.</span>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 <?php if (($error ?? '') === 'password_short'): ?>
 <div class="alert border-0 mb-3" style="background:rgba(239,68,68,0.1);color:#991b1b;border-radius:10px;font-size:0.88rem;">
     <i class="bi bi-exclamation-triangle me-1"></i> La contraseña debe tener al menos 8 caracteres.

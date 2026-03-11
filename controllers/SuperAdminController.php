@@ -130,4 +130,49 @@ class SuperAdminController
         header('Location: ' . App::basePath() . '/superadmin/clients?deleted=1');
         exit;
     }
+
+    // ── Prospects list ────────────────────────────────────────────────────────
+
+    public function prospects(): void
+    {
+        $this->requireSuperAdmin();
+        $search      = trim($_GET['q']     ?? '');
+        $stateFilter = trim($_GET['state'] ?? '');
+        $prospects   = (new SuperAdminService())->allProspects($search, $stateFilter);
+        require __DIR__ . '/../views/superadmin/prospects.php';
+    }
+
+    // ── Prospect detail ───────────────────────────────────────────────────────
+
+    public function prospectDetail(int $id): void
+    {
+        $this->requireSuperAdmin();
+        $data = (new SuperAdminService())->prospectFull($id);
+        if (!$data) {
+            http_response_code(404);
+            echo '<h1>Prospecto no encontrado</h1>';
+            return;
+        }
+        require __DIR__ . '/../views/superadmin/prospect_detail.php';
+    }
+
+    // ── Convert prospect → client ─────────────────────────────────────────────
+
+    public function prospectConvert(int $id): void
+    {
+        $this->requireSuperAdmin();
+        App::csrfVerify();
+
+        $result = (new SuperAdminService())->convertToClient($id);
+
+        if (isset($result['error'])) {
+            header('Location: ' . App::basePath() . '/superadmin/prospects/' . $id . '?error=' . urlencode($result['error']));
+            exit;
+        }
+
+        // Redirect to new client page with the temp password surfaced once
+        header('Location: ' . App::basePath() . '/superadmin/clients/' . $result['client_id']
+            . '?converted=1&tmp=' . urlencode($result['temp_password']));
+        exit;
+    }
 }

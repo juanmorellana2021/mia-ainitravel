@@ -196,6 +196,16 @@ match (true) {
     str_starts_with($uri, 'superadmin/clients/') && $method === 'POST'
         => (new SuperAdminController())->clientSave((int)basename($uri)),
 
+    // ── Superadmin — Prospects ────────────────────────────────────────────────
+    $uri === 'superadmin/prospects' && $method === 'GET'
+        => (new SuperAdminController())->prospects(),
+
+    str_starts_with($uri, 'superadmin/prospects/') && str_ends_with($uri, '/convert') && $method === 'POST'
+        => (new SuperAdminController())->prospectConvert((int)(explode('/', $uri)[2] ?? 0)),
+
+    str_starts_with($uri, 'superadmin/prospects/') && $method === 'GET'
+        => (new SuperAdminController())->prospectDetail((int)basename($uri)),
+
     // ── Admin — leads ─────────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'
         => (new LeadController())->loginForm(),

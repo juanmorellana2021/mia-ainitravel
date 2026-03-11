@@ -1,0 +1,152 @@
+<?php
+/**
+ * mia/views/superadmin/prospects.php
+ *
+ * List of all Mia sales sessions (prospective hotel clients from WhatsApp).
+ */
+$base         = App::basePath();
+$pageTitle    = 'Prospectos — Superadmin Mia';
+$pageTopTitle = 'Prospectos';
+$activeNav    = 'prospects';
+
+$stateLabels = [
+    'new'               => ['Nuevo',           '#6366f1'],
+    'intro'             => ['Intro',            '#8b5cf6'],
+    'qualifying_size'   => ['Calificando',      '#f59e0b'],
+    'qualifying_method' => ['Calificando',      '#f59e0b'],
+    'qualifying_pain'   => ['Calificando',      '#f59e0b'],
+    'roi_pitch'         => ['Pitch ROI',        '#0ea5e9'],
+    'demo'              => ['Demo',             '#0ea5e9'],
+    'benefits'          => ['Beneficios',       '#06b6d4'],
+    'closing'           => ['Cerrando',         '#f97316'],
+    'collecting_name'   => ['Recogiendo datos', '#f97316'],
+    'collecting_email'  => ['Recogiendo datos', '#f97316'],
+    'captured'          => ['Capturado ✓',      '#22c55e'],
+    'human_handoff'     => ['Mano humana',      '#ef4444'],
+];
+
+$allStates = array_merge([''], array_keys($stateLabels));
+
+require __DIR__ . '/_head.php';
+require __DIR__ . '/_sidebar.php';
+?>
+
+<!-- Search + filter bar -->
+<div class="d-flex gap-2 flex-wrap mb-3 align-items-center">
+    <form method="GET" action="" class="d-flex gap-2 flex-wrap flex-grow-1">
+        <input type="text" name="q" value="<?= htmlspecialchars($search) ?>"
+               class="form-control form-control-sm"
+               style="max-width:240px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(30,30,50,0.6);color:#e2e8f0;"
+               placeholder="Buscar teléfono, nombre, email…">
+
+        <select name="state" class="form-select form-select-sm"
+                style="max-width:200px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(30,30,50,0.6);color:#e2e8f0;">
+            <option value="" <?= $stateFilter === '' ? 'selected' : '' ?>>Todos los estados</option>
+            <?php foreach ($stateLabels as $key => [$label, $color]): ?>
+            <option value="<?= $key ?>" <?= $stateFilter === $key ? 'selected' : '' ?>>
+                <?= htmlspecialchars($label) ?>
+            </option>
+            <?php endforeach; ?>
+        </select>
+
+        <button class="btn btn-sm btn-primary" type="submit" style="border-radius:8px;">
+            <i class="bi bi-search me-1"></i>Buscar
+        </button>
+        <?php if ($search || $stateFilter): ?>
+        <a href="<?= $base ?>/superadmin/prospects" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;border-color:rgba(255,255,255,0.15);color:#94a3b8;">
+            <i class="bi bi-x-lg me-1"></i>Limpiar
+        </a>
+        <?php endif; ?>
+    </form>
+
+    <span class="text-muted small ms-auto"><?= count($prospects) ?> prospecto<?= count($prospects) !== 1 ? 's' : '' ?></span>
+</div>
+
+<?php if (empty($prospects)): ?>
+<div class="text-center py-5" style="color:#64748b;">
+    <i class="bi bi-chat-square-text" style="font-size:2.5rem;"></i>
+    <p class="mt-3 mb-0">No hay prospectos<?= $search || $stateFilter ? ' que coincidan con la búsqueda' : ' todavía' ?>.</p>
+    <?php if ($search || $stateFilter): ?>
+    <a href="<?= $base ?>/superadmin/prospects" class="btn btn-sm btn-outline-secondary mt-3" style="border-radius:8px;">Ver todos</a>
+    <?php endif; ?>
+</div>
+<?php else: ?>
+
+<div class="sa-card" style="overflow:hidden;">
+    <div class="table-responsive">
+        <table class="table table-sm mb-0" style="color:#e2e8f0;font-size:0.85rem;">
+            <thead>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.08);color:#64748b;font-size:0.78rem;text-transform:uppercase;letter-spacing:.04em;">
+                    <th class="ps-3 py-2">Teléfono</th>
+                    <th class="py-2">Estado</th>
+                    <th class="py-2">Negocio</th>
+                    <th class="py-2">Contacto</th>
+                    <th class="py-2">Email</th>
+                    <th class="py-2">Hab.</th>
+                    <th class="py-2">Actualizado</th>
+                    <th class="pe-3 py-2 text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($prospects as $p): ?>
+            <?php
+                $state      = $p['state'] ?? 'new';
+                [$label, $color] = $stateLabels[$state] ?? [$state, '#94a3b8'];
+                $converted  = !empty($p['client_id']);
+            ?>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td class="ps-3 py-2 align-middle">
+                    <span style="font-family:monospace;font-size:0.82rem;">
+                        <?= htmlspecialchars($p['phone']) ?>
+                    </span>
+                </td>
+                <td class="py-2 align-middle">
+                    <span style="
+                        display:inline-block;padding:2px 8px;border-radius:20px;font-size:0.75rem;font-weight:600;
+                        background:<?= $color ?>22;color:<?= $color ?>;border:1px solid <?= $color ?>44;">
+                        <?= htmlspecialchars($label) ?>
+                    </span>
+                    <?php if ($converted): ?>
+                    <span style="display:inline-block;padding:2px 7px;border-radius:20px;font-size:0.72rem;font-weight:600;background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;margin-left:4px;">
+                        <i class="bi bi-person-check-fill"></i> Cliente
+                    </span>
+                    <?php endif; ?>
+                </td>
+                <td class="py-2 align-middle">
+                    <?= $p['business_name'] ? htmlspecialchars($p['business_name']) : '<span style="color:#475569">—</span>' ?>
+                </td>
+                <td class="py-2 align-middle">
+                    <?= $p['contact_name'] ? htmlspecialchars($p['contact_name']) : '<span style="color:#475569">—</span>' ?>
+                </td>
+                <td class="py-2 align-middle">
+                    <?= $p['email'] ? htmlspecialchars($p['email']) : '<span style="color:#475569">—</span>' ?>
+                </td>
+                <td class="py-2 align-middle text-center">
+                    <?= $p['room_count'] ? (int)$p['room_count'] : '<span style="color:#475569">—</span>' ?>
+                </td>
+                <td class="py-2 align-middle" style="color:#64748b;font-size:0.78rem;white-space:nowrap;">
+                    <?= date('d M H:i', strtotime($p['updated_at'])) ?>
+                </td>
+                <td class="pe-3 py-2 align-middle text-end">
+                    <a href="<?= $base ?>/superadmin/prospects/<?= (int)$p['id'] ?>"
+                       class="btn btn-sm"
+                       style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:2px 10px;font-size:0.78rem;">
+                        <i class="bi bi-eye me-1"></i>Ver
+                    </a>
+                    <?php if ($converted): ?>
+                    <a href="<?= $base ?>/superadmin/clients/<?= (int)$p['client_id'] ?>"
+                       class="btn btn-sm ms-1"
+                       style="background:rgba(34,197,94,0.12);color:#4ade80;border:1px solid rgba(34,197,94,0.3);border-radius:7px;padding:2px 10px;font-size:0.78rem;">
+                        <i class="bi bi-person me-1"></i>Cliente
+                    </a>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php require __DIR__ . '/_foot.php'; ?>

@@ -17,6 +17,10 @@ $base = App::basePath();
            class="sa-nav-item <?= ($activeNav ?? '') === 'dashboard' ? 'active' : '' ?>">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
+        <a href="<?= $base ?>/superadmin/prospects"
+           class="sa-nav-item <?= ($activeNav ?? '') === 'prospects' ? 'active' : '' ?>">
+            <i class="bi bi-chat-square-text"></i> Prospectos
+        </a>
         <a href="<?= $base ?>/superadmin/clients"
            class="sa-nav-item <?= ($activeNav ?? '') === 'clients' ? 'active' : '' ?>">
             <i class="bi bi-buildings"></i> Clientes

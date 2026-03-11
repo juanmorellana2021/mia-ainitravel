@@ -218,4 +218,157 @@ class SuperAdminService
         $this->db->prepare('DELETE FROM mia_broadcast_logs  WHERE client_id = ?')->execute([$id]);
         $this->db->prepare('DELETE FROM mia_clients         WHERE id        = ?')->execute([$id]);
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PROSPECTS (mia_sales_sessions — Mia's own WhatsApp sales leads)
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * All sales sessions with optional search and state filter.
+     */
+    public function allProspects(string $search = '', string $stateFilter = ''): array
+    {
+        $where  = [];
+        $params = [];
+
+        if ($search) {
+            $like     = '%' . $search . '%';
+            $where[]  = '(s.phone LIKE ? OR s.business_name LIKE ? OR s.contact_name LIKE ? OR s.email LIKE ?)';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+        if ($stateFilter) {
+            $where[]  = 's.state = ?';
+            $params[] = $stateFilter;
+        }
+
+        $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $stmt = $this->db->prepare(
+            "SELECT
+                s.id, s.phone, s.state, s.business_name, s.contact_name,
+                s.email, s.business_type, s.room_count, s.current_method,
+                s.pain_point, s.created_at, s.updated_at,
+                c.id AS client_id
+             FROM mia_sales_sessions s
+             LEFT JOIN mia_clients c ON c.phone = s.phone
+             {$whereClause}
+             ORDER BY s.updated_at DESC"
+        );
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Full prospect detail — session row + parsed conversation history.
+     */
+    public function prospectFull(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT s.*, c.id AS client_id
+             FROM mia_sales_sessions s
+             LEFT JOIN mia_clients c ON c.phone = s.phone
+             WHERE s.id = ? LIMIT 1"
+        );
+        $stmt->execute([$id]);
+        $session = $stmt->fetch();
+        if (!$session) return null;
+
+        $history = [];
+        if (!empty($session['conv_history'])) {
+            $decoded = json_decode($session['conv_history'], true);
+            if (is_array($decoded)) {
+                $history = $decoded;
+            }
+        }
+
+        return [
+            'session' => $session,
+            'history' => $history,
+        ];
+    }
+
+    /**
+     * Convert a prospect session into a new mia_clients record.
+     * Returns ['client_id' => int, 'temp_password' => string] on success.
+     * Returns ['error' => string] if already converted or missing required data.
+     */
+    public function convertToClient(int $id): array
+    {
+        $data = $this->prospectFull($id);
+        if (!$data) {
+            return ['error' => 'Prospecto no encontrado.'];
+        }
+
+        $session = $data['session'];
+
+        // Already converted?
+        if (!empty($session['client_id'])) {
+            return ['error' => 'Este prospecto ya fue convertido en cliente (ID ' . $session['client_id'] . ').'];
+        }
+
+        // Need at least a phone. email / name are nice-to-have but we can set defaults.
+        if (empty($session['phone'])) {
+            return ['error' => 'El prospecto no tiene número de teléfono.'];
+        }
+
+        // Check email uniqueness if email exists
+        if (!empty($session['email'])) {
+            $ck = $this->db->prepare('SELECT id FROM mia_clients WHERE email = ? LIMIT 1');
+            $ck->execute([strtolower(trim($session['email']))]);
+            if ($ck->fetchColumn()) {
+                return ['error' => 'Ya existe un cliente con ese correo electrónico.'];
+            }
+        }
+
+        // Generate a temporary password
+        $tempPassword = $this->generateTempPassword();
+        $hash         = password_hash($tempPassword, PASSWORD_DEFAULT);
+
+        // Build client row
+        $businessName = $session['business_name'] ?: ('Hotel ' . $session['phone']);
+        $contactName  = $session['contact_name']  ?: '';
+        $email        = !empty($session['email']) ? strtolower(trim($session['email'])) : null;
+        $phone        = $session['phone'];
+        $plan         = 'starter';
+        $planStatus   = 'trial';
+        $trialEnds    = date('Y-m-d', strtotime('+14 days'));
+
+        $stmt = $this->db->prepare(
+            "INSERT INTO mia_clients
+                (business_name, contact_name, email, phone, password_hash,
+                 plan, plan_status, trial_ends_at, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+        );
+        $stmt->execute([
+            $businessName, $contactName, $email, $phone, $hash,
+            $plan, $planStatus, $trialEnds,
+        ]);
+
+        $clientId = (int)$this->db->lastInsertId();
+
+        // Create a starter subscription record
+        $this->db->prepare(
+            "INSERT INTO mia_subscriptions
+                (client_id, plan, status, amount_cents, billing_period_start, created_at)
+             VALUES (?, 'starter', 'trial', 0, CURDATE(), NOW())"
+        )->execute([$clientId]);
+
+        return [
+            'client_id'     => $clientId,
+            'temp_password' => $tempPassword,
+        ];
+    }
+
+    private function generateTempPassword(): string
+    {
+        $chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        $pass  = '';
+        for ($i = 0; $i < 10; $i++) {
+            $pass .= $chars[random_int(0, strlen($chars) - 1)];
+        }
+        return $pass;
+    }
 }
