@@ -43,8 +43,8 @@ class App
     }
 
     // ── Mercado Pago (mercadopago.com.pe) ─────────────────────────────────
-    public const MP_PUBLIC_KEY    = 'TEST-6aa3bc15-4bed-4a59-8667-3c1ce8f0ffe5';
-    public const MP_ACCESS_TOKEN  = 'TEST-3903199140335229-031021-e2ddbb7209dea2f4b2d951846d55b9ad-465470205';
+    public const MP_PUBLIC_KEY    = 'APP_USR-4a2b9817-53ab-42da-b9f8-2e6b861b342e';
+    public const MP_ACCESS_TOKEN  = 'APP_USR-3903199140335229-031021-7b10882587e251e0bba11f9a73c81412-465470205';
 
     // ── Admin credentials (hash in production) ────────────────────────────
     public const ADMIN_USER = 'admin';
