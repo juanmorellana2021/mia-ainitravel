@@ -163,7 +163,8 @@ class ClientLeadService
                     COUNT(*) AS cnt
              FROM mia_client_messages
              WHERE client_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 14 DAY)
-             GROUP BY DATE(created_at) ORDER BY DATE(created_at)"
+             GROUP BY DATE(created_at), DATE_FORMAT(created_at, '%d %b')
+             ORDER BY DATE(created_at)"
         );
         $stmt->execute([$clientId]);
         $messagesPerDay = $stmt->fetchAll();
