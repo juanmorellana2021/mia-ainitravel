@@ -102,6 +102,15 @@ class ClientLeadService
         return array_map([ClientMessage::class, 'fromRow'], $stmt->fetchAll());
     }
 
+    public function saveMessage(int $clientId, int $leadId, string $phone, string $message, string $direction, string $handledBy): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO mia_client_messages (client_id, lead_id, phone, direction, message, handled_by)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$clientId, $leadId, $phone, $message, $direction, $handledBy]);
+    }
+
     // ── Stats ─────────────────────────────────────────────────────────────────
 
     public function stats(int $clientId): array

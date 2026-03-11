@@ -114,6 +114,12 @@ match (true) {
     $uri === 'dashboard/leads' && $method === 'GET'
         => (new DashboardController())->leads(),
 
+    str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/messages') && $method === 'GET'
+        => (new DashboardController())->leadMessages((int)(explode('/', $uri)[2] ?? 0)),
+
+    str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/send') && $method === 'POST'
+        => (new DashboardController())->leadSend((int)(explode('/', $uri)[2] ?? 0)),
+
     str_starts_with($uri, 'dashboard/leads/') && $method === 'GET'
         => (new DashboardController())->leadDetail((int)basename($uri)),
 

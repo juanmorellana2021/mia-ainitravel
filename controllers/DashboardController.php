@@ -101,6 +101,72 @@ class DashboardController
         exit;
     }
 
+    // ── Lead chat: AJAX endpoints ─────────────────────────────────────────────
+
+    public function leadMessages(int $id): void
+    {
+        header('Content-Type: application/json');
+        $client      = $this->requireClient();
+        $leadService = new ClientLeadService();
+        $lead        = $leadService->findById($id, $client->id);
+        if (!$lead) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Not found']);
+            return;
+        }
+        $messages = $leadService->messagesForLead($lead->id, $client->id);
+        echo json_encode(array_map(fn($m) => [
+            'id'         => $m->id,
+            'direction'  => $m->direction,
+            'message'    => $m->message,
+            'handled_by' => $m->handled_by,
+            'created_at' => $m->created_at,
+        ], $messages));
+    }
+
+    public function leadSend(int $id): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client      = $this->requireClient();
+        $leadService = new ClientLeadService();
+        $lead        = $leadService->findById($id, $client->id);
+        if (!$lead) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Lead not found']);
+            return;
+        }
+        $text = trim($_POST['message'] ?? '');
+        if (empty($text)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Empty message']);
+            return;
+        }
+        $leadService->saveMessage($client->id, $lead->id, $lead->phone, $text, 'outbound', 'human');
+        $delivered = $this->sendViaBot($client->id, $lead->phone, $text);
+        echo json_encode(['success' => true, 'delivered' => $delivered]);
+    }
+
+    private function sendViaBot(int $clientId, string $phone, string $message): bool
+    {
+        $payload = json_encode([
+            'client_id' => $clientId,
+            'to'        => preg_replace('/[^0-9+]/', '', $phone),
+            'message'   => $message,
+        ]);
+        $ctx = stream_context_create(['http' => [
+            'method'        => 'POST',
+            'header'        => "Content-Type: application/json\r\nContent-Length: " . strlen($payload) . "\r\n",
+            'content'       => $payload,
+            'timeout'       => 8,
+            'ignore_errors' => true,
+        ]]);
+        $result = @file_get_contents('http://localhost:3001/send-client', false, $ctx);
+        if ($result === false) return false;
+        $data = json_decode($result, true);
+        return !empty($data['success']);
+    }
+
     // ── Analytics ─────────────────────────────────────────────────────────────
 
     public function analytics(): void
