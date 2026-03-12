@@ -179,12 +179,6 @@
         .msg-time { font-size: 0.7rem; color: #a0aec0; margin-top: 2px; }
 
         /* ── Mobile ─────────────────────────────────────────────────────────── */
-        @media (max-width: 768px) {
-            .mc-sidebar { display: none; }
-            .mc-sidebar.open { display: flex; width: 100%; position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
-            .mc-main-area { margin-left: 0; }
-            .mc-content { padding: 16px; }
-        }
         .mc-mobile-toggle {
             display: none;
             background: var(--mc-sidebar);
@@ -193,8 +187,45 @@
             padding: 6px 10px;
             border-radius: 6px;
             font-size: 1.1rem;
+            cursor: pointer;
         }
-        @media (max-width: 768px) { .mc-mobile-toggle { display: inline-flex; align-items: center; } }
+        .mc-sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 299;
+        }
+        .mc-sidebar-backdrop.show { display: block; }
+        .mc-sidebar-close-btn { display: none; }
+        @media (max-width: 768px) {
+            .mc-mobile-toggle { display: inline-flex; align-items: center; }
+            .mc-sidebar {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; bottom: 0;
+                width: var(--mc-sidebar-w);
+                z-index: 300;
+            }
+            .mc-sidebar.open { display: flex; }
+            .mc-main-area { margin-left: 0; }
+            .mc-content { padding: 16px; }
+            .mc-sidebar-close-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: absolute;
+                top: 10px; right: 10px;
+                width: 30px; height: 30px;
+                background: rgba(255,255,255,0.12);
+                border: none;
+                border-radius: 50%;
+                color: #fff;
+                font-size: 1rem;
+                cursor: pointer;
+                z-index: 10;
+            }
+        }
     </style>
 </head>
 <body class="mc-body">

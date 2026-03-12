@@ -11,8 +11,14 @@ $plan          = $sessionClient['plan'] ?? 'trial';
 $planStatus    = $sessionClient['plan_status'] ?? 'trial';
 $initials      = strtoupper(substr($clientName, 0, 2));
 ?>
+<!-- Backdrop overlay (mobile) -->
+<div class="mc-sidebar-backdrop" id="mcBackdrop" onclick="closeSidebar()"></div>
+
 <!-- ── Sidebar ── -->
 <aside class="mc-sidebar" id="mcSidebar">
+    <button class="mc-sidebar-close-btn" onclick="closeSidebar()" aria-label="Cerrar menú">
+        <i class="bi bi-x-lg"></i>
+    </button>
     <a class="mc-sidebar-brand" href="<?= $base ?>/">
         <i class="bi bi-whatsapp"></i>
         <span>Mia</span>
@@ -76,7 +82,7 @@ $initials      = strtoupper(substr($clientName, 0, 2));
 <div class="mc-main-area">
     <header class="mc-topbar">
         <div class="d-flex align-items-center gap-3">
-            <button class="mc-mobile-toggle" onclick="document.getElementById('mcSidebar').classList.toggle('open')">
+            <button class="mc-mobile-toggle" onclick="openSidebar()">
                 <i class="bi bi-list"></i>
             </button>
             <span class="mc-topbar-title"><?= htmlspecialchars($pageTopTitle ?? $pageTitle ?? '') ?></span>
