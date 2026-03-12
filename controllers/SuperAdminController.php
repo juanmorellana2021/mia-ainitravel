@@ -268,13 +268,16 @@ class SuperAdminController
             GROUP BY src, med, camp ORDER BY cnt DESC LIMIT 10
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-        // Device breakdown
-        $devices = $db->query("
-            SELECT device, COUNT(DISTINCT session_id) AS cnt
-            FROM mia_page_events
-            WHERE event='pageview' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
-            GROUP BY device
-        ")->fetchAll(PDO::FETCH_ASSOC);
+            // Device breakdown with click behavior
+            $devices = $db->query("
+                SELECT
+                    device,
+                    COUNT(CASE WHEN event='pageview' THEN 1 END)  AS pageviews,
+                    COUNT(CASE WHEN event='cta_click' THEN 1 END) AS cta_clicks
+                FROM mia_page_events
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+                GROUP BY device
+            ")->fetchAll(PDO::FETCH_ASSOC);
 
         require __DIR__ . '/../views/superadmin/analytics.php';
     }

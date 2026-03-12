@@ -26,10 +26,15 @@ for ($i = $days - 1; $i >= 0; $i--) {
     $chartData[]   = $dailyMap[$d] ?? 0;
 }
 
-// Device totals
-$devMap = [];
-foreach ($devices as $r) $devMap[$r['device']] = (int)$r['cnt'];
-$totalDev = max(1, array_sum($devMap));
+// Device totals and click behavior
+$devPvMap  = [];
+$devCtaMap = [];
+foreach ($devices as $r) {
+    $dev = $r['device'] ?: 'desktop';
+    $devPvMap[$dev] = (int)($r['pageviews'] ?? 0);
+    $devCtaMap[$dev] = (int)($r['cta_clicks'] ?? 0);
+}
+$totalDevClicks = max(1, array_sum($devCtaMap));
 
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
@@ -183,14 +188,16 @@ require __DIR__ . '/_sidebar.php';
     <div class="col-md-4">
         <div class="sa-card p-3">
             <div style="font-size:0.78rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">
-                <i class="bi bi-phone me-1"></i>Dispositivos
+                <i class="bi bi-phone me-1"></i>Dispositivos (Clicks CTA)
             </div>
             <?php
             $devIcons  = ['desktop'=>'bi-display', 'mobile'=>'bi-phone', 'tablet'=>'bi-tablet'];
             $devColors = ['desktop'=>'#6366f1', 'mobile'=>'#22c55e', 'tablet'=>'#f59e0b'];
             foreach (['desktop','mobile','tablet'] as $dev):
-                $cnt = $devMap[$dev] ?? 0;
-                $pct = $totalDev > 0 ? round($cnt / $totalDev * 100) : 0;
+                $clicks = $devCtaMap[$dev] ?? 0;
+                $views  = $devPvMap[$dev] ?? 0;
+                $pct    = $totalDevClicks > 0 ? round($clicks / $totalDevClicks * 100) : 0;
+                $devCtr = $views > 0 ? round($clicks / $views * 100, 1) : 0;
             ?>
             <div style="margin-bottom:14px;">
                 <div class="d-flex justify-content-between align-items-center" style="margin-bottom:5px;">
@@ -198,8 +205,9 @@ require __DIR__ . '/_sidebar.php';
                         <i class="bi <?= $devIcons[$dev] ?> me-1" style="color:<?= $devColors[$dev] ?>"></i>
                         <?= ucfirst($dev) ?>
                     </span>
-                    <span style="font-size:0.82rem;color:#94a3b8;"><?= $pct ?>% <span style="color:#475569;font-size:0.75rem;">(<?= $cnt ?>)</span></span>
+                    <span style="font-size:0.82rem;color:#94a3b8;"><?= $pct ?>% <span style="color:#475569;font-size:0.75rem;">(<?= $clicks ?> clicks)</span></span>
                 </div>
+                <div style="font-size:0.74rem;color:#64748b;margin-bottom:5px;">CTR dispositivo: <?= $devCtr ?>% (<?= $clicks ?>/<?= $views ?>)</div>
                 <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;">
                     <div style="height:6px;border-radius:3px;background:<?= $devColors[$dev] ?>;width:<?= $pct ?>%;opacity:0.8"></div>
                 </div>
