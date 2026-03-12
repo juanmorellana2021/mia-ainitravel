@@ -1,7 +1,4 @@
 <?php
-/**
- * mia/views/superadmin/dashboard.php
- */
 $base         = App::basePath();
 $pageTitle    = 'Dashboard — Superadmin Mia';
 $pageTopTitle = 'Dashboard';
@@ -10,6 +7,12 @@ $activeNav    = 'dashboard';
 $c         = $stats['clients'];
 $mrr       = number_format($stats['mrr_cents'] / 100, 0);
 $arr       = number_format($stats['mrr_cents'] / 100 * 12, 0);
+
+function fmtPhone(string $p): string {
+    $p = preg_replace('/@.*$/', '', $p);
+    $p = ltrim($p, '+');
+    return strlen($p) > 12 ? '+' . substr($p, 0, 7) . '…' . substr($p, -4) : '+' . $p;
+}
 
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
@@ -169,7 +172,7 @@ require __DIR__ . '/_sidebar.php';
                                     : date('d/m/y H:i', strtotime($p['updated_at']))));
                         ?>
                         <tr style="cursor:pointer" onclick="openChat(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['phone'])) ?>', '<?= htmlspecialchars(addslashes($p['business_name'] ?: '')) ?>')">
-                            <td class="text-muted small font-monospace"><?= htmlspecialchars($p['phone']) ?></td>
+                            <td class="text-muted small font-monospace" title="<?= htmlspecialchars($p['phone']) ?>"><?= htmlspecialchars(fmtPhone($p['phone'])) ?></td>
                             <td>
                                 <?php if ($p['business_name']): ?>
                                     <span class="fw-medium"><?= htmlspecialchars($p['business_name']) ?></span>

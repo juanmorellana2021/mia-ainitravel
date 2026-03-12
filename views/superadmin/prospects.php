@@ -27,6 +27,12 @@ $stateLabels = [
 
 $allStates = array_merge([''], array_keys($stateLabels));
 
+function fmtPhone(string $p): string {
+    $p = preg_replace('/@.*$/', '', $p); // strip @c.us
+    $p = ltrim($p, '+');
+    return strlen($p) > 12 ? '+' . substr($p, 0, 7) . '…' . substr($p, -4) : '+' . $p;
+}
+
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
 ?>
@@ -97,8 +103,8 @@ require __DIR__ . '/_sidebar.php';
             <tr style="border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;"
                 onclick="openChat(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['phone'])) ?>', '<?= htmlspecialchars(addslashes($p['business_name'] ?: '')) ?>')">
                 <td class="ps-3 py-2 align-middle">
-                    <span style="font-family:monospace;font-size:0.82rem;">
-                        <?= htmlspecialchars($p['phone']) ?>
+                    <span style="font-family:monospace;font-size:0.82rem;" title="<?= htmlspecialchars($p['phone']) ?>">
+                        <?= htmlspecialchars(fmtPhone($p['phone'])) ?>
                     </span>
                 </td>
                 <td class="py-2 align-middle">
