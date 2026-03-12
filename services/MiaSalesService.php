@@ -449,6 +449,17 @@ class MiaSalesService
             error_log('[Mia] Notification error: ' . $e->getMessage());
         }
 
+        // Auto-convert to client account so they get access immediately
+        try {
+            require_once __DIR__ . '/../services/SuperAdminService.php';
+            $svcRow = $this->getSession($phone);
+            if (!empty($svcRow['id'])) {
+                (new SuperAdminService())->convertToClient((int)$svcRow['id']);
+            }
+        } catch (\Throwable $e) {
+            error_log('[Mia] Auto-convert error: ' . $e->getMessage());
+        }
+
         $bizName = $session['business_name'] ?? 'tu negocio';
         $bizType = $session['business_type'] ?? 'negocio';
         return $this->aiReply($phone, $session, $message,
@@ -482,6 +493,24 @@ class MiaSalesService
      * Generate an AI reply using full conversation history as context.
      * Appends user message to history before calling, appends AI reply after.
      */
+    /**
+     * Detect language of a string: returns 'es' or 'en' (or other ISO code).
+     * Simple heuristic — common Spanish words vs English words.
+     */
+    private function detectLang(string $text): string
+    {
+        $t = mb_strtolower($text);
+        $esWords = ['que', 'de', 'es', 'en', 'un', 'una', 'por', 'con', 'para', 'los', 'las', 'del', 'no', 'si', 'me', 'mi', 'tu', 'su', 'hola', 'ola', 'como', 'cómo', 'gracias', 'buenas', 'tengo', 'quiero', 'hotel', 'negocio'];
+        $enWords = ['the', 'is', 'are', 'this', 'that', 'have', 'has', 'with', 'what', 'how', 'hello', 'hi', 'yes', 'no', 'great', 'good', 'thanks', 'and', 'for', 'my', 'your', 'want', 'need', 'can', 'we', 'our'];
+        $esScore = 0;
+        $enScore = 0;
+        foreach (preg_split('/\W+/', $t) as $word) {
+            if (in_array($word, $esWords)) $esScore++;
+            if (in_array($word, $enWords)) $enScore++;
+        }
+        return $enScore > $esScore ? 'en' : 'es';
+    }
+
     private function aiReply(
         string $phone,
         array  $session,
@@ -490,9 +519,10 @@ class MiaSalesService
     ): array {
         $this->appendHistory($phone, 'user', $userMessage);
 
+        $lang    = $this->detectLang($userMessage);
         $history  = $this->loadHistory($phone);
         $messages = array_merge(
-            [['role' => 'system', 'content' => $this->buildSystemPrompt($session, $turnGoal)]],
+            [['role' => 'system', 'content' => $this->buildSystemPrompt($session, $turnGoal, $lang)]],
             $history
         );
 
@@ -502,7 +532,7 @@ class MiaSalesService
         return ['reply' => $reply];
     }
 
-    private function buildSystemPrompt(array $session, string $turnGoal): string
+    private function buildSystemPrompt(array $session, string $turnGoal, string $lang = 'es'): string
     {
         $state   = $session['state']          ?? 'new';
         $volume  = $session['room_count']     ? "{$session['room_count']} unidades/clientes/mes" : 'desconocido';
@@ -515,6 +545,10 @@ class MiaSalesService
         $goalBlock = $turnGoal
             ? "\n\n═══ TU MISIÓN EN ESTE TURNO ═══\n{$turnGoal}"
             : '';
+
+        $langRule = $lang === 'en'
+            ? "\n\n⚠️ LANGUAGE RULE (MANDATORY): The user is writing in ENGLISH. You MUST reply in ENGLISH for this entire conversation. Do not switch back to Spanish."
+            : "\n\n⚠️ REGLA DE IDIOMA (OBLIGATORIA): El usuario escribe en español. Responde siempre en español.";
 
         return <<<PROMPT
 Eres *Mia*, la mejor consultora de ventas de AiniDesk — y las mejores vendedoras hablan MENOS, no más.
@@ -583,14 +617,14 @@ Volumen: {$volume} | Método actual: {$method} | Dolor principal: {$pain}
 Nombre del negocio: {$bizName} | Email: {$email}
 
 ═══ REGLAS DE COMUNICACIÓN ═══
-• Español natural; inglés si el usuario escribe en inglés
+• Español natural de Latinoamérica; inglés si el usuario escribe en inglés — NUNCA mezcles idiomas en el mismo mensaje
 • 1-2 emojis máximo, solo si suman
 • Termina con UNA sola pregunta o acción — nunca dos
 • NUNCA repitas lo que ya dijiste en el historial — avanza
 • NUNCA suenes a script corporativo. Cada mensaje fresco, como un humano real
 • Si no sabes algo, ofrece conectarlos con el equipo: *mia.ainitravel.com*
 • Si dicen que no les interesa, respeta su decisión con elegancia y cierra bien
-• Listas con viñetas: SOLO para mostrar planes/precios cuando el cliente lo pide{$goalBlock}
+• Listas con viñetas: SOLO para mostrar planes/precios cuando el cliente lo pide{$langRule}{$goalBlock}
 PROMPT;
     }
 
