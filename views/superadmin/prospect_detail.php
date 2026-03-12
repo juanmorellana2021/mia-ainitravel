@@ -50,6 +50,15 @@ require __DIR__ . '/_sidebar.php';
 </div>
 <?php endif; ?>
 
+<?php if (isset($_GET['converted'], $_GET['tmp'])): ?>
+<div class="alert border-0 mb-3" style="background:rgba(0,168,132,0.12);color:#6ee7b7;border:1px solid rgba(0,168,132,0.3);border-radius:10px;font-size:0.88rem;">
+    <i class="bi bi-check-circle-fill me-2" style="color:#00a884"></i>
+    <strong>Cliente creado.</strong> Contraseña temporal:
+    <code style="background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:5px;font-size:0.9rem;letter-spacing:.05em;color:#a7f3d0;margin-left:6px;"><?= htmlspecialchars($_GET['tmp']) ?></code>
+    <span style="font-size:0.78rem;color:#64748b;margin-left:8px;">Compártela con el cliente para que inicie sesión.</span>
+</div>
+<?php endif; ?>
+
 <?php if ($alreadyClient): ?>
 <div class="alert border-0 mb-3" style="background:rgba(34,197,94,0.1);color:#86efac;border-radius:10px;font-size:0.88rem;">
     <i class="bi bi-person-check-fill me-1"></i>
@@ -195,16 +204,16 @@ require __DIR__ . '/_sidebar.php';
                     <div style="
                         max-width:80%;padding:8px 12px;border-radius:<?= $isMia ? '4px 12px 12px 12px' : '12px 4px 12px 12px' ?>;
                         font-size:0.83rem;line-height:1.45;
-                        background:<?= $isMia ? 'rgba(99,102,241,0.15)' : 'rgba(30,40,60,0.7)' ?>;
-                        color:<?= $isMia ? '#c7d2fe' : '#cbd5e1' ?>;
-                        border:1px solid <?= $isMia ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.07)' ?>;
+                        background:<?= $isMia ? '#202c33' : '#005c4b' ?>;
+                        color:#e9edef;
+                        border:none;
                     ">
                         <?php if ($isMia): ?>
-                        <div style="font-size:0.7rem;color:#6366f1;font-weight:600;margin-bottom:3px;">
+                        <div style="font-size:0.7rem;color:#00a884;font-weight:600;margin-bottom:3px;">
                             <i class="bi bi-robot me-1"></i>Mia
                         </div>
                         <?php else: ?>
-                        <div style="font-size:0.7rem;color:#94a3b8;font-weight:600;margin-bottom:3px;text-align:right;">
+                        <div style="font-size:0.7rem;color:#8fcebd;font-weight:600;margin-bottom:3px;text-align:right;">
                             Prospecto
                         </div>
                         <?php endif; ?>

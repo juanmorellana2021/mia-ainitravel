@@ -211,9 +211,9 @@ function openChat(id, phone, bizName) {
                 outer.style.cssText = 'display:flex;justify-content:' + (isMia ? 'flex-start' : 'flex-end');
                 const bubble = document.createElement('div');
                 bubble.style.cssText = 'max-width:85%;padding:8px 12px;font-size:0.83rem;line-height:1.45;' + (isMia
-                    ? 'background:rgba(99,102,241,0.15);color:#c7d2fe;border:1px solid rgba(99,102,241,0.25);border-radius:4px 12px 12px 12px;'
-                    : 'background:rgba(30,40,60,0.8);color:#cbd5e1;border:1px solid rgba(255,255,255,0.07);border-radius:12px 4px 12px 12px;');
-                bubble.innerHTML = '<div style="font-size:0.68rem;font-weight:600;margin-bottom:3px;color:' + (isMia ? '#6366f1' : '#94a3b8') + '">'
+                    ? 'background:#202c33;color:#e9edef;border:none;border-radius:4px 12px 12px 12px;'
+                    : 'background:#005c4b;color:#e9edef;border:none;border-radius:12px 4px 12px 12px;');
+                bubble.innerHTML = '<div style="font-size:0.68rem;font-weight:600;margin-bottom:3px;color:' + (isMia ? '#00a884' : '#8fcebd') + '">'  
                     + (isMia ? '<i class="bi bi-robot me-1"></i>Mia' : 'Prospecto') + '</div>'
                     + escapeHtml(msg.content || '').replace(/\n/g, '<br>');
                 outer.appendChild(bubble);

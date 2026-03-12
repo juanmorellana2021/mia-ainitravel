@@ -260,9 +260,9 @@ function openChat(id, phone, bizName) {
                 const bubble = document.createElement('div');
                 bubble.className = 'chat-bubble';
                 bubble.style.cssText = isMia
-                    ? 'background:rgba(99,102,241,0.15);color:#c7d2fe;border:1px solid rgba(99,102,241,0.25);border-radius:4px 12px 12px 12px;'
-                    : 'background:rgba(30,40,60,0.8);color:#cbd5e1;border:1px solid rgba(255,255,255,0.07);border-radius:12px 4px 12px 12px;';
-                bubble.innerHTML = '<div class="role-label" style="color:' + (isMia ? '#6366f1' : '#94a3b8') + '">' +
+                    ? 'background:#202c33;color:#e9edef;border:none;border-radius:4px 12px 12px 12px;'
+                    : 'background:#005c4b;color:#e9edef;border:none;border-radius:12px 4px 12px 12px;';
+                bubble.innerHTML = '<div class="role-label" style="color:' + (isMia ? '#00a884' : '#8fcebd') + '">'  +
                     (isMia ? '<i class="bi bi-robot me-1"></i>Mia' : 'Prospecto') +
                     '</div>' + escapeHtml(msg.content || '').replace(/\n/g, '<br>');
                 outer.appendChild(bubble);
