@@ -391,7 +391,7 @@ ob_start();
                         <td class="text-start fw-semibold">Costo mensual</td>
                         <td class="text-secondary">Salarios + horas extra</td>
                         <td class="text-danger">S/3,000–S/6,000+</td>
-                        <td class="bg-success bg-opacity-10 text-success fw-bold">Desde S/399</td>
+                        <td class="bg-success bg-opacity-10 text-success fw-bold">Desde <?= App::CURRENCY ?><?= number_format(App::PLAN_STARTER) ?></td>
                     </tr>
                 </tbody>
             </table>

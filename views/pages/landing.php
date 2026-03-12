@@ -297,7 +297,7 @@ ob_start();
             <div class="col-lg-6">
                 <h2 class="fw-bold mb-3">Los números no mienten</h2>
                 <p class="lead">Si gastas S/1,000 al mes en Facebook Ads y el 60% de tus leads quedan sin responder, estás tirando S/600 a la basura cada mes.</p>
-                <p>Con Mia respondiendo al instante, podrías <strong>convertir el doble de leads</strong> sin contratar más personal — eso puede significar <strong>S/3,000–S/8,000 en ventas adicionales</strong> por solo S/399/mes.</p>
+                <p>Con Mia respondiendo al instante, podrías <strong>convertir el doble de leads</strong> sin contratar más personal — eso puede significar <strong>S/3,000–S/8,000 en ventas adicionales</strong> por solo <?= App::CURRENCY ?><?= number_format(App::PLAN_STARTER) ?>/mes.</p>
                 <p class="fw-bold text-success fs-5">Por cada S/1 que inviertes → recuperas S/8 o más</p>
                 <div class="alert alert-success border-0 mt-3 py-3">
                     <i class="bi bi-lightbulb-fill me-2"></i>
