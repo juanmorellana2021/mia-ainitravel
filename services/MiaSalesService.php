@@ -8,7 +8,7 @@
  * State machine tracks what has been collected (size, method, pain, name, email).
  * Full conversation history is stored per-phone and passed to the AI for context.
  *
- * Flow: new → intro → qualifying_size → qualifying_method → qualifying_pain
+ * Flow: new → collecting_contact_name → intro → qualifying_size → qualifying_method → qualifying_pain
  *       → roi_pitch → demo → benefits → closing → collecting_name
  *       → collecting_email → captured
  */
@@ -115,16 +115,17 @@ class MiaSalesService
         }
 
         return match ($state) {
-            'new'               => $this->handleNew($phone, $session, $message),
-            'intro'             => $this->handleIntro($phone, $session, $message),
-            'qualifying_size'   => $this->handleQualifySize($phone, $session, $message),
-            'qualifying_method' => $this->handleQualifyMethod($phone, $session, $message),
-            'qualifying_pain'   => $this->handleQualifyPain($phone, $session, $message),
-            'roi_pitch'         => $this->handleRoiPitch($phone, $session, $message),
-            'demo'              => $this->handleDemo($phone, $session, $message),
-            'benefits'          => $this->handleBenefits($phone, $session, $message),
-            'closing'           => $this->handleClosing($phone, $session, $message),
-            'collecting_name'   => $this->handleCollectName($phone, $session, $message),
+            'new'                      => $this->handleNew($phone, $session, $message),
+            'collecting_contact_name'  => $this->handleCollectContactName($phone, $session, $message),
+            'intro'                    => $this->handleIntro($phone, $session, $message),
+            'qualifying_size'          => $this->handleQualifySize($phone, $session, $message),
+            'qualifying_method'        => $this->handleQualifyMethod($phone, $session, $message),
+            'qualifying_pain'          => $this->handleQualifyPain($phone, $session, $message),
+            'roi_pitch'                => $this->handleRoiPitch($phone, $session, $message),
+            'demo'                     => $this->handleDemo($phone, $session, $message),
+            'benefits'                 => $this->handleBenefits($phone, $session, $message),
+            'closing'                  => $this->handleClosing($phone, $session, $message),
+            'collecting_name'          => $this->handleCollectName($phone, $session, $message),
             'collecting_email'  => $this->handleCollectEmail($phone, $session, $message),
             'captured'          => $this->handleCaptured($phone, $session, $message),
             default             => $this->handleNew($phone, $session, $message),
@@ -140,14 +141,44 @@ class MiaSalesService
 
     private function handleNew(string $phone, array $session, string $message): array
     {
-        $this->updateSession($phone, ['state' => 'intro']);
-        $session['state'] = 'intro';
+        $this->updateSession($phone, ['state' => 'collecting_contact_name']);
+        $session['state'] = 'collecting_contact_name';
         return $this->aiReply($phone, $session, $message,
-            "Primera vez que escribe. Saludo MUY corto y directo — máximo 3 líneas en total. " .
-            "Preséntate: Mia de AiniDesk. Una frase de qué hacemos (WhatsApp automático para negocios). " .
-            "Termina con UNA sola pregunta: ¿qué tipo de negocio tienes? " .
-            "NADA de stats, NADA de casos de éxito aún, NADA de listas. " .
-            "Tono: persona real que acaba de conocerte, no vendedor. Breve, cálido, curioso."
+            "Primera vez que escribe. Saluda con 'Hola' — cálido, breve, profesional. " .
+            "Preséntate en UNA frase: Mia de AiniDesk, asistente de WhatsApp para negocios. " .
+            "Luego haz UNA sola pregunta: el nombre de la persona. Ej: '¿Con quién tengo el gusto?' " .
+            "NADA más todavía. Sin preguntas de negocio, sin pitch. Solo el saludo y el nombre."
+        );
+    }
+
+    private function handleCollectContactName(string $phone, array $session, string $message): array
+    {
+        $text = trim($message);
+
+        // Try to extract name from "soy X", "me llamo X", "mi nombre es X"
+        $name = null;
+        if (preg_match('/\b(?:soy|me\s+llamo|mi\s+nombre\s+(?:es)?)\s+([A-Za-záéíóúüñÁÉÍÓÚÜÑ]{2,})/iu', $text, $m)) {
+            $name = $m[1];
+        } else {
+            $words = array_filter(preg_split('/\s+/', $text));
+            if (count($words) <= 3 && strlen($text) >= 2 && strlen($text) <= 40) {
+                $name = $text;
+            }
+        }
+
+        if (!$name || strlen(trim($name)) < 2) {
+            return $this->aiReply($phone, $session, $message,
+                "No pudiste identificar el nombre. Pide solo el nombre de la persona, de forma breve y amigable."
+            );
+        }
+
+        $name = mb_convert_case(trim($name), MB_CASE_TITLE, 'UTF-8');
+        $this->updateSession($phone, ['state' => 'intro', 'contact_name' => $name]);
+        $session = array_merge($session, ['state' => 'intro', 'contact_name' => $name]);
+        return $this->aiReply($phone, $session, $message,
+            "Ahora sabes el nombre del cliente: {$name}. Salúdalo por su nombre con calidez genuina — " .
+            "sin exagerar. Luego haz UNA sola pregunta: ¿qué tipo de negocio tiene? " .
+            "Breve, cálido, profesional."
         );
     }
 
@@ -562,13 +593,15 @@ class MiaSalesService
 
     private function buildSystemPrompt(array $session, string $turnGoal, string $lang = 'es'): string
     {
-        $state   = $session['state']          ?? 'new';
-        $volume  = $session['room_count']     ? "{$session['room_count']} unidades/clientes/mes" : 'desconocido';
-        $method  = $session['current_method'] ? $this->methodLabel($session['current_method']) : 'desconocido';
-        $pain    = $session['pain_point']     ? $this->painLabel($session['pain_point']) : 'desconocido';
-        $bizName = $session['business_name']  ?? 'desconocido';
-        $email   = $session['email']          ?? 'pendiente';
-        $bizType = $session['business_type']  ?? 'negocio';
+        $state       = $session['state']          ?? 'new';
+        $volume      = $session['room_count']     ? "{$session['room_count']} unidades/clientes/mes" : 'desconocido';
+        $method      = $session['current_method'] ? $this->methodLabel($session['current_method']) : 'desconocido';
+        $pain        = $session['pain_point']     ? $this->painLabel($session['pain_point']) : 'desconocido';
+        $bizName     = $session['business_name']  ?? 'desconocido';
+        $email       = $session['email']          ?? 'pendiente';
+        $bizType     = $session['business_type']  ?? 'negocio';
+        $contactName = $session['contact_name']   ?? null;
+        $clientRef   = $contactName ? "Nombre del cliente: {$contactName}" : 'Nombre del cliente: aún no conocido (trátalo con respeto — "señor/a" si no sabes el nombre)';
 
         $goalBlock = $turnGoal
             ? "\n\n═══ TU MISIÓN EN ESTE TURNO ═══\n{$turnGoal}"
@@ -644,9 +677,13 @@ Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 Etapa: {$state} | Tipo de negocio: {$bizType}
 Volumen: {$volume} | Método actual: {$method} | Dolor principal: {$pain}
 Nombre del negocio: {$bizName} | Email: {$email}
+{$clientRef}
 
 ═══ REGLAS DE COMUNICACIÓN ═══
 • Español natural de Latinoamérica; inglés si el usuario escribe en inglés — NUNCA mezcles idiomas en el mismo mensaje
+• Saluda SIEMPRE con "Hola" — nunca "Oye", nunca "Hey", nunca "¿Qué tal?"
+• Si sabes el nombre del cliente, úsalo con naturalidad (ej: "Hola, {$contactName}"). Si no lo sabes, trata con respeto: "señor" / "señora"
+• Tono: cálido y profesional — cercano sin ser irrespetuoso
 • 1-2 emojis máximo, solo si suman
 • Termina con UNA sola pregunta o acción — nunca dos
 • NUNCA repitas lo que ya dijiste en el historial — avanza
