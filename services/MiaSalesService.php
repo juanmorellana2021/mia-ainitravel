@@ -231,6 +231,20 @@ class MiaSalesService
     {
         $msg = mb_strtolower(trim($message));
 
+        // If they're asking what Mia is / for more info, answer them first — don't skip to pitch
+        if (preg_match('/\b(qu[eé]\s+(es|ofrec|hac|son)|more\s+info|m[aá]s\s+info|c[oó]mo\s+funciona|qu[eé]\s+incluye|de\s+qu[eé]\s+se\s+trata|me\s+cuentas|cu[eé]ntame|explain|tell\s+me|what\s+do\s+you|what\s+is\s+this|quiero\s+saber|necesito\s+saber)\b/i', $msg)) {
+            // Stay in qualifying_pain — answer the question then loop back
+            $bizType = $session['business_type'] ?? 'negocio';
+            return $this->aiReply($phone, $session, $message,
+                "El prospecto quiere saber más sobre Mia ANTES de continuar. Es una señal de interés real — respóndele con honestidad y entusiasmo. "
+                . "Explica en 3-4 líneas máximo qué es Mia: un asistente de WhatsApp con IA que atiende clientes 24/7 para negocios como el suyo, "
+                . "responde preguntas, toma reservas/pedidos, y le avisa al dueño en tiempo real. Sin tecnicismos. "
+                . "Usa el tipo de negocio ({$bizType}) para personalizar un ejemplo breve y concreto de cómo Mia ayudaría específicamente a ellos. "
+                . "Menciona los 7 días gratuitos para reducir la fricción. "
+                . "Termina con UNA sola pregunta que retome la calificación: algo como '¿Y tú cómo gestionas ahora los mensajes que llegan fuera de horario?'"
+            );
+        }
+
         $pain = 'general';
         if (preg_match('/\bhorario|noche|fuera de\b/i', $msg) || str_contains($msg, '1')) {
             $pain = 'after_hours';
