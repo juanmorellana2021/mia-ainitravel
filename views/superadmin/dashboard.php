@@ -120,4 +120,88 @@ require __DIR__ . '/_sidebar.php';
     </div>
 </div>
 
+<!-- Mia leads feed -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="sa-table-card">
+            <div class="card-header-bar">
+                <span><i class="bi bi-whatsapp me-2" style="color:#22c55e"></i>Prospectos de Mia — actividad reciente</span>
+                <a href="<?= $base ?>/superadmin/prospects" class="btn btn-sm btn-outline-secondary" style="font-size:0.78rem">Ver todos</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Teléfono</th>
+                            <th>Negocio</th>
+                            <th>Tipo</th>
+                            <th>Etapa</th>
+                            <th>Última actividad</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($recentProspects)): ?>
+                        <tr><td colspan="6" class="text-center text-muted py-4" style="font-size:0.88rem">Aún no hay prospectos. Serán visibles aquí cuando alguien escriba a Mia.</td></tr>
+                        <?php endif; ?>
+                        <?php foreach ($recentProspects as $p):
+                            $stateCls = match($p['state']) {
+                                'captured'          => 'badge-active',
+                                'closing','demo',
+                                'roi_pitch','benefits' => 'badge-trial',
+                                'new','intro'       => 'bg-secondary bg-opacity-10 text-secondary border',
+                                default             => 'bg-secondary bg-opacity-10 text-secondary border',
+                            };
+                            $stateLabel = match($p['state']) {
+                                'new'               => 'Nuevo',
+                                'intro'             => 'Intro',
+                                'qualifying_size'   => 'Calificando',
+                                'qualifying_method' => 'Método',
+                                'qualifying_pain'   => 'Dolor',
+                                'roi_pitch'         => 'ROI pitch',
+                                'demo'              => 'Demo',
+                                'benefits'          => 'Beneficios',
+                                'closing'           => 'Cierre',
+                                'collecting_name'   => 'Datos',
+                                'collecting_email'  => 'Email',
+                                'captured'          => '✅ Capturado',
+                                default             => ucfirst($p['state']),
+                            };
+                            $ago = (time() - strtotime($p['updated_at']));
+                            $agoStr = $ago < 60 ? 'hace un momento'
+                                    : ($ago < 3600 ? 'hace ' . (int)($ago/60) . ' min'
+                                    : ($ago < 86400 ? 'hace ' . (int)($ago/3600) . ' h'
+                                    : date('d/m/y H:i', strtotime($p['updated_at']))));
+                        ?>
+                        <tr>
+                            <td class="text-muted small font-monospace"><?= htmlspecialchars($p['phone']) ?></td>
+                            <td>
+                                <?php if ($p['business_name']): ?>
+                                    <span class="fw-medium"><?= htmlspecialchars($p['business_name']) ?></span>
+                                    <?php if ($p['contact_name']): ?>
+                                        <br><span class="text-muted small"><?= htmlspecialchars($p['contact_name']) ?></span>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="text-muted small">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-muted small"><?= htmlspecialchars(ucfirst($p['business_type'] ?? '—')) ?></td>
+                            <td><span class="badge <?= $stateCls ?>" style="font-size:0.75rem"><?= $stateLabel ?></span></td>
+                            <td class="text-muted small"><?= $agoStr ?></td>
+                            <td>
+                                <?php if ($p['client_id']): ?>
+                                    <a href="<?= $base ?>/superadmin/clients/<?= $p['client_id'] ?>" class="btn btn-xs btn-outline-success" style="font-size:0.72rem;padding:2px 8px">Cliente</a>
+                                <?php else: ?>
+                                    <a href="<?= $base ?>/superadmin/prospects/<?= $p['id'] ?>" class="btn btn-xs btn-outline-secondary" style="font-size:0.72rem;padding:2px 8px">Ver</a>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php require __DIR__ . '/_foot.php'; ?>

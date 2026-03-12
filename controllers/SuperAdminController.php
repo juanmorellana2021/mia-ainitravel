@@ -61,9 +61,10 @@ class SuperAdminController
     public function dashboard(): void
     {
         $this->requireSuperAdmin();
-        $svc          = new SuperAdminService();
-        $stats        = $svc->stats();
-        $recentSignups = $svc->recentSignups(10);
+        $svc            = new SuperAdminService();
+        $stats          = $svc->stats();
+        $recentSignups  = $svc->recentSignups(10);
+        $recentProspects = $svc->recentProspects(15);
         require __DIR__ . '/../views/superadmin/dashboard.php';
     }
 

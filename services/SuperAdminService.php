@@ -166,6 +166,24 @@ class SuperAdminService
 
     // ── Recent signups ────────────────────────────────────────────────────────
 
+    public function recentProspects(int $limit = 15): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT s.id, s.phone, s.state, s.business_name, s.business_type,
+                        s.email, s.contact_name, s.updated_at, s.created_at,
+                        c.id AS client_id
+                 FROM mia_sales_sessions s
+                 LEFT JOIN mia_clients c ON c.phone COLLATE utf8mb4_unicode_ci = s.phone
+                 ORDER BY s.updated_at DESC LIMIT ?"
+            );
+            $stmt->execute([$limit]);
+            return $stmt->fetchAll();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     public function recentSignups(int $limit = 10): array
     {
         $stmt = $this->db->prepare(
