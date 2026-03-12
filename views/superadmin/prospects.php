@@ -94,7 +94,8 @@ require __DIR__ . '/_sidebar.php';
                 [$label, $color] = $stateLabels[$state] ?? [$state, '#94a3b8'];
                 $converted  = !empty($p['client_id']);
             ?>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;"
+                onclick="openChat(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['phone'])) ?>', '<?= htmlspecialchars(addslashes($p['business_name'] ?: '')) ?>')">
                 <td class="ps-3 py-2 align-middle">
                     <span style="font-family:monospace;font-size:0.82rem;">
                         <?= htmlspecialchars($p['phone']) ?>
@@ -127,10 +128,15 @@ require __DIR__ . '/_sidebar.php';
                 <td class="py-2 align-middle" style="color:#64748b;font-size:0.78rem;white-space:nowrap;">
                     <?= date('d M H:i', strtotime($p['updated_at'])) ?>
                 </td>
-                <td class="pe-3 py-2 align-middle text-end">
-                    <a href="<?= $base ?>/superadmin/prospects/<?= (int)$p['id'] ?>"
+                <td class="pe-3 py-2 align-middle text-end" onclick="event.stopPropagation()">
+                    <button onclick="openChat(<?= (int)$p['id'] ?>, '<?= htmlspecialchars(addslashes($p['phone'])) ?>', '<?= htmlspecialchars(addslashes($p['business_name'] ?: '')) ?>')"
                        class="btn btn-sm"
                        style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:2px 10px;font-size:0.78rem;">
+                        <i class="bi bi-chat-text me-1"></i>Chat
+                    </button>
+                    <a href="<?= $base ?>/superadmin/prospects/<?= (int)$p['id'] ?>"
+                       class="btn btn-sm ms-1"
+                       style="background:rgba(30,40,60,0.6);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:2px 10px;font-size:0.78rem;">
                         <i class="bi bi-eye me-1"></i>Ver
                     </a>
                     <?php if ($converted): ?>
@@ -148,5 +154,72 @@ require __DIR__ . '/_sidebar.php';
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Conversation slide-in panel -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="chatPanel" style="width:420px;background:#0f1623;border-left:1px solid rgba(255,255,255,0.08);">
+    <div class="offcanvas-header" style="border-bottom:1px solid rgba(255,255,255,0.07);padding:14px 18px;">
+        <div>
+            <div style="font-weight:600;color:#e2e8f0;font-size:0.95rem;" id="chatTitle">Conversación</div>
+            <div style="font-size:0.78rem;color:#64748b;" id="chatSubtitle"></div>
+        </div>
+        <div class="ms-auto d-flex gap-2 align-items-center">
+            <a id="chatDetailLink" href="#" class="btn btn-sm" style="font-size:0.75rem;padding:3px 10px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:7px;">Ver detalle</a>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+    </div>
+    <div class="offcanvas-body p-0">
+        <div id="chatLoading" style="display:flex;align-items:center;justify-content:center;height:200px;color:#64748b;font-size:0.88rem;">
+            <i class="bi bi-arrow-repeat me-2" style="animation:spin 1s linear infinite"></i>Cargando...
+        </div>
+        <div id="chatMessages" style="display:none;flex-direction:column;gap:8px;padding:16px;overflow-y:auto;height:calc(100vh - 130px);"></div>
+        <div id="chatEmpty" style="display:none;padding:40px 20px;text-align:center;color:#475569;font-size:0.85rem;">Sin mensajes registrados aún.</div>
+    </div>
+</div>
+
+<style>
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+</style>
+
+<script>
+const BASE = '<?= $base ?>';
+function openChat(id, phone, bizName) {
+    document.getElementById('chatLoading').style.display = 'flex';
+    document.getElementById('chatMessages').style.display = 'none';
+    document.getElementById('chatEmpty').style.display = 'none';
+    document.getElementById('chatMessages').innerHTML = '';
+    document.getElementById('chatTitle').textContent = bizName || phone;
+    document.getElementById('chatSubtitle').textContent = bizName ? phone : '';
+    document.getElementById('chatDetailLink').href = BASE + '/superadmin/prospects/' + id;
+    new bootstrap.Offcanvas(document.getElementById('chatPanel')).show();
+    fetch(BASE + '/superadmin/prospects/' + id + '/chat')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('chatLoading').style.display = 'none';
+            const history = data.history || [];
+            if (!history.length) { document.getElementById('chatEmpty').style.display = 'block'; return; }
+            const wrap = document.getElementById('chatMessages');
+            wrap.style.display = 'flex';
+            history.forEach(msg => {
+                const isMia = msg.role === 'assistant';
+                const outer = document.createElement('div');
+                outer.style.cssText = 'display:flex;justify-content:' + (isMia ? 'flex-start' : 'flex-end');
+                const bubble = document.createElement('div');
+                bubble.style.cssText = 'max-width:85%;padding:8px 12px;font-size:0.83rem;line-height:1.45;' + (isMia
+                    ? 'background:rgba(99,102,241,0.15);color:#c7d2fe;border:1px solid rgba(99,102,241,0.25);border-radius:4px 12px 12px 12px;'
+                    : 'background:rgba(30,40,60,0.8);color:#cbd5e1;border:1px solid rgba(255,255,255,0.07);border-radius:12px 4px 12px 12px;');
+                bubble.innerHTML = '<div style="font-size:0.68rem;font-weight:600;margin-bottom:3px;color:' + (isMia ? '#6366f1' : '#94a3b8') + '">'
+                    + (isMia ? '<i class="bi bi-robot me-1"></i>Mia' : 'Prospecto') + '</div>'
+                    + escapeHtml(msg.content || '').replace(/\n/g, '<br>');
+                outer.appendChild(bubble);
+                wrap.appendChild(outer);
+            });
+            wrap.scrollTop = wrap.scrollHeight;
+        })
+        .catch(() => { document.getElementById('chatLoading').innerHTML = '<span style="color:#f87171">Error al cargar.</span>'; });
+}
+function escapeHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
 
 <?php require __DIR__ . '/_foot.php'; ?>
