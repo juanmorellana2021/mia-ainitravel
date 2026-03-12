@@ -87,6 +87,20 @@ class MiaSalesService
 
         $state = $session['state'] ?? 'new';
 
+        // Universal info-request catch — works at any early qualifying stage
+        if (in_array($state, ['new','intro','qualifying_size','qualifying_method','qualifying_pain'], true) &&
+            preg_match('/\b(qu[eé]\s+(es|ofrec|hac|son)|more\s+info|m[aá]s\s+info|c[oó]mo\s+funciona|qu[eé]\s+incluye|de\s+qu[eé]\s+se\s+trata|me\s+cuentas|cu[eé]ntame|explain|tell\s+me|what\s+do\s+you|what\s+is\s+this|quiero\s+saber|necesito\s+saber|que\s+hacen|que\s+ofrecen|que\s+es\s+esto|que\s+es\s+mia)\b/i', $msg)) {
+            $this->appendHistory($phone, 'user', $message);
+            $bizType = $session['business_type'] ?? 'negocio';
+            $reply = $this->aiReply($phone, $session, $message,
+                "El prospecto quiere saber qué es Mia antes de avanzar. Respóndele con calidez y EN MÁXIMO 2 FRASES: "
+                . "Mia es un asistente de WhatsApp con IA que atiende clientes 24/7 para negocios como el suyo. "
+                . "Luego, si ya sabes su tipo de negocio ({$bizType}), da un ejemplo específico de 1 línea. "
+                . "Cierra con UNA pregunta curta que retome la conversación — no el pitch, solo curiosidad natural."
+            );
+            return $reply;
+        }
+
         return match ($state) {
             'new'               => $this->handleNew($phone, $session, $message),
             'intro'             => $this->handleIntro($phone, $session, $message),
@@ -284,17 +298,10 @@ class MiaSalesService
         ];
 
         return $this->aiReply($phone, $session, $message,
-            "MOMENTO DE VERDAD — el prospecto acaba de articular su dolor. Ahora ejecuta el pitch de ROI perfecto. " .
-            "Negocio: {$bizType} | Volumen: ~{$rooms} | Dolor: {$painContextMap[$pain]}. " .
-            "PASO 1 — Valida su dolor con empatía real, no corporativa. Demuestra que entiendes exactamente QUÉ les cuesta. " .
-            "PASO 2 — Ponle número a su pérdida: 'Con {$rooms} clientes/mes y un 15% sin respuesta, " .
-            "estás dejando ir ~S/" . number_format($monthlyLost) . " al mes — no porque no quieras atenderlos, " .
-            "sino porque físicamente no puedes estar las 24h.' Haz que SIENTAN ese número. " .
-            "PASO 3 — El contraste: Mia cuesta S/399/mes. Si solo captura 1 de cada 3 clientes perdidos, " .
-            "tienes S/{$roi} de retorno por cada sol invertido. No es un gasto — es la inversión más obvia del año. " .
-            "PASO 4 — Usa el caso de éxito más relevante para SU tipo de negocio del system prompt. " .
-            "PASO 5 — Cierra este turno con UNA pregunta de micro-compromiso: '¿Quieres que te muestre exactamente " .
-            "cómo funciona para un negocio como el tuyo en 2 minutos?' — espera su respuesta."
+            "El prospecto describió su dolor. Dos movimientos SOLAMENTE — caben en 2 mensajes cortos: " .
+            "1) Valida con empatía real en 1 frase ('Eso pasa más de lo que crees...') " .
+            "2) Ponle número en 1 frase: 'Con ~{$rooms} clientes/mes, ese 15% sin respuesta son ~S/" . number_format($monthlyLost) . " al mes que se van solos.' " .
+            "Pausa. NO expliques Mia todavía. Solo pregunta: '¿Quieres ver cómo otros {$bizType} lo resolvieron?' — espera su sí."
         );
     }
 
@@ -310,16 +317,10 @@ class MiaSalesService
 
             $bizType = $session['business_type'] ?? 'business';
             return $this->aiReply($phone, $session, $message,
-                "DEMO TIME — haz esto cinematográfico, no un manual de instrucciones. " .
-                "Pon contexto: 'Son las 11:30pm. El dueño de {$bizType} está dormido. Un cliente escribe...' " .
-                "Luego muestra la conversación REAL entre cliente y Mia — con nombres inventados pero realistas, " .
-                "mensajes naturales, respuestas rápidas e inteligentes de Mia. " .
-                "Para hotel/agencia: cliente consulta disponibilidad → Mia pregunta fechas → confirma precio → reserva hecha. " .
-                "Para restaurante: cliente pide delivery → Mia toma pedido → confirma tiempo de entrega. " .
-                "Para retail/servicios: cliente pregunta precio → Mia responde + ofrece variante → cliente compra. " .
-                "Al final de la demo: 'Y mientras eso pasaba, {$bizType} recibió esta notificación: " .
-                "[muestra el WhatsApp de alerta al dueño con nombre, pedido y datos del cliente].' " .
-                "Pausa dramática. Luego: '¿Qué te pareció?' — espera su reacción."
+                "DEMO — sé cinematográfico en 3-4 líneas máximo. " .
+                "Una sola escena: '11pm. El dueño duerme. Un cliente escribe preguntando [algo específico de {$bizType}]. " .
+                "Mia responde en segundos, confirma, el dueño recibe notificación.' " .
+                "Sin listas. Sin pasos. Solo la escena. Termina con: '¿Qué te pareció?'"
             );
         }
 
@@ -387,10 +388,10 @@ class MiaSalesService
 
             $this->updateSession($phone, ['state' => 'collecting_name']);
             $session['state'] = 'collecting_name';
+            $bizType = $session['business_type'] ?? 'negocio';
             return $this->aiReply($phone, $session, $message,
-                "El usuario quiere empezar. Exprésate con entusiasmo genuino — tomó una buena decisión. " .
-                "Para activar la prueba necesitas el nombre de su negocio ({$bizType}). " .
-                "Pídelo de forma cálida y natural, como si fuera el primer paso de algo emocionante."
+                "El usuario quiere empezar. Entusiasmo genuino — 1 frase de celebración, luego pide solo su nombre " .
+                "(no el del negocio todavía — el SUYO, para personalizar). Cálido, breve."
             );
         }
 
