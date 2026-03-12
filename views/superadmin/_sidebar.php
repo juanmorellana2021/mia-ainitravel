@@ -29,6 +29,10 @@ $base = App::basePath();
            class="sa-nav-item <?= ($activeNav ?? '') === 'clients' ? 'active' : '' ?>">
             <i class="bi bi-buildings"></i> Clientes
         </a>
+        <a href="<?= $base ?>/superadmin/analytics"
+           class="sa-nav-item <?= ($activeNav ?? '') === 'analytics' ? 'active' : '' ?>">
+            <i class="bi bi-bar-chart-line"></i> Analíticas
+        </a>
         <div class="sa-nav-divider"></div>
         <a href="<?= $base ?>/dashboard" class="sa-nav-item" target="_blank">
             <i class="bi bi-box-arrow-up-right"></i> App cliente

@@ -213,6 +213,72 @@ class SuperAdminController
         ], JSON_UNESCAPED_UNICODE);
     }
 
+    // ── Analytics ─────────────────────────────────────────────────────────────
+
+    public function analytics(): void
+    {
+        $this->requireSuperAdmin();
+        $db   = (new Database())->getConnection();
+        $days = max(1, min(90, (int)($_GET['days'] ?? 30)));
+
+        // Totals over period
+        $totals = $db->query("
+            SELECT
+                COUNT(DISTINCT CASE WHEN event='pageview' THEN session_id END) AS sessions,
+                COUNT(DISTINCT ip_hash)                                         AS unique_visitors,
+                COUNT(CASE WHEN event='pageview' THEN 1 END)                    AS pageviews,
+                COUNT(CASE WHEN event='cta_click' THEN 1 END)                   AS cta_clicks,
+                ROUND(AVG(CASE WHEN event='pageleave' AND duration_ms>0 THEN duration_ms END)/1000,1) AS avg_seconds
+            FROM mia_page_events
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+        ")->fetch(PDO::FETCH_ASSOC);
+
+        // Daily pageviews for chart
+        $daily = $db->query("
+            SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+            FROM mia_page_events
+            WHERE event='pageview' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY day ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Top pages
+        $topPages = $db->query("
+            SELECT page, COUNT(*) AS views
+            FROM mia_page_events
+            WHERE event='pageview' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY page ORDER BY views DESC LIMIT 10
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Top referrers
+        $topReferrers = $db->query("
+            SELECT
+                CASE WHEN referrer='' THEN '(directo)' ELSE referrer END AS ref,
+                COUNT(*) AS cnt
+            FROM mia_page_events
+            WHERE event='pageview' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY ref ORDER BY cnt DESC LIMIT 10
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // UTM sources
+        $topUtm = $db->query("
+            SELECT utm_source AS src, utm_medium AS med, utm_campaign AS camp, COUNT(*) AS cnt
+            FROM mia_page_events
+            WHERE event='pageview' AND utm_source != '' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY src, med, camp ORDER BY cnt DESC LIMIT 10
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Device breakdown
+        $devices = $db->query("
+            SELECT device, COUNT(DISTINCT session_id) AS cnt
+            FROM mia_page_events
+            WHERE event='pageview' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY device
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        require __DIR__ . '/../views/superadmin/analytics.php';
+    }
+
     // ── Convert prospect → client ─────────────────────────────────────────────
 
     public function prospectConvert(int $id): void

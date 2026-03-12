@@ -81,6 +81,10 @@ match (true) {
     $uri === 'api/client-status' && $method === 'POST'
         => (new ApiController())->clientStatus(),
 
+    // Public page-event tracking pixel
+    $uri === 'api/track'
+        => (new ApiController())->track(),
+
     // ── Client auth ───────────────────────────────────────────────────────
     $uri === 'login' && $method === 'GET'
         => (new AuthController())->loginForm(),
@@ -215,6 +219,10 @@ match (true) {
 
     str_starts_with($uri, 'superadmin/prospects/') && $method === 'GET'
         => (new SuperAdminController())->prospectDetail((int)basename($uri)),
+
+    // ── Superadmin — Analytics ───────────────────────────────────────────────
+    $uri === 'superadmin/analytics'
+        => (new SuperAdminController())->analytics(),
 
     // ── Admin — leads ─────────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'

@@ -94,5 +94,31 @@ $base = App::basePath();
 
 <script src="<?= App::asset('js/bootstrap.bundle.min.js') ?>"></script>
 <?php if (!empty($pageScripts)) echo $pageScripts; ?>
+<script>
+(function(){
+  var BASE='<?= App::basePath() ?>';
+  var sid=localStorage.getItem('_mia_sid');if(!sid){sid=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('_mia_sid',sid);}
+  var t0=Date.now();
+  var ua=navigator.userAgent;
+  var dev=(/Mobi|Android/i.test(ua)?'mobile':(/iPad|Tablet/i.test(ua)?'tablet':'desktop'));
+  var qs=new URLSearchParams(location.search);
+  function send(ev,extra){
+    var p={event:ev,page:location.pathname,referrer:document.referrer,
+      utm_source:qs.get('utm_source')||'',utm_medium:qs.get('utm_medium')||'',
+      utm_campaign:qs.get('utm_campaign')||'',device:dev,sid:sid,
+      duration_ms:(ev==='pageleave'?Date.now()-t0:0)};
+    if(extra)Object.assign(p,extra);
+    navigator.sendBeacon(BASE+'/api/track',JSON.stringify(p));
+  }
+  send('pageview');
+  var sent=false;
+  window.addEventListener('pagehide',function(){if(!sent){sent=true;send('pageleave');}});
+  document.querySelectorAll('a[href*="/register"],a[href*="register"],button').forEach(function(el){
+    if(/prueba|empezar|gratis|demo|register|start/i.test(el.textContent)){
+      el.addEventListener('click',function(){send('cta_click',{label:el.textContent.trim().slice(0,60)});},true);
+    }
+  });
+})();
+</script>
 </body>
 </html>
