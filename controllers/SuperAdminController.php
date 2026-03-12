@@ -186,6 +186,33 @@ class SuperAdminController
         require __DIR__ . '/../views/superadmin/prospect_detail.php';
     }
 
+    /** JSON — returns conversation history for the slide-in panel */
+    public function prospectChat(int $id): void
+    {
+        $this->requireSuperAdmin();
+        header('Content-Type: application/json');
+        $data = (new SuperAdminService())->prospectFull($id);
+        if (!$data) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Not found']);
+            return;
+        }
+        echo json_encode([
+            'session' => [
+                'id'            => $data['session']['id'],
+                'phone'         => $data['session']['phone'],
+                'state'         => $data['session']['state'],
+                'business_name' => $data['session']['business_name'],
+                'contact_name'  => $data['session']['contact_name'],
+                'business_type' => $data['session']['business_type'],
+                'email'         => $data['session']['email'],
+                'updated_at'    => $data['session']['updated_at'],
+                'client_id'     => $data['session']['client_id'] ?? null,
+            ],
+            'history' => $data['history'],
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
     // ── Convert prospect → client ─────────────────────────────────────────────
 
     public function prospectConvert(int $id): void
