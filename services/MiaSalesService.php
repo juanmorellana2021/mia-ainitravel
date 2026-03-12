@@ -287,7 +287,7 @@ class MiaSalesService
         $lostPerMonth = max(2, (int) ($rooms * 0.15));
         $monthlyLost  = $lostPerMonth * $avgTicket;
         $captured     = (int) ($monthlyLost * 0.30);
-        $roi          = max(2, (int) ($captured / 399));
+        $roi          = max(2, (int) ($captured / 199));
 
         $painContextMap = [
             'after_hours'      => 'pierden clientes/ventas cuando escriben fuera del horario de atención',
@@ -358,7 +358,7 @@ class MiaSalesService
         return $this->aiReply($phone, $session, $message,
             "Acaban de ver la demo. Capitaliza el momento emocional — están en su pico de interés AHORA. " .
             "NO presentes los 3 planes como lista genérica. Recomienda UNO basado en lo que sabes de su negocio: " .
-            "si tienen volumen alto o son agencia/hotel → Pro S/699. Si son pequeños o acaban de arrancar → Básico S/399. " .
+            "si tienen alto volumen o son agencia/hotel → Pro S/699. Si son medianos → Básico S/399. Si son pequeños o acaban de arrancar → Starter S/199. " .
             "Di algo como: 'Para un {$bizType} de tu tamaño, el plan Pro tiene más sentido porque...' " .
             "Menciona los 7 días gratis como eliminador de riesgo: 'No arriesgas nada — pruébalo gratis 7 días " .
             "y si no ves resultados, cancelas con un mensaje.' " .
@@ -373,7 +373,7 @@ class MiaSalesService
         $session['state'] = 'closing';
         return $this->aiReply($phone, $session, $message,
             "Después de mostrar los beneficios, es momento de cerrar. " .
-            "Presenta los planes (Básico S/399, Pro S/699, Enterprise S/1,199) de forma concisa. " .
+            "Presenta los planes (Starter S/199, Básico S/399, Pro S/699, Enterprise S/1,199) de forma concisa. La configuración es GRATIS. " .
             "Destaca la prueba de 7 días gratis sin compromiso. " .
             "Basándote en lo que sabes de su negocio, sugiere cuál plan le encajaría mejor."
         );
@@ -613,14 +613,15 @@ Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 • *Consultora de servicios*: Agenda 14 citas automáticamente al mes que antes se caían por respuesta lenta.
 
 ═══ PLANES ═══
-• *Básico S/399/mes* — hasta 200 conversaciones/mes. Ideal para empezar.
-• *Pro S/699/mes* — conversaciones ilimitadas + panel completo + reportes automáticos. El más popular.
+• *Starter S/199/mes* — hasta 100 conversaciones/mes. Para negocios que recién empiezan.
+• *Básico S/399/mes* — hasta 300 conversaciones/mes. El más popular para negocios establecidos.
+• *Pro S/699/mes* — conversaciones ilimitadas + panel completo + reportes automáticos. Ideal para alto volumen.
 • *Enterprise S/1,199/mes* — múltiples números WhatsApp, integraciones personalizadas, soporte VIP.
-• Configuración: S/500 pago único (incluye toda la personalización)
+• Configuración: GRATIS — onboarding y personalización incluidos en todos los planes.
 • 🎁 *7 días GRATIS* — sin tarjeta, sin compromiso, cancela cuando quieras.
 
 ═══ OBJECIONES FRECUENTES Y CÓMO MANEJARLAS ═══
-• "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? S/399 al mes es menos de S/14 al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
+• "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? El plan Starter son S/199 al mes — menos de S/7 al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
 • "Lo voy a pensar" → "Claro, es una decisión importante. Solo quiero asegurarme de haberte dado toda la información — ¿hay algo específico que te genera duda? Prefiero resolver eso ahora."
 • "No tengo tiempo para configurarlo" → "Por eso lo hacemos nosotros. Tú no tocas nada — en 48h está listo y funcionando."
 • "Ya tenemos alguien respondiendo WhatsApp" → "Genial. ¿Esa persona responde a las 2am? ¿Los domingos? ¿En menos de 60 segundos siempre? Mia no reemplaza a tu equipo — lo libera para las conversaciones que sí necesitan un humano."
