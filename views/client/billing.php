@@ -130,10 +130,10 @@ require __DIR__ . '/_sidebar.php';
         <?php
         $mpConfigured = !str_starts_with(App::MP_ACCESS_TOKEN, 'PLACEHOLDER');
         $features = [
-            'starter'    => ['Hasta 200 conversaciones/mes', '1 número de WhatsApp', 'Panel de leads básico', 'Soporte por email'],
-            'basic'      => ['Hasta 500 conversaciones/mes', '1 número de WhatsApp', 'Panel de leads básico', 'Soporte por chat'],
-            'pro'        => ['Hasta 2,000 conversaciones/mes', '3 números de WhatsApp', 'Panel avanzado + estadísticas', 'Soporte prioritario 24/7', 'Respuestas personalizadas'],
-            'enterprise' => ['Conversaciones ilimitadas', 'Números ilimitados', 'Dashboard personalizado', 'Gerente de cuenta dedicado', 'Integración con tu CRM'],
+            'starter'    => ['Módulo Soporte 24/7', 'Hasta 500 conversaciones/mes', 'Respuestas automáticas por WhatsApp', '1 usuario incluido', 'Multilingüe (50+ idiomas)'],
+            'basic'      => ['Módulo Soporte 24/7', 'Hasta 1,000 conversaciones/mes', 'Respuestas automáticas por WhatsApp', 'Traspaso humano inteligente', 'Multilingüe (ES · EN · PT · FR + 50 más)'],
+            'pro'        => ['Todo lo del Soporte Básico', 'Conversaciones ilimitadas', 'Módulo Ventas (captura y calificación de leads)', 'Asientos adicionales de equipo disponibles', 'Soporte prioritario 24/7'],
+            'enterprise' => ['Todo lo del Pro', 'Módulo Gestión de negocio completo', 'Múltiples números WhatsApp', 'Integraciones (API, webhooks, Zapier/Make)', 'Account manager dedicado + SLA 99.9%'],
         ];
         ?>
 
