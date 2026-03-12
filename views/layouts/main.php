@@ -113,11 +113,23 @@ $base = App::basePath();
   send('pageview');
   var sent=false;
   window.addEventListener('pagehide',function(){if(!sent){sent=true;send('pageleave');}});
-  document.querySelectorAll('a[href*="/register"],a[href*="register"],button').forEach(function(el){
-    if(/prueba|empezar|gratis|demo|register|start/i.test(el.textContent)){
-      el.addEventListener('click',function(){send('cta_click',{label:el.textContent.trim().slice(0,60)});},true);
-    }
-  });
+    document.querySelectorAll('a,button').forEach(function(el){
+        var txt=(el.textContent||'').trim();
+        var title=(el.getAttribute('title')||'').trim();
+        var aria=(el.getAttribute('aria-label')||'').trim();
+        var href=(el.getAttribute('href')||'').trim();
+        var label=(txt||title||aria||href||'cta').slice(0,60);
+
+        var isKeywordCta=/prueba|empezar|gratis|demo|register|start|whatsapp|mensaje|contactar|ventas/i.test(txt+' '+title+' '+aria);
+        var isWhatsAppLink=/wa\.me|api\.whatsapp\.com/i.test(href) || el.id==='wa-bubble';
+        var isRegisterLink=/\/register|register/i.test(href);
+
+        if(isKeywordCta || isWhatsAppLink || isRegisterLink){
+            el.addEventListener('click',function(){
+                send('cta_click',{label:label,href:href.slice(0,120)});
+            },true);
+        }
+    });
 })();
 </script>
 <!-- WhatsApp floating chat bubble -->
