@@ -218,7 +218,7 @@ class SuperAdminController
     public function analytics(): void
     {
         $this->requireSuperAdmin();
-        $db   = (new Database())->getConnection();
+        $db   = Database::get();
         $days = max(1, min(90, (int)($_GET['days'] ?? 30)));
 
         // Totals over period
