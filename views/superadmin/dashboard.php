@@ -179,7 +179,7 @@ require __DIR__ . '/_sidebar.php';
                                     <?php if ($p['contact_name']): ?><br><span class="text-muted small"><?= htmlspecialchars($p['contact_name']) ?></span><?php endif; ?>
                                 <?php else: ?><span class="text-muted small">&mdash;</span><?php endif; ?>
                             </td>
-                            <td class="text-muted small"><?= htmlspecialchars(ucfirst($p['business_type'] ?? '&mdash;')) ?></td>
+                            <td class="text-muted small"><?= $p['business_type'] ? htmlspecialchars(ucfirst($p['business_type'])) : '<span style="color:#475569">—</span>' ?></td>
                             <td><span class="badge <?= $stateCls ?>" style="font-size:0.75rem"><?= $stateLabel ?></span></td>
                             <td class="text-muted small"><?= $agoStr ?></td>
                             <td onclick="event.stopPropagation()">
