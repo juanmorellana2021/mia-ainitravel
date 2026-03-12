@@ -280,6 +280,72 @@
     .mia-phone-body { min-height: 260px; }
 }
 
+/* ── Mobile landing optimization ───────────────────────── */
+@media (max-width: 767.98px) {
+    .mia-hero {
+        padding-top: 1.25rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+
+    .mia-hero h1,
+    .mia-hero .display-4 {
+        font-size: 1.95rem !important;
+        line-height: 1.2;
+    }
+
+    .mia-hero .lead {
+        font-size: 1rem;
+        line-height: 1.45;
+    }
+
+    .mia-hero .d-flex.gap-3 {
+        gap: .65rem !important;
+    }
+
+    .mia-hero .btn-lg {
+        width: 100%;
+        padding: .8rem 1rem;
+        font-size: 1rem;
+    }
+
+    .mia-hero .badge {
+        font-size: .78rem !important;
+        padding: .5rem .7rem !important;
+    }
+
+    .mia-phone-wrap {
+        margin-top: .5rem;
+        padding-bottom: 38px;
+    }
+
+    .mia-device {
+        width: min(92vw, 320px);
+    }
+
+    .mia-msg {
+        font-size: .74rem;
+    }
+
+    .mia-deal-badge {
+        right: 50%;
+        transform: translateX(50%);
+        bottom: -6px;
+        font-size: .74rem;
+        padding: 5px 11px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .mia-hero h1,
+    .mia-hero .display-4 {
+        font-size: 1.68rem !important;
+    }
+
+    .mia-phone-body {
+        min-height: 236px;
+    }
+}
+
 /* ── Smooth scroll ──────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 

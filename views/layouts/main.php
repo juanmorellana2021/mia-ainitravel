@@ -150,6 +150,18 @@ $base = App::basePath();
   0%,100%{box-shadow:0 4px 16px rgba(37,211,102,.5)}
   50%{box-shadow:0 4px 28px rgba(37,211,102,.85),0 0 0 8px rgba(37,211,102,.15)}
 }
+@media (max-width: 575.98px){
+    #wa-bubble{
+        width:54px !important;
+        height:54px !important;
+        right:14px !important;
+        bottom:14px !important;
+    }
+    #wa-bubble svg{
+        width:26px !important;
+        height:26px !important;
+    }
+}
 </style>
 </body>
 </html>
