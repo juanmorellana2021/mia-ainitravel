@@ -87,6 +87,19 @@ class MiaSalesService
 
         $state = $session['state'] ?? 'new';
 
+        // Universal price-request catch — works at ANY state
+        if (preg_match('/\b(precio|precios|cuanto\s+cuesta|cu[aá]nto\s+cobran|cuanto\s+cobran|costo|tarifa|planes|plan|how\s+much|price|pricing|cost|quanto|quanto\s+custa)\b/i', $msg)) {
+            $this->appendHistory($phone, 'user', $message);
+            $bizType = $session['business_type'] ?? 'negocio';
+            $reply = $this->aiReply($phone, $session, $message,
+                "Pregunta directa de precios. Responde en 2-3 líneas: "
+                . "Tenemos 4 planes: Starter S/199, Básico S/399, Pro S/699, Enterprise S/1,199/mes. Configuración GRATIS. "
+                . "SIEMPRE termina con: '¿Lo mejor? Tienes 7 días gratis para probarlo sin tarjeta. ¿Te interesa?' "
+                . "No des lista larga — solo los números y el trial. Brevísimo."
+            );
+            return $reply;
+        }
+
         // Universal info-request catch — works at any early qualifying stage
         if (in_array($state, ['new','intro','qualifying_size','qualifying_method','qualifying_pain'], true) &&
             preg_match('/\b(qu[eé]\s+(es|ofrec|hac|son)|more\s+info|m[aá]s\s+info|c[oó]mo\s+funciona|qu[eé]\s+incluye|de\s+qu[eé]\s+se\s+trata|me\s+cuentas|cu[eé]ntame|explain|tell\s+me|what\s+do\s+you|what\s+is\s+this|quiero\s+saber|necesito\s+saber|que\s+hacen|que\s+ofrecen|que\s+es\s+esto|que\s+es\s+mia)\b/i', $msg)) {
