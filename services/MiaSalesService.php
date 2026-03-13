@@ -448,8 +448,8 @@ class MiaSalesService
     {
         $msg = mb_strtolower(trim($message));
 
-        if (preg_match('/\bempezar|activar|prueba|quiero|lo quiero|start|trial|básico|basico|pro|enterprise\b/i', $msg) ||
-            preg_match('/\b1\b|\b2\b|\b3\b/', $msg)) {
+        if (preg_match('/\b(empezar|activar|quiero|lo quiero|start|trial|básico|basico|pro|enterprise|me anoto|nos anotamos|adelante|vamos|acepto|confirmado|dale|ok ok|listo si)\b/i', $msg) ||
+            preg_match('/\b(1|2|3)\b/', $msg)) {
 
             // Detect which plan was chosen to store it
             $chosenPlan = null;
