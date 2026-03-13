@@ -77,73 +77,7 @@ class MiaSalesService
             $session = $this->getOrCreateSession($phone);
         }
 
-        // Human handoff shortcut — any state
-        if (preg_match('/\bhumano|agente|persona|hablar con|speak to\b/i', $msg)) {
-            $this->appendHistory($phone, 'user', $message);
-            $reply = "Por supuesto, te conecto con nuestro equipo ahora mismo 🙋\n\n" .
-                     "Puedes escribirnos en *mia.ainitravel.com* o al WhatsApp de soporte — alguien te atiende en minutos.\n\n" .
-                     "¡También puedo seguir ayudándote aquí si prefieres! 😊";
-            $this->appendHistory($phone, 'assistant', $reply);
-            return ['reply' => $reply];
-        }
-
         $state = $session['state'] ?? 'new';
-
-        // Universal price-request catch — works at ANY state
-        if (preg_match('/\b(precio|precios|cuanto\s+cuesta|cu[aá]nto\s+cobran|cuanto\s+cobran|costo|tarifa|planes|plan|how\s+much|price|pricing|cost|quanto|quanto\s+custa)\b/i', $msg)) {
-            $this->appendHistory($phone, 'user', $message);
-            $bizType = $session['business_type'] ?? 'negocio';
-            $reply = $this->aiReply($phone, $session, $message,
-                "Pregunta directa de precios. Responde en 2-3 líneas: "
-                . "Tenemos 4 planes: Starter S/139 (500 convos), Soporte Básico S/299 (1,000 convos), Pro S/499 (ilimitado), Enterprise S/1,199/mes. Configuración GRATIS. "
-                . "SIEMPRE termina con: '¿Lo mejor? Tienes 7 días gratis para probarlo sin tarjeta. ¿Te interesa?' "
-                . "No des lista larga — solo los números y el trial. Brevísimo."
-            );
-            return $reply;
-        }
-
-        // Universal features/functions request — works at ANY state, especially closing
-        if (preg_match('/\b(funciones|función|características|caracter[ií]sticas|que\s+incluye|qu[eé]\s+incluye|que\s+tiene|incluido|incluye|what\s+does\s+it\s+include|features|what\s+is\s+included)\b/i', $msg)) {
-            $this->appendHistory($phone, 'user', $message);
-            $planUrl = 'https://mia.ainitravel.com/pricing';
-            $reply = $this->aiReply($phone, $session, $message,
-                "El prospecto quiere saber las funciones/características de la plataforma Mia. Presenta lo que incluye de forma clara con emojis y saltos de línea.\n\n"
-                . "🤖 *Qué hace Mia por tu negocio:*\n"
-                . "✅ Bot de WhatsApp con IA activo 24/7 — responde en menos de 5 segundos\n"
-                . "✅ Responde en 50+ idiomas automáticamente (español, inglés, portugués...)\n"
-                . "✅ Se configura con tus servicios, precios, horarios y FAQs exactos\n"
-                . "✅ 10 habilidades de personalidad (humor, empatía, estilo premium, urgencia, etc.)\n"
-                . "✅ Panel de control web: ve todos tus leads y conversaciones en un solo lugar\n"
-                . "✅ CRM integrado: gestiona leads por estado (Nuevo, Interesado, Cerrado...)\n"
-                . "✅ Analíticas: cuántos leads capturaste, conversiones, mensajes por día\n"
-                . "✅ Difusión masiva: envía un mensaje de WhatsApp a todos tus leads de una vez\n"
-                . "✅ Notificación inmediata cuando alguien muestra interés\n"
-                . "✅ Autocompletar configuración con IA — escribe el nombre de tu negocio y Mia lo configura sola\n\n"
-                . "📦 *Planes:*\n\n"
-                . "🔹 *Starter — S/139/mes* — Bot IA 24/7, panel CRM, analíticas, difusión masiva\n"
-                . "🔹 *Básico — S/299/mes* — Todo lo anterior + traspaso a agente humano (cuando el cliente pide hablar con una persona, Mia avisa y pausa)\n"
-                . "🔹 *Pro — S/499/mes* — Todo lo anterior + captura de leads automática (Mia pide nombre y contacto y los guarda en tu CRM)\n"
-                . "🔹 *Enterprise — S/1,199/mes* — Todo lo de Pro + múltiples números WhatsApp + soporte dedicado\n\n"
-                . "⚙️ Configuración GRATIS. 7 días de prueba sin tarjeta.\n"
-                . "🔗 Ver todo: {$planUrl}\n\n"
-                . "Termina con UNA pregunta: '¿Qué es lo que más te interesa para tu negocio?'"
-            );
-            return $reply;
-        }
-
-        // Universal info-request catch — works at any early qualifying stage
-        if (in_array($state, ['new','intro','qualifying_size','qualifying_method','qualifying_pain'], true) &&
-            preg_match('/\b(qu[eé]\s+(es|ofrec|hac|son)|more\s+info|m[aá]s\s+info|c[oó]mo\s+funciona|qu[eé]\s+incluye|de\s+qu[eé]\s+se\s+trata|me\s+cuentas|cu[eé]ntame|explain|tell\s+me|what\s+do\s+you|what\s+is\s+this|quiero\s+saber|necesito\s+saber|que\s+hacen|que\s+ofrecen|que\s+es\s+esto|que\s+es\s+mia)\b/i', $msg)) {
-            $this->appendHistory($phone, 'user', $message);
-            $bizType = $session['business_type'] ?? 'negocio';
-            $reply = $this->aiReply($phone, $session, $message,
-                "El prospecto quiere saber qué es Mia antes de avanzar. Respóndele con calidez y EN MÁXIMO 2 FRASES: "
-                . "Mia es un asistente de WhatsApp con IA que atiende clientes 24/7 para negocios como el suyo. "
-                . "Luego, si ya sabes su tipo de negocio ({$bizType}), da un ejemplo específico de 1 línea. "
-                . "Cierra con UNA pregunta curta que retome la conversación — no el pitch, solo curiosidad natural."
-            );
-            return $reply;
-        }
 
         return match ($state) {
             'new'                      => $this->handleNew($phone, $session, $message),
@@ -221,13 +155,6 @@ class MiaSalesService
     private function handleIntro(string $phone, array $session, string $message): array
     {
         $msg = mb_strtolower(trim($message));
-
-        if (preg_match('/\bno\b|no gracias|not interested|no me interesa|no necesito/i', $msg)) {
-            return $this->aiReply($phone, $session, $message,
-                "El usuario no está interesado por ahora. Despídete con genuina calidez y sin presión. " .
-                "Deja la puerta abierta para el futuro. Una respuesta corta y humana."
-            );
-        }
 
         // Capture business type from their reply if mentioned
         $bizType = 'business';
@@ -324,20 +251,6 @@ class MiaSalesService
     private function handleQualifyPain(string $phone, array $session, string $message): array
     {
         $msg = mb_strtolower(trim($message));
-
-        // If they're asking what Mia is / for more info, answer them first — don't skip to pitch
-        if (preg_match('/\b(qu[eé]\s+(es|ofrec|hac|son)|more\s+info|m[aá]s\s+info|c[oó]mo\s+funciona|qu[eé]\s+incluye|de\s+qu[eé]\s+se\s+trata|me\s+cuentas|cu[eé]ntame|explain|tell\s+me|what\s+do\s+you|what\s+is\s+this|quiero\s+saber|necesito\s+saber)\b/i', $msg)) {
-            // Stay in qualifying_pain — answer the question then loop back
-            $bizType = $session['business_type'] ?? 'negocio';
-            return $this->aiReply($phone, $session, $message,
-                "El prospecto quiere saber más sobre Mia ANTES de continuar. Es una señal de interés real — respóndele con honestidad y entusiasmo. "
-                . "Explica en 3-4 líneas máximo qué es Mia: un asistente de WhatsApp con IA que atiende clientes 24/7 para negocios como el suyo, "
-                . "responde preguntas, toma reservas/pedidos, y le avisa al dueño en tiempo real. Sin tecnicismos. "
-                . "Usa el tipo de negocio ({$bizType}) para personalizar un ejemplo breve y concreto de cómo Mia ayudaría específicamente a ellos. "
-                . "Menciona los 7 días gratuitos para reducir la fricción. "
-                . "Termina con UNA sola pregunta que retome la calificación: algo como '¿Y tú cómo gestionas ahora los mensajes que llegan fuera de horario?'"
-            );
-        }
 
         $pain = 'general';
         if (preg_match('/\bhorario|noche|fuera de\b/i', $msg) || str_contains($msg, '1')) {
@@ -872,6 +785,17 @@ Volumen: {$volume} | Método actual: {$method} | Dolor principal: {$pain}
 Nombre del negocio: {$bizName} | Email: {$email}
 {$clientRef}
 
+═══ INTENCIONES — TÚ LAS DETECTAS, NO UN IF/ELSE ═══
+Groq, tú eres quien entiende el contexto. Nunca hay un regex que filtre antes que tú. Tú decides qué quiso decir el cliente y respondes en consecuencia:
+
+• *"Quiero un agente de IA" / "quiero el bot" / "quiero Mia" / "me interesa el servicio"* → Señal de compra directa. Muévete inmediatamente a cerrar: celebra brevemente y pide el email para crear la cuenta ahora mismo. No preguntes más cosas — pide el email.
+• *"¿Cuánto cuesta?" / "¿Cuál es el precio?" / "planes"* → Responde con los precios en 2-3 líneas, menciona los 7 días gratis, luego retoma el flujo con una pregunta.
+• *"¿Qué funciones tiene?" / "¿Qué incluye?"* → Explica las funcionalidades clave de forma conversacional (no lista interminable), luego retoma.
+• *"¿Qué es Mia?" / "¿Cómo funciona?"* → Explica en 2 frases qué hace Mia para su tipo de negocio, con un ejemplo concreto. Retoma.
+• *"Quiero hablar con una persona" / "hablar con alguien de soporte"* → SOLO cuando piden explícitamente un humano (no cuando piden el producto): diles que se contacten a *mia.ainitravel.com* y ofrece seguir ayudando aquí. NO hacer handoff si piden el producto/bot/IA.
+• *"No me interesa" / "no gracias" / "después"* → Respeta con elegancia, deja la puerta abierta, cierra bien. Sin presión.
+• *Cualquier otra cosa fuera del flujo* → Respóndela brevemente con calidez y devuelve la conversación al siguiente paso lógico.
+
 ═══ REGLAS DE COMUNICACIÓN ═══
 • Español natural de Latinoamérica; inglés si el usuario escribe en inglés — NUNCA mezcles idiomas en el mismo mensaje
 • Saluda SIEMPRE con "Hola" — nunca "Oye", nunca "Hey", nunca "¿Qué tal?"
@@ -882,7 +806,6 @@ Nombre del negocio: {$bizName} | Email: {$email}
 • NUNCA repitas lo que ya dijiste en el historial — avanza
 • NUNCA suenes a script corporativo. Cada mensaje fresco, como un humano real
 • Si no sabes algo, ofrece conectarlos con el equipo: *mia.ainitravel.com*
-• Si dicen que no les interesa, respeta su decisión con elegancia y cierra bien
 • Listas con viñetas: SOLO para mostrar planes/precios cuando el cliente lo pide{$langRule}{$goalBlock}
 PROMPT;
     }
