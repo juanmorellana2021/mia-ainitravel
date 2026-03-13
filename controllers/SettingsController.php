@@ -83,11 +83,14 @@ class SettingsController
             'contact_name'        => $_POST['contact_name']        ?? '',
             'phone'               => $_POST['phone']               ?? '',
             'business_type'       => $_POST['business_type']       ?? 'other',
+            'bot_custom_type'     => $_POST['bot_custom_type']     ?? '',
             'bot_description'     => $_POST['bot_description']     ?? '',
             'bot_services'        => $_POST['bot_services']        ?? '',
             'bot_pricing'         => $_POST['bot_pricing']         ?? '',
             'bot_hours'           => $_POST['bot_hours']           ?? '',
             'bot_faqs'            => $_POST['bot_faqs']            ?? '',
+            'bot_website'         => $_POST['bot_website']         ?? '',
+            'bot_location'        => $_POST['bot_location']        ?? '',
             'bot_language'        => $_POST['bot_language']        ?? 'es',
             'bot_tone'            => $_POST['bot_tone']            ?? 'friendly',
             'char_skills'         => $charSkills,
@@ -98,5 +101,93 @@ class SettingsController
 
         header('Location: ' . App::basePath() . '/dashboard/settings?saved=1');
         exit;
+    }
+
+    /**
+     * POST /dashboard/settings/search-business
+     * Body: { query: "Hotel El Sol, Cusco", type: "hotel" }
+     * Returns JSON with description/services/pricing/hours/faqs/website/location fields.
+     */
+    public function searchBusiness(): void
+    {
+        header('Content-Type: application/json');
+        $this->requireClient();
+
+        $body  = json_decode(file_get_contents('php://input'), true) ?? [];
+        $query = trim($body['query'] ?? '');
+        $type  = trim($body['type']  ?? 'other');
+
+        if (strlen($query) < 3) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Escribe al menos el nombre del negocio.']);
+            return;
+        }
+
+        $apiKey  = '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';
+        $payload = json_encode([
+            'model'       => 'llama-3.3-70b-versatile',
+            'temperature' => 0.4,
+            'max_tokens'  => 700,
+            'messages'    => [
+                [
+                    'role'    => 'system',
+                    'content' =>
+                        'Eres un asistente que genera perfiles de negocio para configurar un chatbot de WhatsApp. ' .
+                        'Cuando el usuario te dé el nombre (y opcionalmente ciudad/rubro) de un negocio, responde ÚNICAMENTE con un objeto JSON válido que tenga exactamente estas claves: ' .
+                        '"description", "services", "pricing", "hours", "faqs", "website", "location". ' .
+                        'Cada valor es un string. Usa saltos de línea \n dentro de los strings para listas. ' .
+                        'Haz los textos realistas, concretos y editables — el usuario los ajustará con sus datos reales. ' .
+                        'Si deduces el país/ciudad del nombre, úsalo; si no, pon [Ciudad, País]. ' .
+                        'Para "website" y "location" pon string vacío si no puedes deducirlos. ' .
+                        'NUNCA incluyas explicación fuera del JSON. Solo el JSON.'
+                ],
+                [
+                    'role'    => 'user',
+                    'content' => "Genera el perfil para: \"{$query}\" (tipo de negocio: {$type})"
+                ]
+            ]
+        ]);
+
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey,
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $err      = curl_error($ch);
+        curl_close($ch);
+
+        if ($err) {
+            http_response_code(503);
+            echo json_encode(['error' => 'Error al conectar con la IA. Intenta de nuevo.']);
+            return;
+        }
+
+        $data = json_decode($response, true);
+        $text = trim($data['choices'][0]['message']['content'] ?? '');
+
+        // Extract JSON from response (strip any markdown fences the AI might add)
+        if (preg_match('/```json\s*([\s\S]+?)```/i', $text, $m)) $text = trim($m[1]);
+        elseif (preg_match('/```([\s\S]+?)```/i', $text, $m))      $text = trim($m[1]);
+
+        $fields = json_decode($text, true);
+        if (!is_array($fields)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'No se pudo generar el perfil. Intenta con un nombre más específico.']);
+            return;
+        }
+
+        // Whitelist keys — never expose anything unexpected
+        $safe = [];
+        foreach (['description','services','pricing','hours','faqs','website','location'] as $k) {
+            $safe[$k] = isset($fields[$k]) ? (string)$fields[$k] : '';
+        }
+        echo json_encode(['ok' => true, 'fields' => $safe]);
     }
 }

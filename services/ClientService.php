@@ -101,6 +101,7 @@ class ClientService
         // Build bot_config JSON from structured fields
         $botConfig = json_encode([
             'business_type'  => trim($data['business_type']   ?? 'other'),
+            'custom_type'    => trim($data['bot_custom_type'] ?? ''),
             'description'    => trim($data['bot_description'] ?? ''),
             'services'       => trim($data['bot_services']    ?? ''),
             'pricing'        => trim($data['bot_pricing']     ?? ''),

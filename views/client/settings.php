@@ -11,6 +11,7 @@ $activeNav    = 'settings';
 $bc = json_decode($client->bot_config ?? '{}', true) ?: [];
 $bc = array_merge([
     'business_type' => $client->business_type ?: 'other',
+    'custom_type'   => '',
     'description'   => '',
     'services'      => '',
     'pricing'       => '',
@@ -156,6 +157,30 @@ require __DIR__ . '/_sidebar.php';
 
                 <div class="row g-4">
 
+                    <!-- ── AI Business Search ───────────────────────────── -->
+                    <div class="col-12">
+                        <div class="p-3 rounded-3" style="background:linear-gradient(135deg,rgba(37,211,102,0.08),rgba(99,102,241,0.06));border:1.5px dashed rgba(37,211,102,0.35)">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-search-heart text-success fs-5"></i>
+                                <span class="fw-semibold small">Buscar mi negocio con IA</span>
+                                <span class="badge bg-success bg-opacity-10 text-success" style="font-size:0.72rem">Nuevo</span>
+                            </div>
+                            <p class="text-muted mb-2" style="font-size:0.82rem">
+                                Escribe el nombre de tu negocio (y ciudad si quieres). La IA generará un perfil completo que puedes editar.
+                            </p>
+                            <div class="d-flex gap-2">
+                                <input type="text" id="bizSearchInput" class="form-control form-control-sm"
+                                       placeholder="Ej: Hotel Las Orquídeas, Cusco  ·  Pizzería La Brasa, Lima  ·  Consultora López"
+                                       style="max-width:480px">
+                                <button type="button" id="bizSearchBtn" class="btn btn-sm btn-success px-3"
+                                        style="background:#25d366;border-color:#25d366;white-space:nowrap">
+                                    <i class="bi bi-stars me-1"></i>Generar perfil
+                                </button>
+                            </div>
+                            <div id="bizSearchStatus" class="mt-2" style="font-size:0.82rem;display:none"></div>
+                        </div>
+                    </div>
+
                     <!-- Business type + tone + language (3 cols) -->
                     <div class="col-md-4">
                         <label class="form-label small fw-semibold text-muted">Tipo de negocio</label>
@@ -169,7 +194,7 @@ require __DIR__ . '/_sidebar.php';
                                 'services'      => '💼 Servicios profesionales',
                                 'health'        => '🏥 Salud / Clínica / Bienestar',
                                 'education'     => '📚 Educación / Academia',
-                                'other'         => '🏢 Otro negocio',
+                                'other'         => '🏢 Otro tipo de negocio...',
                             ];
                             foreach ($types as $val => $label):
                             ?>
@@ -178,6 +203,14 @@ require __DIR__ . '/_sidebar.php';
                             </option>
                             <?php endforeach; ?>
                         </select>
+                        <!-- Custom type — shown only when "other" is selected -->
+                        <div id="customTypeWrap" style="display:<?= $bc['business_type'] === 'other' ? '' : 'none' ?>; margin-top:8px">
+                            <input type="text" name="bot_custom_type" id="customTypeInput"
+                                   class="form-control form-control-sm"
+                                   value="<?= htmlspecialchars($bc['custom_type'] ?? '') ?>"
+                                   placeholder="Describe el tipo: peluquería, ferretería, spa...">
+                            <div class="form-text">Mia usará esto para adaptar sus respuestas.</div>
+                        </div>
                     </div>
 
                     <div class="col-md-4">
@@ -412,6 +445,87 @@ require __DIR__ . '/_sidebar.php';
                     cb.checked = !cb.checked;
                 });
             });
+
+            // ── Custom type visibility ────────────────────────────────────
+            (function() {
+                var sel   = document.getElementById('businessTypeSelect');
+                var wrap  = document.getElementById('customTypeWrap');
+                var input = document.getElementById('customTypeInput');
+                if (!sel || !wrap) return;
+                sel.addEventListener('change', function() {
+                    wrap.style.display = this.value === 'other' ? '' : 'none';
+                    if (this.value !== 'other') input.value = '';
+                });
+            })();
+
+            // ── AI Business search ────────────────────────────────────────
+            (function() {
+                var btn      = document.getElementById('bizSearchBtn');
+                var inputEl  = document.getElementById('bizSearchInput');
+                var status   = document.getElementById('bizSearchStatus');
+                var typesel  = document.getElementById('businessTypeSelect');
+                if (!btn || !inputEl) return;
+
+                var fieldMap = {
+                    description: 'bot_description',
+                    services:    'bot_services',
+                    pricing:     'bot_pricing',
+                    hours:       'bot_hours',
+                    faqs:        'bot_faqs',
+                    website:     'bot_website',
+                    location:    'bot_location'
+                };
+
+                btn.addEventListener('click', function() {
+                    var query = inputEl.value.trim();
+                    if (query.length < 3) {
+                        status.style.display = '';
+                        status.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Escribe el nombre de tu negocio primero.</span>';
+                        return;
+                    }
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Buscando...';
+                    status.style.display = '';
+                    status.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>La IA está generando el perfil de tu negocio...</span>';
+
+                    fetch('<?= App::basePath() ?>/dashboard/settings/search-business', {
+                        method:  'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body:    JSON.stringify({
+                            query: query,
+                            type:  typesel ? typesel.value : 'other'
+                        })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generar perfil';
+                        if (!data.ok || !data.fields) {
+                            status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + (data.error || 'Error al generar. Intenta con otro nombre.') + '</span>';
+                            return;
+                        }
+                        // Fill all form fields
+                        Object.keys(fieldMap).forEach(function(key) {
+                            var el = document.querySelector('[name="' + fieldMap[key] + '"]');
+                            if (el && data.fields[key] !== undefined) el.value = data.fields[key];
+                        });
+                        status.innerHTML = '<span class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>¡Perfil generado! Revisa y edita los campos con tu información real, luego guarda.</span>';
+                        // Scroll to description
+                        var desc = document.querySelector('[name="bot_description"]');
+                        if (desc) desc.scrollIntoView({behavior:'smooth', block:'center'});
+                    })
+                    .catch(function() {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-stars me-1"></i>Generar perfil';
+                        status.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Error de conexión. Intenta de nuevo.</span>';
+                    });
+                });
+
+                // Also trigger on Enter key in the search input
+                inputEl.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); btn.click(); }
+                });
+            })();
 
             // ── Business-type preset templates ────────────────────────────
             (function() {

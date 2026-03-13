@@ -93,7 +93,9 @@ class ClientBotService
     private function buildSystemPrompt(): string
     {
         $bizName    = $this->client->business_name;
-        $bizType    = $this->cfg['business_type']  ?? $this->client->business_type ?? 'negocio';
+        $rawType    = $this->cfg['business_type']  ?? $this->client->business_type ?? 'negocio';
+        $customType = $this->cfg['custom_type']    ?? '';
+        $bizType    = ($rawType === 'other' && $customType !== '') ? $customType : $rawType;
         $desc       = $this->cfg['description']    ?? '';
         $services   = $this->cfg['services']       ?? '';
         $pricing    = $this->cfg['pricing']        ?? '';

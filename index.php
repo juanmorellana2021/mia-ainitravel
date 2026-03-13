@@ -172,6 +172,9 @@ match (true) {
     $uri === 'dashboard/settings/wa-connect' && $method === 'POST'
         => (new SettingsController())->waConnect(),
 
+    $uri === 'dashboard/settings/search-business' && $method === 'POST'
+        => (new SettingsController())->searchBusiness(),
+
     // ── Superadmin ─────────────────────────────────────────────────────────
     $uri === 'superadmin' || ($uri === 'superadmin/' )
         => (function() { header('Location: ' . App::basePath() . '/superadmin/dashboard'); exit; })(),
