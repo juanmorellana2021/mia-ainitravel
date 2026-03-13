@@ -331,32 +331,19 @@ class MiaSalesService
 
     private function handleDemo(string $phone, array $session, string $message): array
     {
-        $msg = mb_strtolower(trim($message));
-
-        if (preg_match('/\bbenefi|incluye|incluido|feature|funcional\b/i', $msg)) {
-            $this->updateSession($phone, ['state' => 'benefits']);
-            $session['state'] = 'benefits';
-            return $this->aiReply($phone, $session, $message,
-                "El usuario quiere saber todo lo que incluye Mia. Presenta los beneficios clave con entusiasmo: " .
-                "reservas 24/7, bilingüe automático, traspaso humano inteligente, notificaciones instantáneas, " .
-                "email de confirmación con logo, verificación de identidad, panel web, sin comisiones por reserva, " .
-                "configuración en 48h. Termina con mención de la prueba gratis de 7 días."
-            );
-        }
-
+        // No regex — Groq reads the message and decides whether to cover benefits or move to close
         $this->updateSession($phone, ['state' => 'closing']);
         $session['state'] = 'closing';
         $bizType = $session['business_type'] ?? 'negocio';
-        $rooms   = (int)($session['room_count'] ?? 30);
         return $this->aiReply($phone, $session, $message,
-            "Acaban de ver la demo. Capitaliza el momento emocional — están en su pico de interés AHORA. " .
-            "NO presentes los 3 planes como lista genérica. Recomienda UNO basado en lo que sabes de su negocio: " .
-            "si tienen alto volumen o son agencia/hotel → Pro S/499. Si son medianos → Soporte Básico S/299. Si son pequeños o acaban de arrancar → Starter S/139. " .
-            "Di algo como: 'Para un {$bizType} de tu tamaño, el plan Pro tiene más sentido porque...' " .
-            "Menciona los 7 días gratis como eliminador de riesgo: 'No arriesgas nada — pruébalo gratis 7 días " .
-            "y si no ves resultados, cancelas con un mensaje.' " .
-            "Cierre de elección (no sí/no): '¿Empezamos con el Pro o prefieres el Básico para la prueba?' " .
-            "La primera persona que habla después de esa pregunta, pierde."
+            "Acaban de ver la demo. Tú (Groq) lees su respuesta y decides: " .
+            "• Si pregunta qué incluye / funciones / beneficios → explícalos con entusiasmo: " .
+            "reservas 24/7, bilingüe automático, traspaso humano inteligente, notificaciones, panel web, sin comisiones, configuración en 48h, 7 días gratis. " .
+            "• Si reaccionó positivamente → capitaliza el momento: NO pongas lista de planes. " .
+            "Recomienda UNO según su negocio: alto volumen / hotel / agencia → Pro S/499. Mediano → Básico S/299. Pequeño → Starter S/139. " .
+            "Menciona los 7 días gratis como eliminador de riesgo. " .
+            "Cierre de elección: '¿Empezamos con el Pro o prefieres el Básico para la prueba?' — no sí/no. " .
+            "Adapta el lenguaje a {$bizType}. Sin listas, sin URLs, máximo 4 líneas."
         );
     }
 

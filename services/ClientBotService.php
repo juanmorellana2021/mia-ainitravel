@@ -126,15 +126,8 @@ class ClientBotService
         // Pause any active follow-up sequences — lead replied, they're engaged
         (new SequenceService())->pauseForLead($leadId, $this->client->id);
 
-        // Human handoff request — hand back to owner
-        if ($this->canHandoff &&
-            preg_match('/\bhumano|agente|persona|hablar con|speak to|una persona\b/i', $msg)) {
-            $reply = $this->handoffReply();
-            $this->log($guestPhone, 'user', $msg);
-            $this->log($guestPhone, 'assistant', $reply);
-            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
-            return ['reply' => $reply];
-        }
+        // No regex intent interception — Groq detects handoff requests from context
+        // (see INTENCIONES block in buildSystemPrompt)
 
         $history  = $this->loadHistory($guestPhone);
         $messages = array_merge(
@@ -206,9 +199,9 @@ class ClientBotService
             default => 'Responde siempre en español.',
         };
 
-        $handoffBlock = $this->canHandoff
-            ? "- Si el cliente pide hablar con una persona real, dile que avisarás al equipo y que alguien lo contactará pronto."
-            : "- Si el cliente pide hablar con una persona, dile que puede comunicarse directamente con el negocio.";
+        $handoffInstruction = $this->canHandoff
+            ? "Si el cliente claramente pide hablar con una persona real (ej: 'quiero hablar con alguien', 'necesito un humano', 'comunícame con el equipo'), responde: 'Entendido, aviso al equipo de {$bizName} ahora mismo. Alguien te contactará en breve 👋'. NO actives esto si el cliente pregunta sobre servicios, agentes de viaje, o cualquier otra cosa que incluya las palabras humano/agente/persona en otro contexto."
+            : "Si el cliente pide hablar con una persona, dile que puede comunicarse directamente con el negocio.";
 
         $leadBlock = $this->canCaptureLead
             ? "- Si el cliente muestra interés en comprar/reservar algo específico, pide su nombre y número/email de forma natural para que el equipo lo contacte."
@@ -242,15 +235,16 @@ IDIOMA: {$languageRule}
 
 {$faqsBlock}
 
+INTENCIONES — TÚ LAS DETECTAS, NO UN IF/ELSE:
+{$handoffInstruction}
+{$leadBlock}
 REGLAS DE COMPORTAMIENTO:
 - Responde SOLO sobre este negocio. No inventes información que no esté aquí.
 - Si no sabes la respuesta, di que consultarás con el equipo y lo confirmarás.
 - Mensajes cortos y concretos — máximo 3 líneas para respuestas simples.
 - No uses listas largas. Solo si el cliente pide ver todos los servicios/precios.
 - 1 emoji máximo por mensaje, solo si suma.
-- NUNCA digas que eres una IA a menos que te pregunten directamente.
-{$handoffBlock}
-{$leadBlock}{$skillsBlock}
+- NUNCA digas que eres una IA a menos que te pregunten directamente.{$skillsBlock}
 PROMPT;
     }
 
