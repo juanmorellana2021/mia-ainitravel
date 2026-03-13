@@ -56,6 +56,7 @@ const miaClient = makeWaClient('mia-bot');
 let miaBotQrData   = null;
 let miaBotStatus   = 'initializing';
 let miaBotPhone    = null;
+let miaBotReadyAt  = 0; // Unix timestamp when bot last connected — used to skip offline backlog
 
 miaClient.on('qr', async (qr) => {
     qrcodeTerminal.generate(qr, { small: true });
@@ -69,10 +70,11 @@ miaClient.on('qr', async (qr) => {
 });
 
 miaClient.on('ready', () => {
-    console.log('[mia-bot] ✅ Sales bot connected and ready');
-    miaBotStatus = 'connected';
-    miaBotQrData = null;
-    try { miaClient.info && (miaBotPhone = miaClient.info.wid.user); } catch(_) {}
+    miaBotReadyAt = Math.floor(Date.now() / 1000);
+    miaBotStatus  = 'connected';
+    miaBotQrData  = null;
+    try { miaBotPhone = miaClient.info?.wid?.user ?? null; } catch(_) {}
+    console.log('[mia-bot] ✅ Sales bot connected and ready. Phone:', miaBotPhone);
 });
 
 miaClient.on('disconnected', (reason) => {
@@ -85,6 +87,11 @@ miaClient.on('disconnected', (reason) => {
 miaClient.on('message', async (msg) => {
     if (msg.from === 'status@broadcast' || msg.from.includes('@g.us')) return;
     if (msg.fromMe || msg.type !== 'chat' || !msg.body?.trim()) return;
+    // Skip messages sent before this session started (offline backlog) to avoid reply storms
+    if (miaBotReadyAt > 0 && msg.timestamp && msg.timestamp < miaBotReadyAt) {
+        console.log(`[mia-bot] Skipping offline-backlog msg (ts:${msg.timestamp} < ready:${miaBotReadyAt}) from ${msg.from}`);
+        return;
+    }
 
     const from    = msg.from;
     const message = msg.body;
@@ -127,6 +134,7 @@ function createClientSession(clientId) {
 
     const ww = makeWaClient('client_' + id);
     session.client = ww;
+    let sessionReadyAt = 0; // filter offline backlog for this client
 
     ww.on('qr', async (qr) => {
         console.log(`[client:${id}] QR generated`);
@@ -141,6 +149,7 @@ function createClientSession(clientId) {
 
     ww.on('ready', async () => {
         try {
+            sessionReadyAt = Math.floor(Date.now() / 1000);
             const phone = ww.info?.wid?.user ? '+' + ww.info.wid.user : null;
             session.status = 'connected';
             session.qrData = null;
@@ -164,6 +173,11 @@ function createClientSession(clientId) {
     ww.on('message', async (msg) => {
         if (msg.from === 'status@broadcast' || msg.from.includes('@g.us')) return;
         if (msg.fromMe || msg.type !== 'chat' || !msg.body?.trim()) return;
+        // Skip offline backlog to avoid reply storms after reconnect
+        if (sessionReadyAt > 0 && msg.timestamp && msg.timestamp < sessionReadyAt) {
+            console.log(`[client:${id}] Skipping offline-backlog msg from ${msg.from}`);
+            return;
+        }
 
         const from    = msg.from;
         const message = msg.body;
