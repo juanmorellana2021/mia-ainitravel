@@ -539,11 +539,28 @@ class MiaSalesService
         }
 
         // Auto-convert to client account so they get access immediately
+        $accountCreated  = false;
+        $tempPassword    = null;
         try {
             require_once __DIR__ . '/../services/SuperAdminService.php';
             $svcRow = $this->getSession($phone);
             if (!empty($svcRow['id'])) {
-                (new SuperAdminService())->convertToClient((int)$svcRow['id']);
+                $result = (new SuperAdminService())->convertToClient((int)$svcRow['id']);
+                if (!empty($result['temp_password'])) {
+                    $accountCreated = true;
+                    $tempPassword   = $result['temp_password'];
+                    // Send welcome email with login credentials
+                    try {
+                        (new NotificationService())->sendWelcomeEmail(
+                            $email,
+                            $session['contact_name'] ?? '',
+                            $session['business_name'] ?? '',
+                            $tempPassword
+                        );
+                    } catch (\Throwable $e) {
+                        error_log('[Mia] Welcome email error: ' . $e->getMessage());
+                    }
+                }
             }
         } catch (\Throwable $e) {
             error_log('[Mia] Auto-convert error: ' . $e->getMessage());
@@ -551,26 +568,27 @@ class MiaSalesService
 
         $bizName = $session['business_name'] ?? 'tu negocio';
         $bizType = $session['business_type'] ?? 'negocio';
+        $accessNote = $accountCreated
+            ? "Su cuenta ya fue creada. Acabamos de enviarle un email a {$email} con sus datos de acceso (usuario y contraseña temporal) para que pueda ingresar al panel."
+            : "Su registro fue recibido. El equipo se pondrá en contacto pronto para completar el acceso.";
         return $this->aiReply($phone, $session, $message,
             "¡CIERRE EXITOSO! Datos completos: {$bizName} ({$bizType}), email: {$email}. " .
+            "Contexto importante: {$accessNote} " .
             "Momento final más importante de toda la conversación — hazlo memorable. " .
             "1. Confirma con energía genuina — no exagerada, real. Ellos acaban de tomar una buena decisión. " .
-            "2. Pinta el futuro en 48h: 'Mañana el equipo te escribe para definir cómo suena Mia para {$bizName}. " .
-            "Pasado mañana, Mia ya está respondiendo tus clientes mientras tú duermes.' " .
-            "3. Dales un insight final de regalo — algo que puedan hacer ya: " .
-            "'Mientras tanto, anota las 5 preguntas que más te hacen tus clientes por WhatsApp. " .
-            "Eso ayudará al equipo a configurar Mia perfectamente para ti.' " .
-            "4. Cierra con calidez, brevedad y confianza. Tú sabes que tomaron la decisión correcta."
+            "2. Menciona que recibirán sus accesos por email en minutos — NO menciones ningún link ni página web. " .
+            "3. Pinta el futuro próximo: 'El equipo los contactará para configurar Mia exactamente para {$bizName}.' " .
+            "4. Cierra con calidez, brevedad y confianza. Sin links, sin URLs, solo texto plano como WhatsApp humano."
         );
     }
 
     private function handleCaptured(string $phone, array $session, string $message): array
     {
         return $this->aiReply($phone, $session, $message,
-            "El cliente ya está registrado y esperando ser contactado por el equipo de AiniDesk. " .
+            "El cliente ya está registrado. Su cuenta fue creada y recibió sus accesos por email. " .
             "Responde a su mensaje de forma útil y amigable. Si tiene preguntas sobre el producto, " .
-            "respóndelas con precisión. Si quiere hablar con alguien ya mismo, indica mia.ainitravel.com. " .
-            "Sé su asistente personal mientras llega el equipo."
+            "respóndelas con precisión. Si quiere hablar con alguien ya mismo, dile que el equipo de AiniDesk " .
+            "lo contactará muy pronto — NO envíes ningún link ni URL. Solo texto plano, como un humano real por WhatsApp."
         );
     }
 
