@@ -91,6 +91,46 @@ require __DIR__ . '/_sidebar.php';
     </div>
 </div>
 
+<!-- ── Monthly conversations counter ───────────────────────────────────────── -->
+<?php
+$convPct   = $convLimit > 0 ? min(100, (int)round(($monthConvos / $convLimit) * 100)) : 0;
+$convLabel = $convLimit > 0 ? number_format($monthConvos) . ' / ' . number_format($convLimit) : number_format($monthConvos);
+$convColor = $convPct >= 90 ? 'danger' : ($convPct >= 70 ? 'warning' : 'success');
+$monthName = mb_strtoupper(strftime('%B', mktime(0,0,0, (int)date('m'), 1, (int)date('Y'))));
+?>
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="mc-stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="d-flex align-items-baseline gap-2">
+                        <span class="stat-num fs-3 text-<?= $convLimit > 0 ? $convColor : 'primary' ?>">
+                            <?= $convLabel ?>
+                        </span>
+                        <?php if ($convLimit > 0): ?>
+                        <span class="text-muted" style="font-size:.8rem">conversaciones del plan <?= ucfirst($client->plan) ?></span>
+                        <?php else: ?>
+                        <span class="text-muted" style="font-size:.8rem">conversaciones este mes · plan <?= ucfirst($client->plan) ?> — ilimitadas</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="stat-label"><i class="bi bi-chat-square-dots me-1"></i>Conversaciones únicas — <?= $monthName ?></div>
+                </div>
+                <?php if ($convLimit > 0 && $convPct >= 90): ?>
+                <a href="<?= $base ?>/dashboard/billing" class="btn btn-sm btn-danger">
+                    <i class="bi bi-arrow-up-circle me-1"></i>Actualizar plan
+                </a>
+                <?php endif; ?>
+            </div>
+            <?php if ($convLimit > 0): ?>
+            <div class="progress mt-3" style="height:6px">
+                <div class="progress-bar bg-<?= $convColor ?>" style="width:<?= $convPct ?>%"></div>
+            </div>
+            <div class="text-muted mt-1" style="font-size:.72rem"><?= $convPct ?>% del límite mensual utilizado</div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
 <!-- ── Recent leads table ────────────────────────────────────────────────────── -->
 <div class="mc-table-card mb-4">
     <div class="card-header-bar">

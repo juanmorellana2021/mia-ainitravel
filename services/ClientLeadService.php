@@ -140,6 +140,22 @@ class ClientLeadService
         return (int)$stmt->fetchColumn();
     }
 
+    /**
+     * Count unique phone numbers that have sent at least one message this calendar month.
+     * Each unique phone = one "conversation" for billing purposes.
+     */
+    public function monthlyConversations(int $clientId): int
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(DISTINCT phone) FROM mia_client_messages
+             WHERE client_id = ? AND direction = 'inbound'
+               AND YEAR(created_at)  = YEAR(NOW())
+               AND MONTH(created_at) = MONTH(NOW())"
+        );
+        $stmt->execute([$clientId]);
+        return (int)$stmt->fetchColumn();
+    }
+
     // ── Analytics ────────────────────────────────────────────────────────────
 
     public function analyticsData(int $clientId): array

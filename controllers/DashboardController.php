@@ -35,10 +35,12 @@ class DashboardController
         $client      = $this->requireClient();
         $leadService = new ClientLeadService();
 
-        $stats         = $leadService->stats($client->id);
-        $recentLeads   = $leadService->recent($client->id, 8);
-        $todayMessages = $leadService->todayMessages($client->id);
-        $welcome       = !empty($_GET['welcome']);
+        $stats            = $leadService->stats($client->id);
+        $recentLeads      = $leadService->recent($client->id, 8);
+        $todayMessages    = $leadService->todayMessages($client->id);
+        $monthConvos      = $leadService->monthlyConversations($client->id);
+        $convLimit        = ClientBotService::CONV_LIMITS[$client->plan] ?? 0;
+        $welcome          = !empty($_GET['welcome']);
 
         require __DIR__ . '/../views/client/dashboard.php';
     }

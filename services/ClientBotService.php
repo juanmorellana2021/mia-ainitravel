@@ -26,6 +26,15 @@ class ClientBotService
     private const GROQ_MODEL = 'llama-3.3-70b-versatile';
     private const MAX_HISTORY = 10; // message pairs
 
+    // Monthly conversation limits per plan (0 = unlimited)
+    public const CONV_LIMITS = [
+        'trial'      => 0,    // trial = full Pro experience, unlimited
+        'starter'    => 500,
+        'basic'      => 1000,
+        'pro'        => 0,
+        'enterprise' => 0,
+    ];
+
     public function __construct(Client $client)
     {
         $this->pdo    = Database::get();
@@ -60,6 +69,35 @@ class ClientBotService
         if (empty($msg)) {
             return ['reply' => ''];
         }
+
+        // ── Monthly conversation limit check ─────────────────────────────────
+        $limit = self::CONV_LIMITS[$this->client->plan] ?? 0;
+        if ($limit > 0) {
+            // Check if this phone already has a message this month (existing convo)
+            $stmtExist = $this->pdo->prepare(
+                "SELECT COUNT(*) FROM mia_client_messages
+                 WHERE client_id = ? AND phone = ? AND direction = 'inbound'
+                   AND YEAR(created_at) = YEAR(NOW()) AND MONTH(created_at) = MONTH(NOW())"
+            );
+            $stmtExist->execute([$this->client->id, $guestPhone]);
+            $isNewConvo = ((int)$stmtExist->fetchColumn() === 0);
+
+            if ($isNewConvo) {
+                $stmtCount = $this->pdo->prepare(
+                    "SELECT COUNT(DISTINCT phone) FROM mia_client_messages
+                     WHERE client_id = ? AND direction = 'inbound'
+                       AND YEAR(created_at) = YEAR(NOW()) AND MONTH(created_at) = MONTH(NOW())"
+                );
+                $stmtCount->execute([$this->client->id]);
+                $used = (int)$stmtCount->fetchColumn();
+
+                if ($used >= $limit) {
+                    error_log("[ClientBot:{$this->client->id}] Conv limit reached ({$used}/{$limit}) — blocking {$guestPhone}");
+                    return ['reply' => '']; // silent block; owner should upgrade
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         // Human handoff request — hand back to owner
         if ($this->canHandoff &&
