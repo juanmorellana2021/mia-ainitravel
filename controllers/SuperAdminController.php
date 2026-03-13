@@ -228,16 +228,20 @@ class SuperAdminController
                 COUNT(DISTINCT ip_hash)                                         AS unique_visitors,
                 COUNT(CASE WHEN event='pageview' THEN 1 END)                    AS pageviews,
                 COUNT(CASE WHEN event='cta_click' THEN 1 END)                   AS cta_clicks,
-                ROUND(AVG(CASE WHEN event='pageleave' AND duration_ms>0 THEN duration_ms END)/1000,1) AS avg_seconds
+                ROUND(AVG(CASE WHEN event='pageleave' AND duration_ms>0 THEN duration_ms END)/1000,1) AS avg_seconds,
+                COUNT(CASE WHEN event='pageleave' AND duration_ms < 10000 THEN 1 END) AS bounces
             FROM mia_page_events
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
         ")->fetch(PDO::FETCH_ASSOC);
 
-        // Daily pageviews for chart
+        // Daily pageviews AND cta_clicks for dual chart
         $daily = $db->query("
-            SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+            SELECT
+                DATE(created_at) AS day,
+                COUNT(CASE WHEN event='pageview'  THEN 1 END) AS pvs,
+                COUNT(CASE WHEN event='cta_click' THEN 1 END) AS ctas
             FROM mia_page_events
-            WHERE event='pageview' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
             GROUP BY DATE(created_at)
             ORDER BY day ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
@@ -250,34 +254,75 @@ class SuperAdminController
             GROUP BY page ORDER BY views DESC LIMIT 10
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-        // Top referrers
+        // Referrers — normalize to domain only (strip query strings & fbclid)
         $topReferrers = $db->query("
             SELECT
-                CASE WHEN referrer='' THEN '(directo)' ELSE referrer END AS ref,
+                CASE
+                    WHEN referrer = '' OR referrer IS NULL THEN '(directo)'
+                    WHEN referrer LIKE '%facebook.com%' OR referrer LIKE '%fb.com%' THEN 'facebook.com'
+                    WHEN referrer LIKE '%instagram.com%' THEN 'instagram.com'
+                    WHEN referrer LIKE '%google.com%'    THEN 'google.com'
+                    WHEN referrer LIKE '%mia.ainitravel.com%' THEN 'mia.ainitravel.com (interno)'
+                    ELSE SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(referrer,'https://',''),'http://',''),'/',1),'?',1)
+                END AS ref,
                 COUNT(*) AS cnt
             FROM mia_page_events
             WHERE event='pageview' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
             GROUP BY ref ORDER BY cnt DESC LIMIT 10
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-        // UTM sources
+        // UTM sources — show readable names, include cta_clicks per campaign
         $topUtm = $db->query("
-            SELECT utm_source AS src, utm_medium AS med, utm_campaign AS camp, COUNT(*) AS cnt
+            SELECT
+                utm_source   AS src,
+                utm_medium   AS med,
+                utm_campaign AS camp,
+                COUNT(CASE WHEN event='pageview'  THEN 1 END) AS sessions,
+                COUNT(CASE WHEN event='cta_click' THEN 1 END) AS cta_clicks
             FROM mia_page_events
-            WHERE event='pageview' AND utm_source != '' AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
-            GROUP BY src, med, camp ORDER BY cnt DESC LIMIT 10
+            WHERE utm_source != '' AND utm_source IS NOT NULL
+              AND created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY src, med, camp ORDER BY sessions DESC LIMIT 10
         ")->fetchAll(PDO::FETCH_ASSOC);
 
-            // Device breakdown with click behavior
-            $devices = $db->query("
-                SELECT
-                    device,
-                    COUNT(CASE WHEN event='pageview' THEN 1 END)  AS pageviews,
-                    COUNT(CASE WHEN event='cta_click' THEN 1 END) AS cta_clicks
-                FROM mia_page_events
-                WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
-                GROUP BY device
-            ")->fetchAll(PDO::FETCH_ASSOC);
+        // Device breakdown with click behavior
+        $devices = $db->query("
+            SELECT
+                device,
+                COUNT(CASE WHEN event='pageview'  THEN 1 END) AS pageviews,
+                COUNT(CASE WHEN event='cta_click' THEN 1 END) AS cta_clicks
+            FROM mia_page_events
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY device
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // WhatsApp bot funnel stats for the same period
+        $waStats = $db->query("
+            SELECT
+                COUNT(*) AS total_conversations,
+                COUNT(CASE WHEN state NOT IN ('new','collecting_contact_name','intro') THEN 1 END) AS engaged,
+                COUNT(CASE WHEN email IS NOT NULL AND email != '' THEN 1 END)                       AS leads_captured,
+                COUNT(CASE WHEN state = 'captured' THEN 1 END)                                     AS fully_captured,
+                COUNT(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY) THEN 1 END)    AS new_in_period
+            FROM mia_sales_sessions
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+        ")->fetch(PDO::FETCH_ASSOC);
+
+        // Bot conversation trend by day
+        $waTrend = $db->query("
+            SELECT DATE(created_at) AS day, COUNT(*) AS cnt
+            FROM mia_sales_sessions
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY DATE(created_at) ORDER BY day ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Bot pipeline — how many prospects at each stage
+        $waPipeline = $db->query("
+            SELECT state, COUNT(*) AS cnt
+            FROM mia_sales_sessions
+            WHERE updated_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+            GROUP BY state ORDER BY cnt DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
 
         require __DIR__ . '/../views/superadmin/analytics.php';
     }
