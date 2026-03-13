@@ -40,6 +40,20 @@ class BillingService
             return ['error' => 'Plan desconocido.'];
         }
 
+        // Cancel any existing active subscription first (upgrade/downgrade case).
+        // This cancels the old MP preapproval so the client isn't double-charged.
+        $existingSub = $this->activeSubscription($client->id);
+        if ($existingSub) {
+            if ($existingSub->mp_preapproval_id) {
+                $this->mpPut('preapproval/' . urlencode($existingSub->mp_preapproval_id), [
+                    'status' => 'cancelled',
+                ]);
+            }
+            $this->db->prepare(
+                "UPDATE mia_subscriptions SET status = 'cancelled' WHERE id = ?"
+            )->execute([$existingSub->id]);
+        }
+
         $base = App::URL;
 
         $body = [
