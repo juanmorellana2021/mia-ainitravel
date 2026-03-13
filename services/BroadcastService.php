@@ -59,9 +59,15 @@ class BroadcastService
     /**
      * Send the message to all leads and log the result.
      */
-    public function send(int $clientId, string $message): array
+    public function send(int $clientId, string $message, array $selectedPhones = []): array
     {
-        $leads  = $this->leadsWithPhone($clientId);
+        $allLeads = $this->leadsWithPhone($clientId);
+
+        // Filter to only selected phones when a non-empty list is provided
+        $leads = (!empty($selectedPhones))
+            ? array_values(array_filter($allLeads, fn($l) => in_array($l['phone'], $selectedPhones, true)))
+            : $allLeads;
+
         $sent   = 0;
         $failed = 0;
         $phones = [];

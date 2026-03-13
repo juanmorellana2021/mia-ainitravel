@@ -34,7 +34,7 @@ require __DIR__ . '/_sidebar.php';
         <div class="mc-table-card p-4">
             <h6 class="fw-bold mb-1"><i class="bi bi-megaphone me-2" style="color:#25d366"></i>Nuevo envío</h6>
             <p class="text-muted small mb-3">
-                Se enviará a <strong><?= count($leads) ?> leads</strong> que tienen número de WhatsApp.
+                Se enviará a <strong><span id="composeCount"><?= count($leads) ?></span> de <?= count($leads) ?> leads</strong> seleccionados.
             </p>
 
             <!-- Warning -->
@@ -46,7 +46,8 @@ require __DIR__ . '/_sidebar.php';
             </div>
 
             <form method="POST" action="<?= $base ?>/dashboard/broadcast/send"
-                  onsubmit="return confirmSend(<?= count($leads) ?>)">
+                  id="broadcastForm"
+                  onsubmit="return confirmSend()">
                 <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
 
                 <div class="mb-3">
@@ -64,10 +65,13 @@ require __DIR__ . '/_sidebar.php';
                     </div>
                 <?php endif; ?>
 
-                <button type="submit" class="btn btn-success px-4"
+                <!-- Hidden container — JS writes <input name="phones[]" value="..."> here before submit -->
+                <div id="selectedPhonesContainer"></div>
+
+                <button type="submit" class="btn btn-success px-4" id="sendBtn"
                         style="background:#25d366;border-color:#25d366"
                         <?= count($leads) === 0 ? 'disabled' : '' ?>>
-                    <i class="bi bi-send me-2"></i>Enviar a <?= count($leads) ?> leads
+                    <i class="bi bi-send me-2"></i>Enviar a <span id="sendCount"><?= count($leads) ?></span> destinatarios
                 </button>
             </form>
         </div>
@@ -76,20 +80,37 @@ require __DIR__ . '/_sidebar.php';
     <!-- ── Lead list preview ────────────────────────────────────────────────── -->
     <div class="col-md-5">
         <div class="mc-table-card p-4">
-            <h6 class="fw-bold mb-3"><i class="bi bi-people me-2 text-primary"></i>Destinatarios</h6>
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i>Destinatarios</h6>
+                <?php if (!empty($leads)): ?>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small"><span id="selectedCount"><?= count($leads) ?></span> seleccionados</span>
+                    <div class="form-check form-switch mb-0" title="Seleccionar / deseleccionar todos">
+                        <input class="form-check-input" type="checkbox" role="switch" id="selectAllToggle" checked>
+                        <label class="form-check-label small" for="selectAllToggle">Todos</label>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
             <?php if (empty($leads)): ?>
                 <p class="text-muted small">Sin leads aún.</p>
             <?php else: ?>
                 <div style="max-height:320px;overflow-y:auto">
                     <table class="table table-sm mb-0" style="font-size:13px">
                         <thead><tr>
+                            <th style="width:32px"></th>
                             <th>Nombre</th>
                             <th>WhatsApp</th>
                             <th>Estado</th>
                         </tr></thead>
                         <tbody>
                         <?php foreach ($leads as $lead): ?>
-                            <tr>
+                            <tr class="lead-row" data-phone="<?= htmlspecialchars($lead['phone']) ?>">
+                                <td>
+                                    <input type="checkbox" class="lead-check form-check-input"
+                                           value="<?= htmlspecialchars($lead['phone']) ?>" checked
+                                           style="cursor:pointer;width:16px;height:16px">
+                                </td>
                                 <td><?= htmlspecialchars($lead['contact_name'] ?: '—') ?></td>
                                 <td class="text-muted">+<?= htmlspecialchars($lead['phone']) ?></td>
                                 <td>
@@ -163,9 +184,71 @@ if (ta && cc) {
     ta.addEventListener('input', () => cc.textContent = ta.value.length);
 }
 
-function confirmSend(count) {
-    if (count === 0) return false;
-    return confirm('¿Enviar este mensaje a ' + count + ' leads por WhatsApp?');
+// ── Checkbox selection ──────────────────────────────────────────────────────
+(function() {
+    var allToggle     = document.getElementById('selectAllToggle');
+    var selectedCount = document.getElementById('selectedCount');
+    var sendCount     = document.getElementById('sendCount');
+    var composeCount  = document.getElementById('composeCount');
+    var sendBtn       = document.getElementById('sendBtn');
+    var container     = document.getElementById('selectedPhonesContainer');
+    var checks        = Array.from(document.querySelectorAll('.lead-check'));
+
+    function updateCounts() {
+        var selected = checks.filter(function(c) { return c.checked; });
+        var n = selected.length;
+        if (selectedCount) selectedCount.textContent = n;
+        if (sendCount)     sendCount.textContent     = n;
+        if (composeCount)  composeCount.textContent  = n;
+        if (sendBtn)       sendBtn.disabled          = (n === 0);
+
+        // Sync select-all toggle state
+        if (allToggle) {
+            if (n === checks.length) { allToggle.checked = true; allToggle.indeterminate = false; }
+            else if (n === 0)        { allToggle.checked = false; allToggle.indeterminate = false; }
+            else                     { allToggle.indeterminate = true; }
+        }
+    }
+
+    checks.forEach(function(cb) {
+        cb.addEventListener('change', updateCounts);
+        // Clicking anywhere on the row also toggles
+        cb.closest('tr').addEventListener('click', function(e) {
+            if (e.target === cb) return; // already handled
+            cb.checked = !cb.checked;
+            updateCounts();
+        });
+    });
+
+    if (allToggle) {
+        allToggle.addEventListener('change', function() {
+            checks.forEach(function(c) { c.checked = allToggle.checked; });
+            updateCounts();
+        });
+    }
+
+    // On form submit inject selected phones as hidden inputs
+    var form = document.getElementById('broadcastForm');
+    if (form) {
+        form.addEventListener('submit', function() {
+            container.innerHTML = '';
+            checks.filter(function(c) { return c.checked; }).forEach(function(c) {
+                var inp = document.createElement('input');
+                inp.type  = 'hidden';
+                inp.name  = 'phones[]';
+                inp.value = c.value;
+                container.appendChild(inp);
+            });
+        });
+    }
+
+    updateCounts(); // initialise
+})();
+
+function confirmSend() {
+    var n = parseInt(document.getElementById('sendCount').textContent, 10);
+    if (!n) return false;
+    return confirm('¿Enviar este mensaje a ' + n + ' destinatarios por WhatsApp?');
 }
 </script>
 
