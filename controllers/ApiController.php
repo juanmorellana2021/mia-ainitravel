@@ -41,14 +41,37 @@ class ApiController
         $raw  = file_get_contents('php://input');
         $data = json_decode($raw ?: '', true);
 
-        if (!is_array($data) || empty($data['message']) || empty($data['from'])) {
+        if (!is_array($data) || empty($data['from'])) {
             http_response_code(422);
-            echo json_encode(['success' => false, 'error' => 'Missing message or from']);
+            echo json_encode(['success' => false, 'error' => 'Missing from']);
             return;
         }
 
-        $phone   = trim((string) $data['from']);
-        $message = trim((string) $data['message']);
+        $phone    = trim((string) $data['from']);
+        $message  = trim((string) ($data['message'] ?? ''));
+
+        // Media resolution: convert voice notes / images to text before the service sees them
+        $mediaData = $data['media_data'] ?? null;
+        $mediaMime = $data['media_mime'] ?? null;
+        $mediaType = $data['media_type'] ?? null;
+        if ($mediaData && $mediaMime) {
+            require_once __DIR__ . '/../services/MediaService.php';
+            $mediaSvc = new MediaService();
+            if (in_array($mediaType, ['ptt', 'audio'], true)) {
+                $transcript = $mediaSvc->transcribeAudio($mediaData, $mediaMime);
+                $message    = $transcript ? '[Nota de voz]: ' . $transcript : '[El usuario envió una nota de voz]';
+                error_log('[Mia] Voice transcribed: ' . substr($transcript ?: '', 0, 80));
+            } elseif ($mediaType === 'image') {
+                $desc    = $mediaSvc->describeImage($mediaData, $mediaMime, $message);
+                $message = $desc ? ($message ? "[Imagen: {$desc}] {$message}" : "[Imagen]: {$desc}") : ($message ?: '[El usuario envió una imagen]');
+            }
+        }
+
+        if (empty($message)) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'error' => 'Empty message after media processing']);
+            return;
+        }
 
         try {
             $service = new MiaSalesService();
@@ -79,15 +102,38 @@ class ApiController
         $raw  = file_get_contents('php://input');
         $data = json_decode($raw ?: '', true);
 
-        if (!is_array($data) || empty($data['message']) || empty($data['from']) || empty($data['client_id'])) {
+        if (!is_array($data) || empty($data['from']) || empty($data['client_id'])) {
             http_response_code(422);
-            echo json_encode(['success' => false, 'error' => 'Missing message, from, or client_id']);
+            echo json_encode(['success' => false, 'error' => 'Missing from or client_id']);
             return;
         }
 
-        $phone    = trim((string) $data['from']);
-        $message  = trim((string) $data['message']);
-        $clientId = (int) $data['client_id'];
+        $phone     = trim((string) $data['from']);
+        $message   = trim((string) ($data['message'] ?? ''));
+        $clientId  = (int) $data['client_id'];
+
+        // Media resolution: convert voice notes / images to text before the service sees them
+        $mediaData = $data['media_data'] ?? null;
+        $mediaMime = $data['media_mime'] ?? null;
+        $mediaType = $data['media_type'] ?? null;
+        if ($mediaData && $mediaMime) {
+            require_once __DIR__ . '/../services/MediaService.php';
+            $mediaSvc = new MediaService();
+            if (in_array($mediaType, ['ptt', 'audio'], true)) {
+                $transcript = $mediaSvc->transcribeAudio($mediaData, $mediaMime);
+                $message    = $transcript ? '[Nota de voz]: ' . $transcript : '[El usuario envió una nota de voz]';
+                error_log("[ClientBot:{$clientId}] Voice transcribed: " . substr($transcript ?: '', 0, 80));
+            } elseif ($mediaType === 'image') {
+                $desc    = $mediaSvc->describeImage($mediaData, $mediaMime, $message);
+                $message = $desc ? ($message ? "[Imagen: {$desc}] {$message}" : "[Imagen]: {$desc}") : ($message ?: '[El usuario envió una imagen]');
+            }
+        }
+
+        // No reply needed for media we couldn't extract (e.g. stickers)
+        if (empty($message)) {
+            echo json_encode(['success' => true, 'reply' => '']);
+            return;
+        }
 
         $client = (new ClientService())->findById($clientId);
         if (!$client) {
@@ -142,6 +188,16 @@ class ApiController
         $phone    = isset($data['phone']) ? trim((string) $data['phone']) : null;
 
         (new ClientService())->updateWaStatus($clientId, $status, $phone ?: null);
+
+        // Alert the client by email when their bot drops
+        if ($status === 'disconnected') {
+            try {
+                require_once __DIR__ . '/../services/NotificationService.php';
+                (new NotificationService())->sendDisconnectAlert($clientId);
+            } catch (\Throwable $e) {
+                error_log('[Mia] Disconnect alert error: ' . $e->getMessage());
+            }
+        }
 
         echo json_encode(['success' => true], JSON_UNESCAPED_UNICODE);
     }

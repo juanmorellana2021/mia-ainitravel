@@ -190,4 +190,70 @@ HTML;
             }
         }
     }
-}
+
+    /**
+     * Email a client when their WhatsApp bot disconnects.
+     * Called by ApiController::clientStatus() on every disconnection event.
+     */
+    public function sendDisconnectAlert(int $clientId): void
+    {
+        $stmt = $this->db->prepare(
+            "SELECT email, contact_name, business_name FROM mia_clients WHERE id = ? LIMIT 1"
+        );
+        $stmt->execute([$clientId]);
+        $client = $stmt->fetch();
+
+        if (!$client || !filter_var($client['email'] ?? '', FILTER_VALIDATE_EMAIL)) return;
+
+        $name     = htmlspecialchars($client['contact_name']  ?: 'equipo');
+        $bizName  = htmlspecialchars($client['business_name'] ?: 'tu negocio');
+        $loginUrl = App::URL . '/login';
+        $time     = date('d/m/Y H:i');
+        $subject  = "⚠️ Tu bot de WhatsApp se desconectó — {$bizName}";
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;margin:0;padding:20px}
+  .card{background:#fff;border-radius:12px;max-width:520px;margin:0 auto;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+  .hd{background:#1a1a2e;color:#fff;padding:28px 24px;text-align:center}
+  .hd h2{margin:8px 0 4px;color:#f59e0b;font-size:20px}
+  .bd{padding:24px}
+  .btn{display:inline-block;background:#25d366;color:#fff!important;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;margin-top:20px}
+  .ft{background:#f8f9fa;padding:14px 24px;text-align:center;font-size:12px;color:#adb5bd}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd">
+    <div style="font-size:2.4rem">⚠️</div>
+    <h2>Bot desconectado</h2>
+    <p style="margin:0;color:#ccc;font-size:13px">{$time}</p>
+  </div>
+  <div class="bd">
+    <p>Hola <strong>{$name}</strong>,</p>
+    <p>Tu bot de WhatsApp para <strong>{$bizName}</strong> se desconectó y <strong>ya no responde mensajes</strong>.</p>
+    <p>Para reconectarlo, ingresa a tu panel y escanea el código QR en <em>Configuración → WhatsApp</em>:</p>
+    <div style="text-align:center">
+      <a href="{$loginUrl}" class="btn">Reconectar ahora →</a>
+    </div>
+    <p style="margin-top:20px;color:#6c757d;font-size:13px">
+      Esto ocurre si el teléfono se desconectó de internet, WhatsApp fue cerrado, o se desvincló el dispositivo.
+    </p>
+  </div>
+  <div class="ft">Mia by AiniDesk &middot; mia.ainitravel.com</div>
+</div>
+</body>
+</html>
+HTML;
+
+        $headers  = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: Mia by AiniDesk <noreply@ainitravel.com>\r\n";
+
+        @mail($client['email'], $subject, $html, $headers);
+        error_log("[Mia] Disconnect alert sent to {$client['email']} (client {$clientId})");
+    }

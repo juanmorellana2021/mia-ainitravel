@@ -23,6 +23,7 @@ const qrcodeTerminal        = require('qrcode-terminal');
 const qrcodeImage           = require('qrcode');
 const https                 = require('https');
 const http                  = require('http');
+const { fork }              = require('child_process');
 const fs                    = require('fs');
 const path                  = require('path');
 
@@ -32,9 +33,10 @@ const MIA_API_HOST   = 'mia.ainitravel.com';
 const MIA_API_PORT   = 443;
 const AUTH_DIR       = path.join(__dirname, '.wwebjs_auth');
 
-// ── Client session registry ───────────────────────────────────────────────────
-// Map<string clientId, { client: Client|null, status: string, qrData: string|null, phone: string|null }>
-const clientSessions = new Map();
+// ── Client worker registry ──────────────────────────────────────────────────────
+// Each client runs in an isolated forked process. A crash in one never affects others.
+// Map<string clientId, { worker: ChildProcess|null, status: string, qrData: string|null, phone: string|null }>
+const clientWorkers = new Map();
 
 // ── Helper: build a puppeteer Client ─────────────────────────────────────────
 function makeWaClient(clientId) {
@@ -98,9 +100,10 @@ miaClient.on('message', async (msg) => {
         return;
     }
 
-    // Accept chat + any type that carries text (buttons_response, interactive, etc.)
-    if (!rawBody) {
-        console.log(`[mia-bot] Dropped: empty body (type=${msg.type})`);
+    // Accept text AND media (voice notes, images)
+    const hasMiaMedia = msg.hasMedia && ['ptt', 'audio', 'image'].includes(msg.type);
+    if (!rawBody && !hasMiaMedia) {
+        console.log(`[mia-bot] Dropped: empty body, no media (type=${msg.type})`);
         return;
     }
 
@@ -121,11 +124,35 @@ miaClient.on('message', async (msg) => {
         }
     }
 
-    const message = rawBody;
-    console.log(`[mia-bot] MSG from ${from}: ${message.substring(0, 80)}`);
+    // Download media if present (voice notes, images)
+    let messageText = rawBody;
+    let mediaData = null, mediaMime = null, mediaType = null;
+    if (hasMiaMedia) {
+        try {
+            const media = await msg.downloadMedia();
+            if (media) {
+                mediaData = media.data;
+                mediaMime = media.mimetype;
+                mediaType = msg.type;
+                if (!messageText && msg.type === 'image' && msg.body) messageText = msg.body;
+                if (!messageText) messageText = `[${msg.type}]`;
+            }
+        } catch (e) {
+            console.error(`[mia-bot] Media download error: ${e.message}`);
+        }
+    }
+    if (!messageText) messageText = `[${mediaType || 'media'}]`;
+
+    console.log(`[mia-bot] MSG from ${from}: ${messageText.substring(0, 80)}`);
 
     try {
-        const reply = await callApi('/api/chat', { from, message });
+        const reply = await callApi('/api/chat', {
+            from,
+            message:    messageText,
+            media_data: mediaData,
+            media_mime: mediaMime,
+            media_type: mediaType,
+        });
         if (reply) {
             // @lid contacts (Facebook ads) must use msg.reply() — sendMessage(@lid) silently fails
             if (isLid) {
@@ -150,116 +177,74 @@ miaClient.initialize();
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * Start (or reconnect) a WhatsApp session for one subscribed client.
- * Does nothing if the session is already active.
+ * Start a WhatsApp session for one subscribed client as an isolated forked process.
+ * A crash in this worker affects only that client — never Mia or other clients.
  */
 function createClientSession(clientId) {
-    const id = String(clientId);
-
-    const existing = clientSessions.get(id);
-    if (existing && existing.status !== 'disconnected') {
+    const id       = String(clientId);
+    const existing = clientWorkers.get(id);
+    if (existing && existing.status !== 'disconnected' && existing.worker !== null) {
         console.log(`[client:${id}] Session already ${existing.status} — skipping`);
         return;
     }
 
-    console.log(`[client:${id}] Initializing WhatsApp session...`);
-    const session = { client: null, status: 'qr_pending', qrData: null, phone: null };
-    clientSessions.set(id, session);
+    console.log(`[client:${id}] Forking isolated worker process...`);
+    const state = { worker: null, status: 'qr_pending', qrData: null, phone: null };
+    clientWorkers.set(id, state);
 
-    const ww = makeWaClient('client_' + id);
-    session.client = ww;
-    let sessionReadyAt = 0; // filter offline backlog for this client
+    const worker = fork(path.join(__dirname, 'bot_client_worker.js'), [], { silent: false });
+    state.worker = worker;
 
-    ww.on('qr', async (qr) => {
-        console.log(`[client:${id}] QR generated`);
-        session.status = 'qr_pending';
-        session.qrData = null;
-        try {
-            session.qrData = await qrcodeImage.toDataURL(qr, { width: 300 });
-        } catch (e) {
-            console.error(`[client:${id}] QR image error:`, e.message);
+    // Bootstrap the worker with its clientId
+    worker.send({ type: 'init', clientId: id });
+
+    // Status / QR updates arrive via IPC
+    worker.on('message', (msg) => {
+        if (msg.type === 'status') {
+            state.status = msg.status;
+            state.phone  = msg.phone || null;
+            if (msg.status === 'connected') state.qrData = null;
+            notifyPhpStatus(id, msg.status, msg.phone);
+        }
+        if (msg.type === 'qr') {
+            state.status = 'qr_pending';
+            state.qrData = msg.qrData;
         }
     });
 
-    ww.on('ready', async () => {
-        try {
-            sessionReadyAt = Math.floor(Date.now() / 1000);
-            const phone = ww.info?.wid?.user ? '+' + ww.info.wid.user : null;
-            session.status = 'connected';
-            session.qrData = null;
-            session.phone  = phone;
-            console.log(`[client:${id}] ✅ Connected! Phone: ${phone}`);
-            await notifyPhpStatus(id, 'connected', phone);
-        } catch (e) {
-            console.error(`[client:${id}] ready handler error:`, e.message);
-        }
+    // Worker exit = disconnect (crash or clean shutdown)
+    worker.on('exit', (code, signal) => {
+        console.log(`[client:${id}] Worker exited (code=${code} signal=${signal})`);
+        state.worker = null;
+        state.status = 'disconnected';
+        state.qrData = null;
+        state.phone  = null;
     });
 
-    ww.on('disconnected', async (reason) => {
-        console.log(`[client:${id}] ❌ Disconnected: ${reason}`);
-        session.status = 'disconnected';
-        session.qrData = null;
-        session.phone  = null;
-        session.client = null;
-        await notifyPhpStatus(id, 'disconnected', null);
+    worker.on('error', (err) => {
+        console.error(`[client:${id}] Worker error: ${err.message}`);
     });
-
-    ww.on('message', async (msg) => {
-        if (msg.from === 'status@broadcast' || msg.from.includes('@g.us')) return;
-        if (msg.fromMe) return;
-
-        const rawBody = msg.body?.trim() || '';
-        console.log(`[client:${id}] RAW from=${msg.from} type=${msg.type} body="${rawBody.substring(0, 60)}"`);
-
-        // Skip offline backlog to avoid reply storms after reconnect
-        if (sessionReadyAt > 0 && msg.timestamp && msg.timestamp < sessionReadyAt) {
-            console.log(`[client:${id}] Skipping offline-backlog msg from ${msg.from}`);
-            return;
-        }
-
-        if (!rawBody) {
-            console.log(`[client:${id}] Dropped: empty body (type=${msg.type})`);
-            return;
-        }
-
-        const from    = msg.from;
-        const message = rawBody;
-        console.log(`[client:${id}] MSG from ${from}: ${message.substring(0, 80)}`);
-
-        try {
-            const reply = await callApi('/api/client-chat', {
-                from,
-                message,
-                client_id: parseInt(id, 10),
-            });
-            if (reply) {
-                await ww.sendMessage(from, reply);
-                console.log(`[client:${id}] REPLY to ${from}: ${reply.substring(0, 60)}`);
-            }
-        } catch (e) {
-            console.error(`[client:${id}] API error:`, e.message);
-            await ww.sendMessage(from, 'Un momento, estoy teniendo un pequeño problema técnico 🙏');
-        }
-    });
-
-    ww.initialize();
 }
 
 /**
- * Gracefully disconnect and clean up a client session.
+ * Gracefully stop a client's worker process.
  */
 async function destroyClientSession(clientId) {
-    const id      = String(clientId);
-    const session = clientSessions.get(id);
-    if (!session?.client) {
-        if (session) session.status = 'disconnected';
+    const id    = String(clientId);
+    const state = clientWorkers.get(id);
+    if (!state?.worker) {
+        if (state) state.status = 'disconnected';
         return;
     }
-    try { await session.client.destroy(); } catch (_) { /* ignore */ }
-    session.status = 'disconnected';
-    session.client = null;
-    session.qrData = null;
-    session.phone  = null;
+    try { state.worker.send({ type: 'destroy' }); } catch (_) {}
+    // Force kill after 5 s if it hasn't exited gracefully
+    setTimeout(() => {
+        if (state.worker) {
+            try { state.worker.kill(); } catch (_) {}
+            state.worker = null;
+            state.status = 'disconnected';
+        }
+    }, 5000);
 }
 
 // ── On startup: reconnect any clients with saved LocalAuth sessions ───────────
@@ -378,16 +363,13 @@ const adminServer = http.createServer((req, res) => {
             try {
                 const { client_id, to, message } = JSON.parse(raw);
                 if (!client_id || !to || !message) return respond(res, 400, { error: 'client_id, to and message required' });
-                const id      = String(client_id);
-                const session = clientSessions.get(id);
-                if (!session?.client) return respond(res, 503, { error: 'client not connected' });
+                const id    = String(client_id);
+                const state = clientWorkers.get(id);
+                if (!state?.worker || state.status !== 'connected') return respond(res, 503, { error: 'client not connected' });
                 const chatId = to.includes('@') ? to : to.replace('+', '') + '@c.us';
-                session.client.sendMessage(chatId, message)
-                    .then(() => {
-                        console.log(`[client:${id}] OUTBOUND(human) to ${chatId}: ${message.substring(0, 60)}`);
-                        respond(res, 200, { success: true, to: chatId });
-                    })
-                    .catch((e) => respond(res, 500, { error: e.message }));
+                state.worker.send({ type: 'send', to: chatId, message });
+                console.log(`[client:${id}] OUTBOUND(human) queued to ${chatId}: ${message.substring(0, 60)}`);
+                respond(res, 200, { success: true, to: chatId });
             } catch (_) {
                 respond(res, 400, { error: 'Invalid JSON' });
             }
@@ -425,7 +407,7 @@ const adminServer = http.createServer((req, res) => {
     const qrMatch = url.match(/^\/qr\/(\d+)$/);
     if (method === 'GET' && qrMatch) {
         const clientId = qrMatch[1];
-        const s        = clientSessions.get(clientId);
+        const s        = clientWorkers.get(clientId);
         if (!s)                    return respond(res, 200, { status: 'disconnected', qr_image: null });
         if (s.status === 'connected') return respond(res, 200, { status: 'connected',    qr_image: null, phone: s.phone });
         if (s.qrData)              return respond(res, 200, { status: 'qr_pending',    qr_image: s.qrData });
@@ -436,7 +418,7 @@ const adminServer = http.createServer((req, res) => {
     // GET /status/:clientId
     const statusMatch = url.match(/^\/status\/(\d+)$/);
     if (method === 'GET' && statusMatch) {
-        const s = clientSessions.get(statusMatch[1]);
+        const s = clientWorkers.get(statusMatch[1]);
         if (!s) return respond(res, 200, { status: 'disconnected', phone: null });
         respond(res, 200, { status: s.status, phone: s.phone });
         return;
