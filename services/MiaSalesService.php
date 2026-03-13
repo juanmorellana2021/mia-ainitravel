@@ -448,29 +448,39 @@ class MiaSalesService
     {
         $msg = mb_strtolower(trim($message));
 
-        if (preg_match('/\b(empezar|activar|quiero|lo quiero|start|trial|básico|basico|pro|enterprise|me anoto|nos anotamos|adelante|vamos|acepto|confirmado|dale|ok ok|listo si)\b/i', $msg) ||
-            preg_match('/\b(1|2|3)\b/', $msg)) {
+        // Hard yes + soft yes + plan selection all treated as buy intent
+        $buyIntent = preg_match(
+            '/\b(empezar|activar|quiero|lo quiero|start|trial|me anoto|nos anotamos|adelante|vamos|acepto|confirmado|dale|listo|si quiero|ya|claro que si|por supuesto|perfecto|de acuerdo|me interesa|suena bien|esta bien|trato hecho|basico|básico|pro|enterprise|starter)\b/i',
+            $msg
+        ) || preg_match('/\b(1|2|3)\b/', $msg);
 
-            // Detect which plan was chosen to store it
+        if ($buyIntent) {
+            // Detect which plan was chosen
             $chosenPlan = null;
-            if (preg_match('/\bpro\b/i', $msg))                              $chosenPlan = 'pro';
-            elseif (preg_match('/\bbasico|básico\b/i', $msg))                 $chosenPlan = 'basic';
-            elseif (preg_match('/\bstarter\b/i', $msg))                      $chosenPlan = 'starter';
-            elseif (preg_match('/\benterprise\b/i', $msg))                   $chosenPlan = 'enterprise';
+            if (preg_match('/\bpro\b/i', $msg))             $chosenPlan = 'pro';
+            elseif (preg_match('/\bbasico|básico\b/i', $msg)) $chosenPlan = 'basic';
+            elseif (preg_match('/\bstarter\b/i', $msg))      $chosenPlan = 'starter';
+            elseif (preg_match('/\benterprise\b/i', $msg))   $chosenPlan = 'enterprise';
 
-            $update = ['state' => 'collecting_name'];
+            // Skip collecting_name — go straight to email (less friction)
+            $update = ['state' => 'collecting_email'];
             if ($chosenPlan) $update['chosen_plan'] = $chosenPlan;
             $this->updateSession($phone, $update);
             $session = array_merge($session, $update);
-            $bizType = $session['business_type'] ?? 'negocio';
+
+            $contactName = $session['contact_name'] ?? null;
+            $nameRef     = $contactName ? ", {$contactName}" : '';
             return $this->aiReply($phone, $session, $message,
-                "El usuario quiere empezar. Entusiasmo genuino — 1 frase de celebración, luego pide solo su nombre " .
-                "(no el del negocio todavía — el SUYO, para personalizar). Cálido, breve."
+                "¡Perfecto{$nameRef}! El cliente acaba de confirmar que quiere empezar. " .
+                "1 frase corta de celebración genuina (SIN exagerar). " .
+                "Luego explica lo que va a pasar ahora mismo: " .
+                "'Voy a crearte tu cuenta en este momento — solo necesito tu email. " .
+                "En minutos recibes tu usuario y contraseña directo a tu correo y ya puedes entrar.' " .
+                "Pide ÚNICAMENTE el email — nada más. Sin preguntas adicionales, sin listas, sin URLs."
             );
         }
 
-        // Objection or hesitation at closing
-        $bizType = $session['business_type'] ?? 'negocio';
+        // Objection or hesitation
         return $this->aiReply($phone, $session, $message,
             "Objeción en fase de cierre — momento más crítico de la venta. NO des lista de objeciones genéricas. " .
             "PRIMERO: diagnostica qué tipo de objeción es basándote en lo que dijeron: " .
@@ -478,32 +488,27 @@ class MiaSalesService
             "Luego aplica Find/Felt/Found + elimina el riesgo específico: " .
             "• Precio → '¿Cuánto cobra Booking.com por una reserva? S/399 al mes es menos que 1 comisión.' " .
             "• Tiempo/técnico → 'No tocas nada — el equipo lo monta en 48h mientras tú sigues con tu negocio.' " .
-            "• Incertidumbre → '7 días gratis, sin tarjeta. Si en una semana no ves 1 cliente extra, " .
-            "cancelas con un WhatsApp y punto.' " .
+            "• Incertidumbre → '7 días gratis, sin tarjeta. Si en una semana no ves 1 cliente extra, cancelas con un WhatsApp y punto.' " .
             "• Debo hablarlo → 'Claro. ¿Qué información necesitas para presentárselo a [él/ella]? Te lo preparo.' " .
-            "Siempre termina con UNA pregunta de cierre suave — elección, no sí/no."
+            "Termina SIEMPRE con una pregunta de cierre suave que lleve al email: " .
+            "'¿Te anoto? Solo necesito tu email para activarte ahora mismo.'"
         );
     }
 
     private function handleCollectName(string $phone, array $session, string $message): array
     {
+        // This state is kept for legacy sessions. New flow skips it and goes closing → collecting_email.
         $name = trim($message);
-
         if (strlen($name) < 2) {
             return $this->aiReply($phone, $session, $message,
-                "No pudo capturar el nombre del negocio. Pide de nuevo el nombre de su empresa/negocio, de forma amigable."
+                "No pudo capturar un nombre válido. Pide el email directamente — es lo único que necesitas para crear la cuenta ahora."
             );
         }
-
         $this->updateSession($phone, ['state' => 'collecting_email', 'business_name' => $name]);
         $session = array_merge($session, ['state' => 'collecting_email', 'business_name' => $name]);
-
-        $bizType = $session['business_type'] ?? 'negocio';
         return $this->aiReply($phone, $session, $message,
-            "Tienes el nombre del negocio: {$name} ({$bizType}). Celebra brevemente — hazlos sentir que tomaron " .
-            "una buena decisión. Crea anticipación: menciona que en 48h el equipo los contactará para configurar todo. " .
-            "Pide el email de forma natural: es para enviarles los accesos + un resumen de lo que conversaron. " .
-            "Hazlo sentir como el primer paso de algo importante, no como llenar un formulario."
+            "Perfecto. Ahora pide el email — explica que en cuanto lo tengas creas la cuenta en este momento " .
+            "y les llega usuario + contraseña directo al correo. Solo el email, sin más preguntas."
         );
     }
 
@@ -511,8 +516,9 @@ class MiaSalesService
     {
         if (!preg_match('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $message, $m)) {
             return $this->aiReply($phone, $session, $message,
-                "No detectaste un email válido. Pide de nuevo el email de contacto amigablemente — " .
-                "es para enviarle los accesos a la prueba gratuita de 7 días."
+                "No detectaste un email válido en ese mensaje. Pide de nuevo de forma amigable — " .
+                "recuérdale que en cuanto tengas su email creates su cuenta en este momento " .
+                "y le llega usuario + contraseña directo a su correo. Hazlo fácil y urgente."
             );
         }
 
