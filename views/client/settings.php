@@ -18,7 +18,23 @@ $bc = array_merge([
     'faqs'          => '',
     'language'      => 'es',
     'tone'          => 'friendly',
+    'char_skills'   => [],
 ], $bc);
+$activeSkills = (array)($bc['char_skills'] ?? []);
+
+// All available character skills
+$allSkills = [
+    'humor'    => ['😄', 'Toque de humor',       'Agrega chispa con humor ligero cuando el contexto lo permite'],
+    'empathy'  => ['💖', 'Muy empática',          'Reconoce los sentimientos del cliente antes de responder'],
+    'stories'  => ['📖', 'Cuenta historias',      'Menciona casos de éxito similares para generar confianza'],
+    'direct'   => ['⚡', 'Directa al grano',      'Sin rodeos — va al punto en la primera frase'],
+    'scarcity' => ['⏰', 'Urgencia / escasez',    'Menciona disponibilidad limitada u ofertas por tiempo'],
+    'patient'  => ['🙏', 'Nunca presiona',        'Paciente y sin presión — el cliente decide a su ritmo'],
+    'usted'    => ['🎩', 'Trato formal (usted)',  'Usa "usted" siempre en lugar de "tú"'],
+    'tips'     => ['💡', 'Da consejos de valor',  'Incluye tips extras útiles relacionados con la consulta'],
+    'premium'  => ['✨', 'Voz premium',           'Vocabulario refinado — "inversión", "exclusivo", no "barato"'],
+    'proactive'=> ['🔄', 'Proactiva',             'Ofrece alternativas y próximos pasos sin que se los pidan'],
+];
 
 // Plan capabilities
 $planCaps = [
@@ -237,6 +253,27 @@ require __DIR__ . '/_sidebar.php';
                         <div class="form-text">Mia responderá estas preguntas automáticamente.</div>
                     </div>
 
+                    <!-- Character Skills ──────────────────────────────────── -->
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold text-muted d-block mb-1">
+                            <i class="bi bi-stars me-1 text-warning"></i>Habilidades de personalidad
+                        </label>
+                        <p class="text-muted small mb-3">
+                            Selecciona los rasgos de carácter que quieres que Mia tenga al hablar con tus clientes.
+                            Puedes combinar varios.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                        <?php foreach ($allSkills as $key => [$emoji, $label, $desc]): ?>
+                        <?php $isActive = in_array($key, $activeSkills); ?>
+                        <label class="skill-pill <?= $isActive ? 'active' : '' ?>" title="<?= htmlspecialchars($desc) ?>">
+                            <input type="checkbox" name="char_skills[]" value="<?= $key ?>" <?= $isActive ? 'checked' : '' ?> style="display:none">
+                            <span><?= $emoji ?> <?= $label ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                        </div>
+                        <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i>Pasa el mouse sobre cada habilidad para ver qué hace.</div>
+                    </div>
+
                     <!-- Plan-gated features notice -->
                     <?php if (in_array('leads', $caps)): ?>
                     <div class="col-12">
@@ -301,6 +338,41 @@ require __DIR__ . '/_sidebar.php';
 
         <!-- ── Save ───────────────────────────────────────────────────────── -->
         <div class="col-12">
+            <style>
+            .skill-pill {
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                padding: 6px 14px;
+                border-radius: 20px;
+                border: 1.5px solid #dee2e6;
+                background: #f8f9fa;
+                color: #6c757d;
+                font-size: 0.84rem;
+                user-select: none;
+                transition: all .15s ease;
+            }
+            .skill-pill:hover {
+                border-color: #25d366;
+                color: #198754;
+                background: rgba(37,211,102,0.06);
+            }
+            .skill-pill.active {
+                border-color: #25d366;
+                background: rgba(37,211,102,0.12);
+                color: #146c43;
+                font-weight: 600;
+            }
+            </style>
+            <script>
+            document.querySelectorAll('.skill-pill').forEach(function(pill) {
+                pill.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    var cb = this.querySelector('input[type=checkbox]');
+                    cb.checked = !cb.checked;
+                });
+            });
+            </script>
             <button type="submit" class="btn btn-success px-4"
                     style="background:#25d366;border-color:#25d366">
                 <i class="bi bi-check-circle me-2"></i>Guardar cambios

@@ -99,8 +99,30 @@ class ClientBotService
         $pricing    = $this->cfg['pricing']        ?? '';
         $hours      = $this->cfg['hours']          ?? '';
         $faqs       = $this->cfg['faqs']           ?? '';
-        $tone       = $this->cfg['tone']           ?? 'friendly';
-        $language   = $this->cfg['language']       ?? 'es';
+        $tone       = $this->cfg['tone']        ?? 'friendly';
+        $language   = $this->cfg['language']     ?? 'es';
+        $charSkills = (array)($this->cfg['char_skills'] ?? []);
+
+        // Build skill-specific prompt injections
+        $skillMap = [
+            'humor'    => 'Uso de humor ligero y apropiado: incluye una broma corta o comentario ingenioso cuando el momento lo permita de forma natural.',
+            'empathy'  => 'Empatía activa: reconoce el sentimiento del cliente antes de dar información ("Entiendo que puede ser frustrante...", "Me alegra que preguntes eso").',
+            'stories'  => 'Cuenta micro-historias de éxito: cuando sea relevante menciona brevemente un cliente similar que tuvo un buen resultado con el negocio.',
+            'direct'   => 'Estilo ultra-directo: sin frases de relleno, sin saludos largos — la primera frase ya da la respuesta.',
+            'scarcity' => 'Usa escasez y urgencia cuando sea apropiado: disponibilidad limitada, temporada alta, oferta por tiempo limitado.',
+            'patient'  => 'Nunca presiones al cliente. Si no está listo, respeta su ritmo. Solo una pregunta de seguimiento por turno, nunca dos.',
+            'usted'    => 'Usa SIEMPRE "usted" y nunca "tú". Trato formal en todo momento.',
+            'tips'     => 'Proactivo con valor extra: cuando sea natural, da 1 consejo útil adicional relacionado con lo que preguntaron.',
+            'premium'  => 'Voz de marca premium: usa vocabulario refinado — "inversión" no "costo", "exclusivo" no "barato", "seleccionado" no "disponible".',
+            'proactive'=> 'Siempre ofrece un próximo paso claro o alternativa sin que te lo pidan. No dejes la conversación sin dirección.',
+        ];
+        $activeSkillLines = [];
+        foreach ($charSkills as $sk) {
+            if (isset($skillMap[$sk])) $activeSkillLines[] = '- ' . $skillMap[$sk];
+        }
+        $skillsBlock = !empty($activeSkillLines)
+            ? "\nHABILIDADES DE PERSONALIDAD ACTIVAS:\n" . implode("\n", $activeSkillLines)
+            : '';
 
         $toneDesc = match ($tone) {
             'professional' => 'Formal y profesional. Respuestas precisas y bien estructuradas.',
@@ -153,7 +175,7 @@ REGLAS DE COMPORTAMIENTO:
 - 1 emoji máximo por mensaje, solo si suma.
 - NUNCA digas que eres una IA a menos que te pregunten directamente.
 {$handoffBlock}
-{$leadBlock}
+{$leadBlock}{$skillsBlock}
 PROMPT;
     }
 

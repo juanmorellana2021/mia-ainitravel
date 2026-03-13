@@ -74,6 +74,11 @@ class SettingsController
         App::csrfVerify();
         $client = $this->requireClient();
 
+        // Validate char_skills against allowed values
+        $allowedSkills = ['humor','empathy','stories','direct','scarcity','patient','usted','tips','premium','proactive'];
+        $rawSkills = $_POST['char_skills'] ?? [];
+        $charSkills = array_values(array_intersect((array)$rawSkills, $allowedSkills));
+
         (new ClientService())->updateSettings($client->id, [
             'contact_name'        => $_POST['contact_name']        ?? '',
             'phone'               => $_POST['phone']               ?? '',
@@ -85,6 +90,7 @@ class SettingsController
             'bot_faqs'            => $_POST['bot_faqs']            ?? '',
             'bot_language'        => $_POST['bot_language']        ?? 'es',
             'bot_tone'            => $_POST['bot_tone']            ?? 'friendly',
+            'char_skills'         => $charSkills,
             'notify_email'        => $_POST['notify_email']        ?? '',
             'notify_on_capture'   => $_POST['notify_on_capture']   ?? 0,
             'notify_daily_summary'=> $_POST['notify_daily_summary']?? 0,

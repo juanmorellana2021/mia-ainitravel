@@ -100,14 +100,15 @@ class ClientService
     {
         // Build bot_config JSON from structured fields
         $botConfig = json_encode([
-            'business_type'  => trim($data['business_type']  ?? 'other'),
-            'description'    => trim($data['bot_description']  ?? ''),
-            'services'       => trim($data['bot_services']     ?? ''),
-            'pricing'        => trim($data['bot_pricing']      ?? ''),
-            'hours'          => trim($data['bot_hours']        ?? ''),
-            'faqs'           => trim($data['bot_faqs']         ?? ''),
-            'language'       => trim($data['bot_language']     ?? 'es'),
-            'tone'           => trim($data['bot_tone']         ?? 'friendly'),
+            'business_type'  => trim($data['business_type']   ?? 'other'),
+            'description'    => trim($data['bot_description'] ?? ''),
+            'services'       => trim($data['bot_services']    ?? ''),
+            'pricing'        => trim($data['bot_pricing']     ?? ''),
+            'hours'          => trim($data['bot_hours']       ?? ''),
+            'faqs'           => trim($data['bot_faqs']        ?? ''),
+            'language'       => trim($data['bot_language']    ?? 'es'),
+            'tone'           => trim($data['bot_tone']        ?? 'friendly'),
+            'char_skills'    => (array)($data['char_skills']  ?? []),
         ], JSON_UNESCAPED_UNICODE);
 
         $stmt = $this->db->prepare(
