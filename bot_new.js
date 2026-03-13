@@ -86,26 +86,60 @@ miaClient.on('disconnected', (reason) => {
 
 miaClient.on('message', async (msg) => {
     if (msg.from === 'status@broadcast' || msg.from.includes('@g.us')) return;
-    if (msg.fromMe || msg.type !== 'chat' || !msg.body?.trim()) return;
-    // Skip messages sent before this session started (offline backlog) to avoid reply storms
+    if (msg.fromMe) return;
+
+    // Log ALL messages before any filter so nothing is invisible
+    const rawBody = msg.body?.trim() || '';
+    console.log(`[mia-bot] RAW from=${msg.from} type=${msg.type} body="${rawBody.substring(0, 60)}"`);
+
+    // Skip offline backlog to avoid reply storms after reconnect
     if (miaBotReadyAt > 0 && msg.timestamp && msg.timestamp < miaBotReadyAt) {
         console.log(`[mia-bot] Skipping offline-backlog msg (ts:${msg.timestamp} < ready:${miaBotReadyAt}) from ${msg.from}`);
         return;
     }
 
-    const from    = msg.from;
-    const message = msg.body;
+    // Accept chat + any type that carries text (buttons_response, interactive, etc.)
+    if (!rawBody) {
+        console.log(`[mia-bot] Dropped: empty body (type=${msg.type})`);
+        return;
+    }
+
+    // Resolve real phone number — @lid = Facebook anonymized ID
+    let from = msg.from;
+    const isLid = msg.from.includes('@lid');
+    if (isLid) {
+        try {
+            const contact = await msg.getContact();
+            if (contact && contact.number) {
+                from = contact.number + '@c.us';
+                console.log(`[mia-bot] @lid resolved to ${from}`);
+            } else {
+                console.log(`[mia-bot] @lid could not resolve number, keeping ${from}`);
+            }
+        } catch (e) {
+            console.log(`[mia-bot] @lid getContact failed: ${e.message}, keeping ${from}`);
+        }
+    }
+
+    const message = rawBody;
     console.log(`[mia-bot] MSG from ${from}: ${message.substring(0, 80)}`);
 
     try {
         const reply = await callApi('/api/chat', { from, message });
         if (reply) {
-            await miaClient.sendMessage(from, reply);
+            // @lid contacts (Facebook ads) must use msg.reply() — sendMessage(@lid) silently fails
+            if (isLid) {
+                await msg.reply(reply);
+            } else {
+                await miaClient.sendMessage(from, reply);
+            }
             console.log(`[mia-bot] REPLY to ${from}: ${reply.substring(0, 60)}`);
         }
     } catch (e) {
         console.error('[mia-bot] API error:', e.message);
-        await miaClient.sendMessage(from, 'Lo siento, tuve un problema técnico. Intenta de nuevo en un momento. 🙏');
+        try {
+            await msg.reply('Lo siento, tuve un problema técnico. Intenta de nuevo en un momento. 🙏');
+        } catch (_) {}
     }
 });
 
@@ -172,15 +206,24 @@ function createClientSession(clientId) {
 
     ww.on('message', async (msg) => {
         if (msg.from === 'status@broadcast' || msg.from.includes('@g.us')) return;
-        if (msg.fromMe || msg.type !== 'chat' || !msg.body?.trim()) return;
+        if (msg.fromMe) return;
+
+        const rawBody = msg.body?.trim() || '';
+        console.log(`[client:${id}] RAW from=${msg.from} type=${msg.type} body="${rawBody.substring(0, 60)}"`);
+
         // Skip offline backlog to avoid reply storms after reconnect
         if (sessionReadyAt > 0 && msg.timestamp && msg.timestamp < sessionReadyAt) {
             console.log(`[client:${id}] Skipping offline-backlog msg from ${msg.from}`);
             return;
         }
 
+        if (!rawBody) {
+            console.log(`[client:${id}] Dropped: empty body (type=${msg.type})`);
+            return;
+        }
+
         const from    = msg.from;
-        const message = msg.body;
+        const message = rawBody;
         console.log(`[client:${id}] MSG from ${from}: ${message.substring(0, 80)}`);
 
         try {
