@@ -133,10 +133,11 @@ require __DIR__ . '/_sidebar.php';
                                 <i class="bi bi-chat-dots"></i>
                             </button>
                             <?php if ($lead->phone): ?>
-                            <a href="tel:+<?= htmlspecialchars($lead->phone) ?>"
+                            <a href="https://wa.me/<?= htmlspecialchars(preg_replace('/\D/','',$lead->phone)) ?>"
                                class="btn btn-sm btn-outline-secondary"
                                style="font-size:0.78rem;padding:3px 10px"
-                               title="Llamar +<?= htmlspecialchars($lead->phone) ?>">
+                               target="_blank" rel="noopener"
+                               title="Llamar por WhatsApp +<?= htmlspecialchars($lead->phone) ?>">
                                 <i class="bi bi-telephone"></i>
                             </a>
                             <?php endif; ?>
@@ -167,7 +168,8 @@ require __DIR__ . '/_sidebar.php';
         </div>
         <a id="chatCallBtn" href="#"
            style="background:none;border:none;color:#fff;font-size:1.15rem;cursor:pointer;padding:4px 6px;line-height:1;opacity:0.85;text-decoration:none;"
-           title="Llamar">
+           target="_blank" rel="noopener"
+           title="Llamar por WhatsApp">
             <i class="bi bi-telephone"></i>
         </a>
         <button id="chatCloseBtn" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:4px 6px;line-height:1;opacity:0.8;" title="Cerrar">
@@ -228,7 +230,7 @@ require __DIR__ . '/_sidebar.php';
         document.getElementById('chatLeadName').textContent  = name;
         document.getElementById('chatLeadPhone').textContent = phone;
         const callBtn = document.getElementById('chatCallBtn');
-        if (callBtn) callBtn.href = phone ? 'tel:+' + phone.replace(/\D/g,'') : '#';
+        if (callBtn) callBtn.href = phone ? 'https://wa.me/' + phone.replace(/\D/g,'') : '#';
         msgBox.innerHTML = '<div style="text-align:center;color:#adb5bd;font-size:0.8rem;padding:20px 0">Cargando...</div>';
         statusEl.style.display = 'none';
         panel.style.transform  = 'translateX(0)';
