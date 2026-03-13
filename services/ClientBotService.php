@@ -99,6 +99,8 @@ class ClientBotService
         $pricing    = $this->cfg['pricing']        ?? '';
         $hours      = $this->cfg['hours']          ?? '';
         $faqs       = $this->cfg['faqs']           ?? '';
+        $website    = $this->cfg['website']        ?? '';
+        $location   = $this->cfg['location']       ?? '';
         $tone       = $this->cfg['tone']        ?? 'friendly';
         $language   = $this->cfg['language']     ?? 'es';
         $charSkills = (array)($this->cfg['char_skills'] ?? []);
@@ -150,6 +152,8 @@ class ClientBotService
         $hoursBlock    = $hours    ? "HORARIOS:\n{$hours}"                 : '';
         $faqsBlock     = $faqs     ? "PREGUNTAS FRECUENTES:\n{$faqs}"      : '';
         $descBlock     = $desc     ? "SOBRE EL NEGOCIO:\n{$desc}"          : '';
+        $websiteBlock  = $website  ? "SITIO WEB / REDES SOCIALES: {$website}" : '';
+        $locationBlock = $location ? "UBICACIÓN / DIRECCIÓN: {$location}"    : '';
 
         return <<<PROMPT
 Eres el asistente virtual de WhatsApp de *{$bizName}*, un negocio de tipo {$bizType}.
@@ -158,6 +162,10 @@ TONO: {$toneDesc}
 IDIOMA: {$languageRule}
 
 {$descBlock}
+
+{$locationBlock}
+
+{$websiteBlock}
 
 {$servicesBlock}
 

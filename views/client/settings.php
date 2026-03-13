@@ -16,6 +16,8 @@ $bc = array_merge([
     'pricing'       => '',
     'hours'         => '',
     'faqs'          => '',
+    'website'       => '',
+    'location'      => '',
     'language'      => 'es',
     'tone'          => 'friendly',
     'char_skills'   => [],
@@ -154,10 +156,10 @@ require __DIR__ . '/_sidebar.php';
 
                 <div class="row g-4">
 
-                    <!-- Business type + tone -->
-                    <div class="col-md-6">
+                    <!-- Business type + tone + language (3 cols) -->
+                    <div class="col-md-4">
                         <label class="form-label small fw-semibold text-muted">Tipo de negocio</label>
-                        <select name="business_type" class="form-select">
+                        <select name="business_type" class="form-select" id="businessTypeSelect">
                             <?php
                             $types = [
                                 'hotel'         => '🏨 Hotel / Hostal / Alojamiento',
@@ -178,7 +180,7 @@ require __DIR__ . '/_sidebar.php';
                         </select>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label small fw-semibold text-muted">Tono del bot</label>
                         <select name="bot_tone" class="form-select">
                             <option value="friendly"    <?= $bc['tone'] === 'friendly'    ? 'selected' : '' ?>>😊 Amigable y cercano</option>
@@ -189,7 +191,7 @@ require __DIR__ . '/_sidebar.php';
                     </div>
 
                     <!-- Language -->
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label small fw-semibold text-muted">
                             Idioma principal
                             <?php if (!in_array('multilang', $caps)): ?>
@@ -205,6 +207,44 @@ require __DIR__ . '/_sidebar.php';
                         <input type="hidden" name="bot_language" value="<?= htmlspecialchars($bc['language']) ?>">
                         <div class="form-text text-warning">Multilingüe disponible en Plan Pro o superior.</div>
                         <?php endif; ?>
+                    </div>
+
+                    <!-- ── Template banner (JS shows this on type change) ──── -->
+                    <div class="col-12" id="templateBannerWrap" style="display:none">
+                        <div class="d-flex align-items-center gap-3 px-3 py-2 rounded-3"
+                             style="background:rgba(37,211,102,0.10);border:1.5px solid rgba(37,211,102,0.3)">
+                            <i class="bi bi-magic text-success fs-5"></i>
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold small">Plantilla lista para <span id="templateTypeName">este negocio</span></div>
+                                <div class="text-muted" style="font-size:0.79rem">Carga un ejemplo de partida y edítalo con tu información real — ahorra tiempo.</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success px-3"
+                                    id="applyTemplateBtn"
+                                    style="background:#25d366;border-color:#25d366;white-space:nowrap">
+                                <i class="bi bi-lightning-charge me-1"></i>Cargar plantilla
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Website + Location -->
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-muted">
+                            <i class="bi bi-globe2 me-1"></i>Sitio web / Facebook / Instagram
+                        </label>
+                        <input type="text" name="bot_website" class="form-control"
+                               value="<?= htmlspecialchars($bc['website']) ?>"
+                               placeholder="https://www.minegocio.com  o  https://instagram.com/minegocio">
+                        <div class="form-text">Mia podrá indicar a los clientes dónde encontrar más información de tu negocio.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-muted">
+                            <i class="bi bi-geo-alt me-1"></i>Ubicación / Dirección
+                        </label>
+                        <input type="text" name="bot_location" class="form-control"
+                               value="<?= htmlspecialchars($bc['location']) ?>"
+                               placeholder="Av. Larco 234, Miraflores, Lima">
+                        <div class="form-text">Mia informará a los clientes cómo llegar a tu negocio.</div>
                     </div>
 
                     <!-- Description -->
@@ -372,6 +412,112 @@ require __DIR__ . '/_sidebar.php';
                     cb.checked = !cb.checked;
                 });
             });
+
+            // ── Business-type preset templates ────────────────────────────
+            (function() {
+                var T = {
+                    hotel: {
+                        description: 'Somos [Nombre del hotel] ubicado en [Ciudad, País]. Contamos con [N] habitaciones confortables, WiFi, desayuno incluido y atención en recepción 24/7. Atendemos a viajeros nacionales e internacionales.',
+                        services:    '- Habitación Simple: cama matrimonial, TV, WiFi, baño privado\n- Habitación Doble: 2 camas, TV, WiFi, baño privado\n- Suite: sala + dormitorio, jacuzzi, vista especial\n- Desayuno buffet incluido\n- Transfer aeropuerto disponible',
+                        pricing:     '- Habitación Simple: S/150 por noche\n- Habitación Doble: S/220 por noche\n- Suite: S/350 por noche\n- Transfer aeropuerto: S/80 por viaje\n- Descuento 4+ noches: 10%',
+                        hours:       '- Recepción: 24 horas / 7 días\n- Desayuno: 7:00am - 10:00am\n- Check-in: desde 3:00pm\n- Check-out: hasta 12:00pm',
+                        faqs:        '¿Aceptan mascotas? No, lamentablemente no permitimos mascotas.\n¿Hay estacionamiento? Sí, gratuito para huéspedes.\n¿Aceptan tarjeta? Sí, Visa y Mastercard.\n¿Aceptan dólares? Sí, soles y dólares.'
+                    },
+                    travel_agency: {
+                        description: 'Somos [Nombre de agencia] en [Ciudad], operadores de tours y paquetes turísticos. Llevamos a viajeros nacionales e internacionales a descubrir los mejores destinos.',
+                        services:    '- Tours locales de medio día y día completo\n- Paquetes Machu Picchu, Valle Sagrado, Lago Titicaca\n- Viajes personalizados y luna de miel\n- Transfers y traslados\n- Paquetes internacionales',
+                        pricing:     '- Tour local medio día: S/80 por persona\n- Tour Valle Sagrado día completo: S/150 por persona\n- Tour Machu Picchu: S/350 (incluye tren y guía)\n- Paquete 3 días Cusco: desde S/890 por persona\n- Grupos de 8+: 12% descuento',
+                        hours:       '- Lunes a Sábado: 8:00am - 7:00pm\n- Domingos: 9:00am - 2:00pm\n- WhatsApp disponible 24/7 para consultas urgentes',
+                        faqs:        '¿Los tours incluyen guía? Sí, guía bilingüe en todos los tours.\n¿Qué incluye el precio? Transporte, guía y entradas. Almuerzo opcional.\n¿Se puede pagar en cuotas? Sí, con 50% de adelanto.'
+                    },
+                    restaurant: {
+                        description: 'Somos [Nombre del restaurante] en [Ciudad], ofrecemos cocina [tipo: criolla / italiana / fusión] con ingredientes frescos y preparados al momento. El lugar ideal para almuerzos familiares, reuniones de trabajo y eventos.',
+                        services:    '- Platos a la carta para almuerzo y cena\n- Menú del día de lunes a viernes\n- Delivery a domicilio (radio 5km)\n- Reservas para grupos y eventos especiales\n- Opciones vegetarianas y sin gluten disponibles',
+                        pricing:     '- Menú del día: S/18 (entrada + fondo + refresco)\n- Platos a la carta: S/28 - S/65\n- Costo de delivery: S/5\n- Bebidas y jugos: S/8 - S/22',
+                        hours:       '- Lunes a Viernes: 12:00pm - 10:00pm\n- Sábados: 12:00pm - 11:00pm\n- Domingos: 12:00pm - 6:00pm\n- Delivery hasta las 9:30pm',
+                        faqs:        '¿Hacen reservas? Sí, recomendado para fines de semana con 1 día de anticipación.\n¿Tienen salón privado? Sí, para hasta 30 personas.\n¿Hay estacionamiento? Sí, en el edificio sin costo.'
+                    },
+                    retail: {
+                        description: 'Somos [Nombre de tienda] en [Ciudad], especialistas en [ropa / accesorios / artesanía / etc.] para [público objetivo]. Ofrecemos productos de calidad con atención personalizada y envíos a todo el país.',
+                        services:    '- Ropa casual, formal y sport\n- Accesorios: bolsos, cinturones, joyería\n- Asesoría de imagen sin costo\n- Envíos nacionales e internacionales\n- Cambios y devoluciones dentro de 15 días',
+                        pricing:     '- Blusas y tops: S/60 - S/150\n- Vestidos y enterizos: S/120 - S/280\n- Pantalones y jeans: S/90 - S/200\n- Accesorios: desde S/30\n- Rebajas de temporada: hasta 40% off',
+                        hours:       '- Lunes a Sábado: 10:00am - 8:00pm\n- Domingos: 11:00am - 6:00pm\n- WhatsApp: 9:00am - 9:00pm todos los días',
+                        faqs:        '¿Hacen envíos a provincias? Sí, a todo el Perú.\n¿Tienen tallas grandes? Sí, contamos de S hasta 3XL.\n¿Puedo devolver una compra? Sí, 15 días con etiqueta y sin uso.'
+                    },
+                    services: {
+                        description: 'Somos [Nombre de empresa] en [Ciudad], especializados en [tipo de servicio: contabilidad / marketing / tecnología / consultoría]. Trabajamos con empresas y personas naturales para [resolver X problema] de forma rápida y profesional.',
+                        services:    '- Consultoría y asesoría personalizada\n- Implementación y configuración\n- Soporte técnico y mantenimiento continuo\n- Capacitaciones presenciales y online\n- Diagnósticos y auditorías',
+                        pricing:     '- Consulta inicial: GRATIS (30 minutos)\n- Servicio básico: desde S/200\n- Paquete mensual: desde S/500/mes\n- Proyectos a medida: cotización personalizada\n- Múltiples métodos de pago aceptados',
+                        hours:       '- Lunes a Viernes: 9:00am - 6:00pm\n- Sábados: 9:00am - 1:00pm\n- Respuesta por WhatsApp: máx. 2 horas en horario laboral',
+                        faqs:        '¿Trabajan con pequeñas empresas? Sí, tenemos paquetes para todo tamaño.\n¿Cuánto demora el servicio? Lo estimamos en la consulta inicial gratuita.\n¿Firman contrato? Sí, siempre trabajamos con contrato y confidencialidad.'
+                    },
+                    health: {
+                        description: 'Somos [Nombre de clínica / spa / centro de bienestar] en [Ciudad], especializados en [área: dental, fisioterapia, nutrición, estética, psicología]. Atención personalizada con profesionales certificados.',
+                        services:    '- Consultas presenciales y virtuales\n- Tratamientos especializados en [área]\n- Sesiones de terapia y rehabilitación\n- Análisis de laboratorio y diagnósticos\n- Control y seguimiento de tratamientos',
+                        pricing:     '- Consulta inicial: S/80\n- Consulta de seguimiento: S/60\n- Sesión de tratamiento: S/120\n- Paquete de 5 sesiones: S/500 (ahorra S/100)\n- Análisis básico de laboratorio: desde S/150',
+                        hours:       '- Lunes a Viernes: 8:00am - 7:00pm\n- Sábados: 8:00am - 1:00pm\n- Atención solo con cita previa',
+                        faqs:        '¿Necesito cita previa? Sí, es indispensable agendar.\n¿Aceptan seguros médicos? Sí, trabajamos con las principales aseguradoras.\n¿Hay estacionamiento? Sí, disponible para pacientes.'
+                    },
+                    education: {
+                        description: 'Somos [Nombre de academia / instituto] en [Ciudad], especializados en [área educativa: idiomas, tecnología, negocios, arte]. Formamos a estudiantes y profesionales con metodología práctica y docentes certificados.',
+                        services:    '- Cursos presenciales y online en [área]\n- Capacitaciones corporativas in-company\n- Diplomados y programas de especialización\n- Clases particulares personalizadas\n- Material de estudio y certificados incluidos',
+                        pricing:     '- Curso básico (1 mes): S/350\n- Curso avanzado (2 meses): S/650\n- Diplomado (4 meses): S/1,200\n- Clase particular por hora: S/80\n- Grupos corporativos: cotización especial',
+                        hours:       '- Clases presenciales: según cronograma del aula\n- Plataforma online: acceso 24/7\n- Oficina administrativa: Lunes a Viernes 9am - 6pm\n- Sábados: 9:00am - 1:00pm',
+                        faqs:        '¿Dan certificado oficial? Sí, digital y físico en todos los cursos.\n¿Las clases quedan grabadas? Sí, disponibles en la plataforma.\n¿Aceptan pago en cuotas? Sí, en 2 o 3 cuotas sin interés.'
+                    },
+                    other: {
+                        description: 'Somos [Nombre de tu negocio] en [Ciudad, País]. [Describe qué haces, a quién ayudas y qué te hace especial — cuanto más detallas, mejor responde Mia.]',
+                        services:    '[Lista tus servicios o productos principales, uno por línea. Incluye las características más relevantes para tus clientes.]',
+                        pricing:     '[Escribe tus precios o rangos de precios para cada servicio o producto. Sé específico — ayuda a Mia a responder consultas de tarifas con exactitud.]',
+                        hours:       '[Indica días y horarios de atención. Ej: Lunes a Viernes 9am-6pm / Sábados 9am-1pm]',
+                        faqs:        '[Escribe las 3-5 preguntas que más te hacen tus clientes y sus respuestas exactas.]'
+                    }
+                };
+                var typeLabels = {
+                    hotel: 'Hotel / Hostal', travel_agency: 'Agencia de Viajes',
+                    restaurant: 'Restaurante / Café', retail: 'Tienda / Boutique',
+                    services: 'Servicios Profesionales', health: 'Salud y Bienestar',
+                    education: 'Academia / Instituto', other: 'Negocio General'
+                };
+                var sel    = document.getElementById('businessTypeSelect');
+                var banner = document.getElementById('templateBannerWrap');
+                var tname  = document.getElementById('templateTypeName');
+                var applyBtn = document.getElementById('applyTemplateBtn');
+
+                function showBanner(val) {
+                    if (!T[val] || !banner) return;
+                    tname.textContent = typeLabels[val] || val;
+                    banner.style.display = '';
+                    // Reset in case it was replaced with success text
+                    applyBtn.style.display = '';
+                }
+
+                if (sel) {
+                    sel.addEventListener('change', function() { showBanner(this.value); });
+                    // Also show on load if fields are mostly empty (new user)
+                    var descField = document.querySelector('[name="bot_description"]');
+                    if (descField && !descField.value.trim()) showBanner(sel.value);
+                }
+
+                if (applyBtn) {
+                    applyBtn.addEventListener('click', function() {
+                        var t = T[sel.value];
+                        if (!t) return;
+                        var map = {
+                            bot_description: t.description,
+                            bot_services:    t.services,
+                            bot_pricing:     t.pricing,
+                            bot_hours:       t.hours,
+                            bot_faqs:        t.faqs
+                        };
+                        Object.keys(map).forEach(function(n) {
+                            var el = document.querySelector('[name="' + n + '"]');
+                            if (el) el.value = map[n];
+                        });
+                        banner.innerHTML = '<div class="px-3 py-2 rounded-3 text-success small fw-semibold" style="background:rgba(37,211,102,0.10);border:1.5px solid rgba(37,211,102,0.3)"><i class="bi bi-check-circle-fill me-2"></i>Plantilla aplicada — edita los campos con los datos reales de tu negocio y guarda los cambios.</div>';
+                    });
+                }
+            })();
             </script>
             <button type="submit" class="btn btn-success px-4"
                     style="background:#25d366;border-color:#25d366">

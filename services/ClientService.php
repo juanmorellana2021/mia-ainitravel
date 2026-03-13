@@ -106,6 +106,8 @@ class ClientService
             'pricing'        => trim($data['bot_pricing']     ?? ''),
             'hours'          => trim($data['bot_hours']       ?? ''),
             'faqs'           => trim($data['bot_faqs']        ?? ''),
+            'website'        => trim($data['bot_website']     ?? ''),
+            'location'       => trim($data['bot_location']    ?? ''),
             'language'       => trim($data['bot_language']    ?? 'es'),
             'tone'           => trim($data['bot_tone']        ?? 'friendly'),
             'char_skills'    => (array)($data['char_skills']  ?? []),
