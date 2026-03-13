@@ -459,6 +459,123 @@ ob_start();
     </div>
 </section>
 
+<!-- ═══════════════════════════════════════════
+     Plan Comparison — what each plan actually includes
+     ═══════════════════════════════════════════ -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-2">¿Qué incluye cada plan?</h2>
+        <p class="text-center text-muted mb-5">Todos los planes incluyen el bot IA. La diferencia está en cuánto automatizas.</p>
+        <div class="table-responsive">
+            <table class="table table-bordered text-center align-middle" style="font-size:.9rem">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="text-start py-3" style="width:40%">Funcionalidad</th>
+                        <th class="py-3">Starter<br><small class="text-secondary fw-normal">S/139/mes</small></th>
+                        <th class="py-3">Básico<br><small class="text-secondary fw-normal">S/299/mes</small></th>
+                        <th class="py-3 table-success">Pro<br><small class="text-success fw-normal">S/499/mes</small></th>
+                        <th class="py-3">Enterprise<br><small class="text-secondary fw-normal">S/1,199/mes</small></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-start">Bot IA 24/7 en WhatsApp</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">50+ idiomas automáticos</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Configuración con servicios, precios y FAQs propios</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Autocompletar configuración con IA <small class="text-muted">(escribe tu negocio y Mia lo configura)</small></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">10 habilidades de personalidad del bot</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Panel CRM web (leads, estados, pipeline)</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Analíticas y reportes</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Difusión masiva a leads por WhatsApp</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Notificaciones al dueño cuando hay interés</td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="text-start">Chat directo dueño ↔ cliente desde el panel <small class="text-muted">(Mia se hace a un lado al instante)</small></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td class="text-start fw-semibold">Traspaso a agente humano por WhatsApp <small class="text-muted">(el bot reconoce "quiero hablar con una persona" y pausa)</small></td>
+                        <td><i class="bi bi-x-lg text-danger"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td class="text-start fw-semibold">Captura de leads automática <small class="text-muted">(bot pide nombre y contacto, guarda en CRM)</small></td>
+                        <td><i class="bi bi-x-lg text-danger"></i></td>
+                        <td><i class="bi bi-x-lg text-danger"></i></td>
+                        <td class="table-success"><i class="bi bi-check-lg text-success"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td class="text-start fw-semibold">Múltiples números WhatsApp</td>
+                        <td><i class="bi bi-x-lg text-danger"></i></td>
+                        <td><i class="bi bi-x-lg text-danger"></i></td>
+                        <td class="table-success"><i class="bi bi-x-lg text-danger"></i></td>
+                        <td><i class="bi bi-check-lg text-success"></i></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-center text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>La prueba gratuita de 7 días incluye todas las funciones del plan Pro.</p>
+    </div>
+</section>
+
 <!-- Bottom CTA -->
 <section class="py-5 text-center mia-hero text-white">
     <div class="container">

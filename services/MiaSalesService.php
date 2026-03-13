@@ -107,18 +107,26 @@ class MiaSalesService
             $this->appendHistory($phone, 'user', $message);
             $planUrl = 'https://mia.ainitravel.com/pricing';
             $reply = $this->aiReply($phone, $session, $message,
-                "El prospecto quiere saber las funciones/características de los planes. Muéstrale la comparación completa de forma clara y visual (usa emojis y saltos de línea): \n"
-                . "\n📦 *Starter — S/139/mes*\n"
-                . "✅ 500 conversaciones/mes\n✅ Bot IA 24/7 en WhatsApp\n✅ Respuestas personalizadas para tu negocio\n✅ Panel de control web\n✅ Notificaciones de leads en tiempo real\n✅ Soporte por email\n\n"
-                . "📦 *Soporte Básico — S/299/mes*\n"
-                . "✅ Todo lo de Starter\n✅ 1,000 conversaciones/mes\n✅ Traspaso a agente humano\n✅ Métricas y analíticas básicas\n✅ Soporte prioritario\n\n"
-                . "📦 *Pro — S/499/mes*\n"
-                . "✅ Todo lo de Básico\n✅ Conversaciones ILIMITADAS\n✅ Módulo de Ventas avanzado\n✅ Reportes detallados\n✅ Integración multicanal\n✅ Soporte dedicado 24/7\n\n"
-                . "📦 *Enterprise — S/1,199/mes*\n"
-                . "✅ Todo lo de Pro\n✅ Múltiples números WhatsApp\n✅ API personalizada\n✅ Onboarding dedicado\n✅ SLA garantizado\n\n"
-                . "⚙️ Configuración SIEMPRE GRATIS. 7 días de prueba sin tarjeta.\n"
-                . "🔗 Ver comparación completa: {$planUrl}\n\n"
-                . "Después de presentarlo, haz UNA pregunta de cierre: '¿Cuál de los dos te llama más la atención, el Básico o el Pro?'"
+                "El prospecto quiere saber las funciones/características de la plataforma Mia. Presenta lo que incluye de forma clara con emojis y saltos de línea.\n\n"
+                . "🤖 *Qué hace Mia por tu negocio:*\n"
+                . "✅ Bot de WhatsApp con IA activo 24/7 — responde en menos de 5 segundos\n"
+                . "✅ Responde en 50+ idiomas automáticamente (español, inglés, portugués...)\n"
+                . "✅ Se configura con tus servicios, precios, horarios y FAQs exactos\n"
+                . "✅ 10 habilidades de personalidad (humor, empatía, estilo premium, urgencia, etc.)\n"
+                . "✅ Panel de control web: ve todos tus leads y conversaciones en un solo lugar\n"
+                . "✅ CRM integrado: gestiona leads por estado (Nuevo, Interesado, Cerrado...)\n"
+                . "✅ Analíticas: cuántos leads capturaste, conversiones, mensajes por día\n"
+                . "✅ Difusión masiva: envía un mensaje de WhatsApp a todos tus leads de una vez\n"
+                . "✅ Notificación inmediata cuando alguien muestra interés\n"
+                . "✅ Autocompletar configuración con IA — escribe el nombre de tu negocio y Mia lo configura sola\n\n"
+                . "📦 *Planes:*\n\n"
+                . "🔹 *Starter — S/139/mes* — Bot IA 24/7, panel CRM, analíticas, difusión masiva\n"
+                . "🔹 *Básico — S/299/mes* — Todo lo anterior + traspaso a agente humano (cuando el cliente pide hablar con una persona, Mia avisa y pausa)\n"
+                . "🔹 *Pro — S/499/mes* — Todo lo anterior + captura de leads automática (Mia pide nombre y contacto y los guarda en tu CRM)\n"
+                . "🔹 *Enterprise — S/1,199/mes* — Todo lo de Pro + múltiples números WhatsApp + soporte dedicado\n\n"
+                . "⚙️ Configuración GRATIS. 7 días de prueba sin tarjeta.\n"
+                . "🔗 Ver todo: {$planUrl}\n\n"
+                . "Termina con UNA pregunta: '¿Qué es lo que más te interesa para tu negocio?'"
             );
             return $reply;
         }

@@ -33,7 +33,7 @@ class ClientBotService
         $this->cfg    = json_decode($client->bot_config ?? '{}', true) ?: [];
 
         $planCaps = [
-            'trial'      => [],
+            'trial'      => ['handoff', 'leads'], // trial = full Pro experience so users see everything
             'starter'    => [],
             'basic'      => ['handoff'],
             'pro'        => ['handoff', 'leads'],
