@@ -70,10 +70,31 @@ class ClientBotService
             return ['reply' => ''];
         }
 
+        // ── Upsert lead record ────────────────────────────────────────────────
+        // Every phone that messages the bot becomes a lead automatically.
+        $leadService = new ClientLeadService();
+        $stmt = $this->pdo->prepare(
+            "SELECT id FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
+        );
+        $stmt->execute([$this->client->id, $guestPhone]);
+        $leadRow = $stmt->fetch();
+
+        if ($leadRow) {
+            $leadId = (int)$leadRow['id'];
+        } else {
+            // New contact — create lead, trigger auto-enroll sequences
+            $lead   = $leadService->create($this->client->id, [
+                'contact_name' => '',         // name captured later by AI if canCaptureLead
+                'phone'        => $guestPhone,
+                'source'       => 'whatsapp',
+                'status'       => 'new',
+            ]);
+            $leadId = $lead->id;
+        }
+
         // ── Monthly conversation limit check ─────────────────────────────────
         $limit = self::CONV_LIMITS[$this->client->plan] ?? 0;
         if ($limit > 0) {
-            // Check if this phone already has a message this month (existing convo)
             $stmtExist = $this->pdo->prepare(
                 "SELECT COUNT(*) FROM mia_client_messages
                  WHERE client_id = ? AND phone = ? AND direction = 'inbound'
@@ -99,12 +120,19 @@ class ClientBotService
         }
         // ─────────────────────────────────────────────────────────────────────
 
+        // Save inbound message to CRM
+        $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg, 'inbound', 'bot');
+
+        // Pause any active follow-up sequences — lead replied, they're engaged
+        (new SequenceService())->pauseForLead($leadId, $this->client->id);
+
         // Human handoff request — hand back to owner
         if ($this->canHandoff &&
             preg_match('/\bhumano|agente|persona|hablar con|speak to|una persona\b/i', $msg)) {
             $reply = $this->handoffReply();
             $this->log($guestPhone, 'user', $msg);
             $this->log($guestPhone, 'assistant', $reply);
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
             return ['reply' => $reply];
         }
 
@@ -119,15 +147,8 @@ class ClientBotService
         $this->log($guestPhone, 'user', $msg);
         $this->log($guestPhone, 'assistant', $reply);
 
-        // Pause any active follow-up sequences for this lead when they reply
-        $lead = $this->pdo->prepare(
-            "SELECT id FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
-        );
-        $lead->execute([$this->client->id, $guestPhone]);
-        $leadRow = $lead->fetch();
-        if ($leadRow) {
-            (new SequenceService())->pauseForLead((int)$leadRow['id'], $this->client->id);
-        }
+        // Save outbound reply to CRM
+        $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
 
         return ['reply' => $reply];
     }
