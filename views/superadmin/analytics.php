@@ -198,20 +198,22 @@ require __DIR__ . '/_sidebar.php';
     <?php foreach ($insights as [$type, $icon, $text, $action]): ?>
     <?php
         $colors = [
-            'good' => ['#22c55e','rgba(34,197,94,0.08)','rgba(34,197,94,0.2)'],
-            'warn' => ['#f59e0b','rgba(245,158,11,0.08)','rgba(245,158,11,0.2)'],
-            'bad'  => ['#ef4444','rgba(239,68,68,0.08)', 'rgba(239,68,68,0.2)'],
+            'good' => ['#166534','#dcfce7','#bbf7d0','#15803d'],
+            'warn' => ['#92400e','#fef3c7','#fde68a','#b45309'],
+            'bad'  => ['#991b1b','#fee2e2','#fecaca','#dc2626'],
         ];
-        [$col, $bg, $border] = $colors[$type];
+        [$textCol, $bg, $border, $accentCol] = $colors[$type];
+        $iconColors = ['good'=>'#16a34a','warn'=>'#d97706','bad'=>'#dc2626'];
+        $iconCol = $iconColors[$type];
     ?>
     <div class="col-12 col-lg-6">
-        <div style="background:<?= $bg ?>;border:1px solid <?= $border ?>;border-radius:10px;padding:12px 14px;">
+        <div style="background:<?= $bg ?>;border:1px solid <?= $border ?>;border-radius:10px;padding:14px 16px;">
             <div class="d-flex gap-2">
-                <i class="bi <?= $icon ?>" style="color:<?= $col ?>;font-size:1rem;flex-shrink:0;margin-top:1px;"></i>
+                <i class="bi <?= $icon ?>" style="color:<?= $iconCol ?>;font-size:1.15rem;flex-shrink:0;margin-top:2px;"></i>
                 <div>
-                    <div style="font-size:0.83rem;color:#f1f5f9;line-height:1.4;"><?= $text ?></div>
+                    <div style="font-size:0.92rem;color:<?= $textCol ?>;line-height:1.5;font-weight:500;"><?= $text ?></div>
                     <?php if ($action): ?>
-                    <div style="font-size:0.76rem;color:<?= $col ?>;margin-top:5px;opacity:0.85;">
+                    <div style="font-size:0.84rem;color:<?= $accentCol ?>;margin-top:6px;font-weight:600;">
                         <i class="bi bi-arrow-right me-1"></i><?= $action ?>
                     </div>
                     <?php endif; ?>
