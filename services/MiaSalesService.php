@@ -53,10 +53,12 @@ class MiaSalesService
                 UNIQUE KEY idx_phone (phone)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
-        // Add conv_history column to existing tables (ignore if already exists)
-        try {
-            $this->pdo->exec("ALTER TABLE mia_sales_sessions ADD COLUMN conv_history MEDIUMTEXT NULL");
-        } catch (\Throwable $e) { /* already exists */ }
+        // Add columns to existing tables (ignore if already exists)
+        try { $this->pdo->exec("ALTER TABLE mia_sales_sessions ADD COLUMN conv_history MEDIUMTEXT NULL"); } catch (\Throwable $e) {}
+        try { $this->pdo->exec("ALTER TABLE mia_sales_sessions ADD COLUMN chosen_plan VARCHAR(50) NULL"); } catch (\Throwable $e) {}
+        try { $this->pdo->exec("ALTER TABLE mia_sales_sessions ADD COLUMN biz_phone VARCHAR(50) NULL"); } catch (\Throwable $e) {}
+        try { $this->pdo->exec("ALTER TABLE mia_sales_sessions ADD COLUMN website VARCHAR(255) NULL"); } catch (\Throwable $e) {}
+        try { $this->pdo->exec("ALTER TABLE mia_sales_sessions ADD COLUMN client_id INT NULL"); } catch (\Throwable $e) {}
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -147,9 +149,14 @@ class MiaSalesService
             'benefits'                 => $this->handleBenefits($phone, $session, $message),
             'closing'                  => $this->handleClosing($phone, $session, $message),
             'collecting_name'          => $this->handleCollectName($phone, $session, $message),
-            'collecting_email'  => $this->handleCollectEmail($phone, $session, $message),
-            'captured'          => $this->handleCaptured($phone, $session, $message),
-            default             => $this->handleNew($phone, $session, $message),
+            'collecting_email'         => $this->handleCollectEmail($phone, $session, $message),
+            'onboarding_biz_name'      => $this->handleOnboardingBizName($phone, $session, $message),
+            'onboarding_biz_phone'     => $this->handleOnboardingBizPhone($phone, $session, $message),
+            'onboarding_website'       => $this->handleOnboardingWebsite($phone, $session, $message),
+            'onboarding_services'      => $this->handleOnboardingServices($phone, $session, $message),
+            'onboarding_hours'         => $this->handleOnboardingHours($phone, $session, $message),
+            'captured'                 => $this->handleCaptured($phone, $session, $message),
+            default                    => $this->handleNew($phone, $session, $message),
         };
     }
 
@@ -517,14 +524,15 @@ class MiaSalesService
         if (!preg_match('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $message, $m)) {
             return $this->aiReply($phone, $session, $message,
                 "No detectaste un email válido en ese mensaje. Pide de nuevo de forma amigable — " .
-                "recuérdale que en cuanto tengas su email creates su cuenta en este momento " .
+                "recuérdale que en cuanto tengas su email creas su cuenta en este momento " .
                 "y le llega usuario + contraseña directo a su correo. Hazlo fácil y urgente."
             );
         }
 
         $email = $m[0];
-        $this->updateSession($phone, ['state' => 'captured', 'email' => $email]);
-        $session = array_merge($session, ['state' => 'captured', 'email' => $email]);
+        // Account goes to onboarding — will become 'captured' after setup completes
+        $this->updateSession($phone, ['state' => 'onboarding_biz_name', 'email' => $email]);
+        $session = array_merge($session, ['state' => 'onboarding_biz_name', 'email' => $email]);
 
         try {
             $leadService = new LeadService();
@@ -545,8 +553,8 @@ class MiaSalesService
         }
 
         // Auto-convert to client account so they get access immediately
-        $accountCreated  = false;
-        $tempPassword    = null;
+        $accountCreated = false;
+        $tempPassword   = null;
         try {
             require_once __DIR__ . '/../services/SuperAdminService.php';
             $svcRow = $this->getSession($phone);
@@ -555,7 +563,11 @@ class MiaSalesService
                 if (!empty($result['temp_password'])) {
                     $accountCreated = true;
                     $tempPassword   = $result['temp_password'];
-                    // Send welcome email with login credentials
+                    // Save client_id into session so onboarding handlers can update the account
+                    if (!empty($result['client_id'])) {
+                        $this->updateSession($phone, ['client_id' => (int)$result['client_id']]);
+                        $session['client_id'] = $result['client_id'];
+                    }
                     try {
                         (new NotificationService())->sendWelcomeEmail(
                             $email,
@@ -572,29 +584,148 @@ class MiaSalesService
             error_log('[Mia] Auto-convert error: ' . $e->getMessage());
         }
 
-        $bizName = $session['business_name'] ?? 'tu negocio';
-        $bizType = $session['business_type'] ?? 'negocio';
-        $accessNote = $accountCreated
-            ? "Su cuenta ya fue creada. Acabamos de enviarle un email a {$email} con sus datos de acceso (usuario y contraseña temporal) para que pueda ingresar al panel."
-            : "Su registro fue recibido. El equipo se pondrá en contacto pronto para completar el acceso.";
+        $contactName = $session['contact_name'] ?? '';
+        $nameRef     = $contactName ? ", {$contactName}" : '';
+        $accessNote  = $accountCreated
+            ? "Su cuenta fue creada ahora mismo. Ya les llegó un email a {$email} con usuario y contraseña temporal para ingresar al panel."
+            : "Su registro fue recibido. El equipo completará el acceso pronto.";
+
         return $this->aiReply($phone, $session, $message,
-            "¡CIERRE EXITOSO! Datos completos: {$bizName} ({$bizType}), email: {$email}. " .
-            "Contexto importante: {$accessNote} " .
-            "Momento final más importante de toda la conversación — hazlo memorable. " .
-            "1. Confirma con energía genuina — no exagerada, real. Ellos acaban de tomar una buena decisión. " .
-            "2. Menciona que recibirán sus accesos por email en minutos — NO menciones ningún link ni página web. " .
-            "3. Pinta el futuro próximo: 'El equipo los contactará para configurar Mia exactamente para {$bizName}.' " .
-            "4. Cierra con calidez, brevedad y confianza. Sin links, sin URLs, solo texto plano como WhatsApp humano."
+            "¡Cuenta creada exitosamente{$nameRef}! Email registrado: {$email}. {$accessNote} " .
+            "Ahora empieza el proceso de configuración de su Mia. Hazlo sentir emocionante — están a punto de tener " .
+            "su propio asistente configurado. " .
+            "En UNA frase celebra (genuino, no exagerado). Luego di que para que su Mia responda perfectamente " .
+            "a sus clientes necesitas hacerles un par de preguntas rápidas de configuración. " .
+            "Primera pregunta: ¿Cómo se llama su negocio? (si ya lo sabes de la conversación, confírmalo). " .
+            "Breve, entusiasta, conversacional. SIN URLs ni links."
+        );
+    }
+
+    private function handleOnboardingBizName(string $phone, array $session, string $message): array
+    {
+        $name = trim($message);
+        $skip = preg_match('/\b(no\s+s[eé]|no\s+tengo|mismo|igual|skip|omitir)\b/i', $name);
+
+        if (!$skip && strlen($name) >= 2 && strlen($name) <= 100) {
+            $this->updateSession($phone, ['state' => 'onboarding_biz_phone', 'business_name' => $name]);
+            $session = array_merge($session, ['state' => 'onboarding_biz_phone', 'business_name' => $name]);
+            $this->updateClientSettings($phone, ['business_name' => $name]);
+        } elseif ($skip && !empty($session['business_name'])) {
+            // They said "same" or "skip" — keep existing name
+            $this->updateSession($phone, ['state' => 'onboarding_biz_phone']);
+            $session['state'] = 'onboarding_biz_phone';
+        } else {
+            return $this->aiReply($phone, $session, $message,
+                "No pudiste identificar el nombre del negocio. Pide de nuevo — solo el nombre comercial, breve y amigable."
+            );
+        }
+
+        $bizName = $session['business_name'] ?? $name;
+        return $this->aiReply($phone, $session, $message,
+            "Perfecto, ya tienes el nombre: {$bizName}. " .
+            "Ahora pide el número de WhatsApp del negocio — el que sus clientes usan para contactarlos. " .
+            "Aclaración breve: ese será el número donde su Mia va a atender a los clientes 24/7. " .
+            "Solo el número, una pregunta corta."
+        );
+    }
+
+    private function handleOnboardingBizPhone(string $phone, array $session, string $message): array
+    {
+        $msg  = trim($message);
+        $skip = preg_match('/\b(no\s+tengo|mismo|igual|skip|omitir|después|luego|a[ú]n\s+no)\b/i', $msg);
+
+        if (!$skip && preg_match('/[\+\d][\d\s\-\(\)]{6,}/', $msg, $pm)) {
+            $bizPhone = preg_replace('/[^\d+]/', '', $pm[0]);
+            $this->updateSession($phone, ['state' => 'onboarding_website', 'biz_phone' => $bizPhone]);
+            $session = array_merge($session, ['state' => 'onboarding_website', 'biz_phone' => $bizPhone]);
+            $this->updateClientSettings($phone, ['whatsapp_number' => $bizPhone]);
+        } else {
+            $this->updateSession($phone, ['state' => 'onboarding_website']);
+            $session['state'] = 'onboarding_website';
+        }
+
+        return $this->aiReply($phone, $session, $message,
+            "Número registrado (o saltado). Ahora pregunta por su sitio web o presencia online — " .
+            "puede ser una web, Instagram, Facebook, TripAdvisor, Booking, lo que tengan. " .
+            "Aclaración: es opcional, si no tienen pueden decir 'no'. Una pregunta corta."
+        );
+    }
+
+    private function handleOnboardingWebsite(string $phone, array $session, string $message): array
+    {
+        $msg    = trim($message);
+        $hasUrl = preg_match('/https?:\/\/\S+|www\.\S+|\.[a-z]{2,4}(\/\S*)?(\s|$)/i', $msg, $wm);
+
+        if ($hasUrl) {
+            $website = trim($wm[0]);
+            $this->updateSession($phone, ['state' => 'onboarding_services', 'website' => $website]);
+            $session = array_merge($session, ['state' => 'onboarding_services', 'website' => $website]);
+        } else {
+            $this->updateSession($phone, ['state' => 'onboarding_services']);
+            $session['state'] = 'onboarding_services';
+        }
+
+        $bizName = $session['business_name'] ?? 'su negocio';
+        return $this->aiReply($phone, $session, $message,
+            "Web registrada (o saltada). Ahora viene la pregunta más importante para configurar a Mia: " .
+            "pide que te cuenten sobre {$bizName} — qué servicios o productos ofrecen, precios principales si los tienen, " .
+            "qué hace diferente o especial a su negocio. " .
+            "Di que con esa información configuras a Mia para que responda exactamente como ellos lo harían. " .
+            "Hazlo como una conversación curiosa, no un formulario. UNA pregunta abierta."
+        );
+    }
+
+    private function handleOnboardingServices(string $phone, array $session, string $message): array
+    {
+        $services = trim($message);
+        $this->updateClientSettings($phone, ['services' => $services, 'description' => $services]);
+        $this->updateSession($phone, ['state' => 'onboarding_hours']);
+        $session['state'] = 'onboarding_hours';
+
+        return $this->aiReply($phone, $session, $message,
+            "Guardaste la descripción de servicios. Una pregunta más — el horario de atención: " .
+            "¿cuándo atienden normalmente? (días y horas). " .
+            "Explica brevemente que con eso Mia puede decirles a los clientes cuándo habrá alguien disponible " .
+            "para preguntas que ella no pueda resolver. Solo el horario, una pregunta."
+        );
+    }
+
+    private function handleOnboardingHours(string $phone, array $session, string $message): array
+    {
+        $hours = trim($message);
+        $this->updateClientSettings($phone, ['hours' => $hours]);
+
+        // All onboarding complete — transition to captured
+        $this->updateSession($phone, ['state' => 'captured']);
+        $session['state'] = 'captured';
+
+        $bizName = $session['business_name'] ?? 'su negocio';
+        $email   = $session['email']         ?? '';
+        return $this->aiReply($phone, $session, $message,
+            "¡TODO LISTO! Horario guardado: '{$hours}'. La configuración de Mia para {$bizName} está completa. " .
+            "Da un cierre memorable en 3 líneas máximo: " .
+            "1. Confirma con genuina emoción que todo está configurado y su Mia ya está lista. " .
+            "2. Diles que pueden ingresar a su panel en *mia.ainitravel.com* con el email {$email} y la contraseña " .
+            "   que les llegó al correo — desde ahí conectan su WhatsApp y ajustan lo que quieran. " .
+            "3. Ofrece: 'Si tienen cualquier duda, pueden escribirme aquí y con gusto los ayudo.' " .
+            "Cálido, breve, como un amigo que acaba de ayudarte a lanzar algo importante. SIN URLs largas."
         );
     }
 
     private function handleCaptured(string $phone, array $session, string $message): array
     {
+        $email   = $session['email']        ?? '';
+        $bizName = $session['business_name'] ?? 'tu negocio';
         return $this->aiReply($phone, $session, $message,
-            "El cliente ya está registrado. Su cuenta fue creada y recibió sus accesos por email. " .
-            "Responde a su mensaje de forma útil y amigable. Si tiene preguntas sobre el producto, " .
-            "respóndelas con precisión. Si quiere hablar con alguien ya mismo, dile que el equipo de AiniDesk " .
-            "lo contactará muy pronto — NO envíes ningún link ni URL. Solo texto plano, como un humano real por WhatsApp."
+            "El cliente ya tiene cuenta activa y su Mia configurada. Responde con genuina utilidad — " .
+            "como si fueras su asistente personal de onboarding. " .
+            "Si pregunta cómo conectar WhatsApp: dile que ingrese a su panel en mia.ainitravel.com → " .
+            "Configuración → WhatsApp, escanee el código QR con su teléfono y listo (proceso de 2 minutos). " .
+            "Si pregunta sobre configuración u opciones: dile que desde Configuración puede ajustar el nombre del bot, " .
+            "horario, servicios, precios, y personalidad. " .
+            "Si tiene una duda técnica compleja: dile que el equipo de AiniDesk lo apoya — " .
+            "puede escribir aquí mismo o al soporte. " .
+            "Siempre: texto plano de WhatsApp, sin listas largas, sin URLs (solo 'mia.ainitravel.com' si es necesario)."
         );
     }
 
@@ -873,6 +1004,49 @@ PROMPT;
         $stmt = $this->pdo->prepare("SELECT * FROM mia_sales_sessions WHERE phone = ?");
         $stmt->execute([$phone]);
         return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Update the converted client's account (mia_clients + bot_config JSON)
+     * using the email stored in the sales session to look up the client.
+     */
+    private function updateClientSettings(string $phone, array $updates): void
+    {
+        $session = $this->getSession($phone);
+        $email   = $session['email'] ?? null;
+        if (!$email) return;
+
+        $stmt = $this->pdo->prepare('SELECT id, bot_config FROM mia_clients WHERE email = ? LIMIT 1');
+        $stmt->execute([strtolower(trim($email))]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$client) return;
+
+        $clientId  = (int)$client['id'];
+        $botConfig = json_decode($client['bot_config'] ?? '{}', true) ?: [];
+
+        // Fields that live inside bot_config JSON
+        $botFields = ['description', 'services', 'pricing', 'hours', 'faqs', 'language', 'tone', 'business_type'];
+        foreach ($botFields as $f) {
+            if (isset($updates[$f])) $botConfig[$f] = $updates[$f];
+        }
+
+        // Fields that are direct columns on mia_clients
+        $allowed = ['business_name', 'contact_name', 'whatsapp_number', 'business_type'];
+        $sets    = [];
+        $params  = [];
+        foreach ($allowed as $f) {
+            if (isset($updates[$f])) {
+                $sets[]   = "{$f} = ?";
+                $params[] = $updates[$f];
+            }
+        }
+        $sets[]   = 'bot_config = ?';
+        $params[] = json_encode($botConfig, JSON_UNESCAPED_UNICODE);
+        $sets[]   = 'updated_at = NOW()';
+        $params[] = $clientId;
+
+        $this->pdo->prepare('UPDATE mia_clients SET ' . implode(', ', $sets) . ' WHERE id = ?')
+                  ->execute($params);
     }
 
     private function updateSession(string $phone, array $fields): void
