@@ -371,7 +371,10 @@ class SuperAdminService
         $contactName  = $session['contact_name']  ?: '';
         $email        = !empty($session['email']) ? strtolower(trim($session['email'])) : null;
         $phone        = $session['phone'];
-        $plan         = 'starter';
+        // Use the plan the prospect chose during the conversation, default to starter
+        $validPlans   = ['starter', 'basic', 'pro', 'enterprise'];
+        $raw          = strtolower(trim($session['chosen_plan'] ?? ''));
+        $plan         = in_array($raw, $validPlans, true) ? $raw : 'starter';
         $planStatus   = 'trial';
         $trialEnds    = date('Y-m-d', strtotime('+14 days'));
 

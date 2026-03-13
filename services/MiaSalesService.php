@@ -100,6 +100,27 @@ class MiaSalesService
             return $reply;
         }
 
+        // Universal features/functions request — works at ANY state, especially closing
+        if (preg_match('/\b(funciones|función|características|caracter[ií]sticas|que\s+incluye|qu[eé]\s+incluye|que\s+tiene|incluido|incluye|what\s+does\s+it\s+include|features|what\s+is\s+included)\b/i', $msg)) {
+            $this->appendHistory($phone, 'user', $message);
+            $planUrl = 'https://mia.ainitravel.com/pricing';
+            $reply = $this->aiReply($phone, $session, $message,
+                "El prospecto quiere saber las funciones/características de los planes. Muéstrale la comparación completa de forma clara y visual (usa emojis y saltos de línea): \n"
+                . "\n📦 *Starter — S/139/mes*\n"
+                . "✅ 500 conversaciones/mes\n✅ Bot IA 24/7 en WhatsApp\n✅ Respuestas personalizadas para tu negocio\n✅ Panel de control web\n✅ Notificaciones de leads en tiempo real\n✅ Soporte por email\n\n"
+                . "📦 *Soporte Básico — S/299/mes*\n"
+                . "✅ Todo lo de Starter\n✅ 1,000 conversaciones/mes\n✅ Traspaso a agente humano\n✅ Métricas y analíticas básicas\n✅ Soporte prioritario\n\n"
+                . "📦 *Pro — S/499/mes*\n"
+                . "✅ Todo lo de Básico\n✅ Conversaciones ILIMITADAS\n✅ Módulo de Ventas avanzado\n✅ Reportes detallados\n✅ Integración multicanal\n✅ Soporte dedicado 24/7\n\n"
+                . "📦 *Enterprise — S/1,199/mes*\n"
+                . "✅ Todo lo de Pro\n✅ Múltiples números WhatsApp\n✅ API personalizada\n✅ Onboarding dedicado\n✅ SLA garantizado\n\n"
+                . "⚙️ Configuración SIEMPRE GRATIS. 7 días de prueba sin tarjeta.\n"
+                . "🔗 Ver comparación completa: {$planUrl}\n\n"
+                . "Después de presentarlo, haz UNA pregunta de cierre: '¿Cuál de los dos te llama más la atención, el Básico o el Pro?'"
+            );
+            return $reply;
+        }
+
         // Universal info-request catch — works at any early qualifying stage
         if (in_array($state, ['new','intro','qualifying_size','qualifying_method','qualifying_pain'], true) &&
             preg_match('/\b(qu[eé]\s+(es|ofrec|hac|son)|more\s+info|m[aá]s\s+info|c[oó]mo\s+funciona|qu[eé]\s+incluye|de\s+qu[eé]\s+se\s+trata|me\s+cuentas|cu[eé]ntame|explain|tell\s+me|what\s+do\s+you|what\s+is\s+this|quiero\s+saber|necesito\s+saber|que\s+hacen|que\s+ofrecen|que\s+es\s+esto|que\s+es\s+mia)\b/i', $msg)) {
@@ -427,11 +448,20 @@ class MiaSalesService
     {
         $msg = mb_strtolower(trim($message));
 
-        if (preg_match('/\bempezar|activar|prueba|quiero|lo quiero|start|trial|básico|pro|enterprise\b/i', $msg) ||
+        if (preg_match('/\bempezar|activar|prueba|quiero|lo quiero|start|trial|básico|basico|pro|enterprise\b/i', $msg) ||
             preg_match('/\b1\b|\b2\b|\b3\b/', $msg)) {
 
-            $this->updateSession($phone, ['state' => 'collecting_name']);
-            $session['state'] = 'collecting_name';
+            // Detect which plan was chosen to store it
+            $chosenPlan = null;
+            if (preg_match('/\bpro\b/i', $msg))                              $chosenPlan = 'pro';
+            elseif (preg_match('/\bbasico|básico\b/i', $msg))                 $chosenPlan = 'basic';
+            elseif (preg_match('/\bstarter\b/i', $msg))                      $chosenPlan = 'starter';
+            elseif (preg_match('/\benterprise\b/i', $msg))                   $chosenPlan = 'enterprise';
+
+            $update = ['state' => 'collecting_name'];
+            if ($chosenPlan) $update['chosen_plan'] = $chosenPlan;
+            $this->updateSession($phone, $update);
+            $session = array_merge($session, $update);
             $bizType = $session['business_type'] ?? 'negocio';
             return $this->aiReply($phone, $session, $message,
                 "El usuario quiere empezar. Entusiasmo genuino — 1 frase de celebración, luego pide solo su nombre " .
