@@ -73,6 +73,87 @@ $stageLabels = [
     'captured'                => 'Capturados',
 ];
 
+// ── Marketing Intelligence — build insights array from live data ──────────────
+$insights = [];   // ['type'=>'good|warn|bad', 'icon'=>'...', 'text'=>'...', 'action'=>'...']
+
+// 1. Traffic volume
+if ($pvs === 0) {
+    $insights[] = ['bad',  'bi-wifi-off',       'Sin pageviews en el periodo. Verifica que el script de analytics está instalado en el landing.', 'Revisa analytics.js en la landing page.'];
+} elseif ($pvs < 50) {
+    $insights[] = ['warn', 'bi-bar-chart',       "Solo {$pvs} pageviews en {$days} días — el tráfico es muy bajo.", 'Aumenta el presupuesto de ads o lanza una campaña orgánica (reels, posts).'];
+} else {
+    $insights[] = ['good', 'bi-bar-chart-fill',  number_format($pvs)." pageviews en {$days} días — buen nivel de tráfico.", null];
+}
+
+// 2. CTR
+if ($sessions > 0 && $ctr < 1) {
+    $insights[] = ['bad',  'bi-cursor',          "CTR del {$ctr}% — casi nadie que llega hace click en el CTA.", 'Prueba cambiar el texto/color del botón CTA. Muévelo más arriba en el landing (above the fold). A/B test "Empieza gratis" vs "Ver demo".'];
+} elseif ($sessions > 0 && $ctr < 3) {
+    $insights[] = ['warn', 'bi-cursor',          "CTR del {$ctr}% — está por debajo del 3% de referencia para SaaS.", 'Refuerza el headline del landing. Agrega 1-2 testimonios o logos de clientes cerca del CTA.'];
+} elseif ($sessions > 0) {
+    $insights[] = ['good', 'bi-cursor-fill',     "CTR del {$ctr}% — buen ratio de conversión en el landing.", null];
+}
+
+// 3. Bounce rate
+if ($bounceRate > 70) {
+    $insights[] = ['bad',  'bi-door-open',       "Tasa de rebote del {$bounceRate}% — la mayoría se va sin explorar.", 'El landing carga lento o no es relevante para el tráfico. Mejora la velocidad (PageSpeed) y asegúrate de que el mensaje del ad coincida con el headline.'];
+} elseif ($bounceRate > 45) {
+    $insights[] = ['warn', 'bi-door-open',       "Rebote del {$bounceRate}% — aceptable pero mejorable.", 'Agrega una sección de "Cómo funciona" o video demo en los primeros 2 scrolls.'];
+}
+
+// 4. Traffic source diversity
+$fbOnly = false;
+if (!empty($topReferrers)) {
+    $topSource = strtolower($topReferrers[0]['ref'] ?? '');
+    $topCnt    = (int)($topReferrers[0]['cnt'] ?? 0);
+    $totalRef  = array_sum(array_column($topReferrers, 'cnt'));
+    if ($totalRef > 0 && $topCnt / $totalRef > 0.85 && str_contains($topSource, 'facebook')) {
+        $fbOnly = true;
+        $insights[] = ['warn', 'bi-facebook',    "El ".round($topCnt/$totalRef*100)."% del tráfico viene solo de Facebook — dependencia de un único canal.", 'Diversifica: SEO (blog con casos de uso), Google Ads, LinkedIn para B2B, o email marketing.'];
+    }
+}
+
+// 5. UTM tracking quality
+$hasUtm = !empty($topUtm);
+if (!$hasUtm && $pvs > 10) {
+    $insights[] = ['warn', 'bi-tags',            'No hay datos UTM. No sabes qué campaña genera más leads.', 'Agrega ?utm_source=facebook&utm_medium=cpc&utm_campaign=nombre a los links de tus anuncios.'];
+} elseif ($hasUtm && strlen($topUtm[0]['camp'] ?? '') > 15 && is_numeric(str_replace(' ','',$topUtm[0]['camp']??''))) {
+    $insights[] = ['warn', 'bi-tags',            'Las campañas muestran IDs numéricos de Facebook en vez de nombres legibles.', 'Edita cada anuncio en Meta Ads y pon utm_campaign=nombre-legible en la URL de destino.'];
+}
+
+// 6. WA funnel — engagement rate
+if ($waTotalConvos > 0 && $waEngageRate < 30) {
+    $insights[] = ['bad',  'bi-whatsapp',        "Solo el {$waEngageRate}% de quienes abren el chat siguen la conversación.", 'El mensaje de bienvenida puede ser muy genérico. Prueba abrir con una pregunta directa: "¿Cuántos hoteles administras actualmente?"'];
+} elseif ($waTotalConvos > 0 && $waEngageRate >= 30) {
+    $insights[] = ['good', 'bi-whatsapp',        "Engagement del bot al {$waEngageRate}% — los prospectos muestran interes.", null];
+}
+
+// 7. WA conversion rate (leads / convos)
+if ($waTotalConvos > 0 && $waConvRate < 5) {
+    $insights[] = ['bad',  'bi-person-x',        "Solo el {$waConvRate}% de conversaciones termina en lead capturado.", 'El bot puede estar perdiendo prospectos antes de pedir el email. Revisa en qué etapa se abandonan más en el pipeline.'];
+} elseif ($waTotalConvos > 0 && $waConvRate >= 10) {
+    $insights[] = ['good', 'bi-person-check',    "Tasa de captura del {$waConvRate}% — el bot está convirtiendo bien.", null];
+}
+
+// 8. Mobile vs Desktop split
+$mobilePvs  = $devPvMap['mobile']  ?? 0;
+$desktopPvs = $devPvMap['desktop'] ?? 0;
+if ($mobilePvs > 0 && $desktopPvs > 0) {
+    $mobilePct = round($mobilePvs / ($mobilePvs + $desktopPvs) * 100);
+    if ($mobilePct > 65) {
+        $mobileCtr = $mobilePvs > 0 ? round(($devCtaMap['mobile'] ?? 0) / $mobilePvs * 100, 1) : 0;
+        $deskCtr   = $desktopPvs > 0 ? round(($devCtaMap['desktop'] ?? 0) / $desktopPvs * 100, 1) : 0;
+        if ($mobileCtr < $deskCtr * 0.5) {
+            $insights[] = ['warn', 'bi-phone',   "{$mobilePct}% del tráfico es móvil pero el CTR móvil ({$mobileCtr}%) es mucho menor que desktop ({$deskCtr}%).", 'Optimiza el CTA para móvil: botón grande, full-width, sticky en el footer. Revisa velocidad en 3G.'];
+        }
+    }
+}
+
+// 9. No traffic at all
+if ($pvs > 0 && $waTotalConvos === 0) {
+    $insights[] = ['warn', 'bi-chat-square-x',   'Hay tráfico en el landing pero nadie ha iniciado conversación con el bot.', 'Revisa que el link de WhatsApp funcione. Considera agregar el chat widget directamente en el landing.'];
+}
+
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
 ?>
@@ -89,6 +170,59 @@ require __DIR__ . '/_sidebar.php';
         <?php endforeach; ?>
     </div>
 </div>
+
+<!-- ── Marketing Intelligence ───────────────────────────────────────────── -->
+<?php if (!empty($insights)): ?>
+<div class="sa-card p-4 mb-4" style="border:1px solid rgba(99,102,241,0.25);background:linear-gradient(135deg,rgba(99,102,241,0.06) 0%,rgba(15,23,42,0.0) 100%);">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,0.15);display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-lightbulb" style="color:#818cf8;font-size:1rem;"></i>
+        </div>
+        <div>
+            <div style="font-size:0.9rem;font-weight:700;color:#e2e8f0;">Diagnóstico de marketing</div>
+            <div style="font-size:0.74rem;color:#64748b;">Basado en los datos de los últimos <?= $days ?> días</div>
+        </div>
+        <div class="ms-auto d-flex gap-1 flex-wrap" style="font-size:0.7rem;">
+            <?php
+            $goodCnt = count(array_filter($insights, fn($i) => $i[0] === 'good'));
+            $warnCnt = count(array_filter($insights, fn($i) => $i[0] === 'warn'));
+            $badCnt  = count(array_filter($insights, fn($i) => $i[0] === 'bad'));
+            ?>
+            <?php if ($goodCnt): ?><span style="padding:2px 8px;border-radius:12px;background:rgba(34,197,94,0.12);color:#22c55e;font-weight:600;"><?= $goodCnt ?> ok</span><?php endif; ?>
+            <?php if ($warnCnt): ?><span style="padding:2px 8px;border-radius:12px;background:rgba(245,158,11,0.12);color:#f59e0b;font-weight:600;"><?= $warnCnt ?> aviso</span><?php endif; ?>
+            <?php if ($badCnt):  ?><span style="padding:2px 8px;border-radius:12px;background:rgba(239,68,68,0.12);color:#ef4444;font-weight:600;"><?= $badCnt ?> critico</span><?php endif; ?>
+        </div>
+    </div>
+
+    <div class="row g-2">
+    <?php foreach ($insights as [$type, $icon, $text, $action]): ?>
+    <?php
+        $colors = [
+            'good' => ['#22c55e','rgba(34,197,94,0.08)','rgba(34,197,94,0.2)'],
+            'warn' => ['#f59e0b','rgba(245,158,11,0.08)','rgba(245,158,11,0.2)'],
+            'bad'  => ['#ef4444','rgba(239,68,68,0.08)', 'rgba(239,68,68,0.2)'],
+        ];
+        [$col, $bg, $border] = $colors[$type];
+    ?>
+    <div class="col-12 col-lg-6">
+        <div style="background:<?= $bg ?>;border:1px solid <?= $border ?>;border-radius:10px;padding:12px 14px;">
+            <div class="d-flex gap-2">
+                <i class="bi <?= $icon ?>" style="color:<?= $col ?>;font-size:1rem;flex-shrink:0;margin-top:1px;"></i>
+                <div>
+                    <div style="font-size:0.83rem;color:#cbd5e1;line-height:1.4;"><?= $text ?></div>
+                    <?php if ($action): ?>
+                    <div style="font-size:0.76rem;color:<?= $col ?>;margin-top:5px;opacity:0.85;">
+                        <i class="bi bi-arrow-right me-1"></i><?= $action ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Landing KPIs -->
 <div style="font-size:0.72rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">
