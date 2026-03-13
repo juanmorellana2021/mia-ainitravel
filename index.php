@@ -39,6 +39,11 @@ require_once __DIR__ . '/services/BroadcastService.php';
 require_once __DIR__ . '/services/NotificationService.php';
 require_once __DIR__ . '/services/SuperAdminService.php';
 require_once __DIR__ . '/controllers/SuperAdminController.php';
+require_once __DIR__ . '/models/Sequence.php';
+require_once __DIR__ . '/models/SequenceStep.php';
+require_once __DIR__ . '/models/LeadSequence.php';
+require_once __DIR__ . '/services/SequenceService.php';
+require_once __DIR__ . '/controllers/SequenceController.php';
 
 // ── Route resolution ─────────────────────────────────────────────────────────
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -158,6 +163,32 @@ match (true) {
 
     $uri === 'dashboard/broadcast/send' && $method === 'POST'
         => (new BroadcastController())->send(),
+
+    // ── Follow-up sequences ────────────────────────────────────────────────────
+    $uri === 'dashboard/sequences' && $method === 'GET'
+        => (new SequenceController())->index(),
+
+    $uri === 'dashboard/sequences/new' && $method === 'GET'
+        => (new SequenceController())->edit(0),
+
+    $uri === 'dashboard/sequences/save' && $method === 'POST'
+        => (new SequenceController())->save(),
+
+    // /dashboard/sequences/{id}  — edit form
+    preg_match('#^dashboard/sequences/(\d+)$#', $uri, $m) && $method === 'GET'
+        => (new SequenceController())->edit((int)$m[1]),
+
+    // /dashboard/sequences/{id}/archive
+    preg_match('#^dashboard/sequences/(\d+)/archive$#', $uri, $m) && $method === 'POST'
+        => (new SequenceController())->archive((int)$m[1]),
+
+    // /dashboard/sequences/{seq_id}/enroll/{lead_id}
+    preg_match('#^dashboard/sequences/(\d+)/enroll/(\d+)$#', $uri, $m) && $method === 'POST'
+        => (new SequenceController())->enroll((int)$m[1], (int)$m[2]),
+
+    // /dashboard/sequences/{seq_id}/unenroll/{lead_id}
+    preg_match('#^dashboard/sequences/(\d+)/unenroll/(\d+)$#', $uri, $m) && $method === 'POST'
+        => (new SequenceController())->unenroll((int)$m[1], (int)$m[2]),
 
     // ── Settings ──────────────────────────────────────────────────────────────
     $uri === 'dashboard/settings' && $method === 'GET'

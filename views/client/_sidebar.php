@@ -57,6 +57,10 @@ $initials      = strtoupper(substr($clientName, 0, 2));
            class="mc-nav-item <?= $activeNav === 'broadcast' ? 'active' : '' ?>">
             <i class="bi bi-megaphone"></i> Difusión
         </a>
+        <a href="<?= $base ?>/dashboard/sequences"
+           class="mc-nav-item <?= $activeNav === 'sequences' ? 'active' : '' ?>">
+            <i class="bi bi-send-check"></i> Automatizaciones
+        </a>
         <a href="<?= $base ?>/dashboard/billing"
            class="mc-nav-item <?= $activeNav === 'billing' ? 'active' : '' ?>">
             <i class="bi bi-credit-card"></i> Suscripción

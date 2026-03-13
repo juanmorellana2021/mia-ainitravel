@@ -119,9 +119,15 @@ class ClientBotService
         $this->log($guestPhone, 'user', $msg);
         $this->log($guestPhone, 'assistant', $reply);
 
-        // Lead capture: if Pro+ plan and reply includes asking for contact info,
-        // we let the AI handle it naturally via the system prompt; the client's
-        // dashboard leads are populated via the guest's WhatsApp number itself.
+        // Pause any active follow-up sequences for this lead when they reply
+        $lead = $this->pdo->prepare(
+            "SELECT id FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
+        );
+        $lead->execute([$this->client->id, $guestPhone]);
+        $leadRow = $lead->fetch();
+        if ($leadRow) {
+            (new SequenceService())->pauseForLead((int)$leadRow['id'], $this->client->id);
+        }
 
         return ['reply' => $reply];
     }

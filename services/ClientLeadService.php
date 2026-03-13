@@ -69,11 +69,19 @@ class ClientLeadService
             (float)($data['value_estimate'] ?? 0),
             trim($data['notes'] ?? ''),
         ]);
-        return $this->findById((int)$this->db->lastInsertId(), $clientId);
+        $lead = $this->findById((int)$this->db->lastInsertId(), $clientId);
+
+        // Auto-enroll in sequences triggered on new lead
+        (new SequenceService())->autoEnroll($lead->id, $clientId, 'on_new');
+
+        return $lead;
     }
 
     public function update(int $id, int $clientId, array $data): void
     {
+        // Capture old status before updating
+        $old = $this->findById($id, $clientId);
+
         $stmt = $this->db->prepare(
             'UPDATE mia_client_leads
              SET status = ?, contact_name = ?, notes = ?, value_estimate = ?, updated_at = NOW()
@@ -87,6 +95,12 @@ class ClientLeadService
             $id,
             $clientId,
         ]);
+
+        // Auto-enroll when a lead moves to "interested"
+        $newStatus = $data['status'] ?? 'new';
+        if ($old && $old->status !== 'interested' && $newStatus === 'interested') {
+            (new SequenceService())->autoEnroll($id, $clientId, 'on_interested');
+        }
     }
 
     // ── Messages for a lead ───────────────────────────────────────────────────
