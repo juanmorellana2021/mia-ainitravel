@@ -335,12 +335,15 @@ class MiaSalesService
         $this->updateSession($phone, ['state' => 'closing']);
         $session['state'] = 'closing';
         $bizType = $session['business_type'] ?? 'negocio';
+        $priS = App::CURRENCY . App::PLAN_STARTER;
+        $priP = App::CURRENCY . App::PLAN_BASIC;
+        $priB = App::CURRENCY . App::PLAN_PRO;
         return $this->aiReply($phone, $session, $message,
             "Acaban de ver la demo. Tú (Groq) lees su respuesta y decides: " .
             "• Si pregunta qué incluye / funciones / beneficios → explícalos con entusiasmo: " .
             "reservas 24/7, bilingüe automático, traspaso humano inteligente, notificaciones, panel web, sin comisiones, configuración en 48h, 7 días gratis. " .
             "• Si reaccionó positivamente → capitaliza el momento: NO pongas lista de planes. " .
-            "Recomienda UNO según su negocio: alto volumen / hotel / agencia → Business S/349. Mediano → Pro S/129. Pequeño → Starter S/59. " .
+            "Recomienda UNO según su negocio: alto volumen / hotel / agencia → Business {$priB}. Mediano → Pro {$priP}. Pequeño → Starter {$priS}. " .
             "Menciona los 7 días gratis como eliminador de riesgo. " .
             "Cierre de elección: '¿Empezamos con el Business o prefieres el Pro para la prueba?' — no sí/no. " .
             "Adapta el lenguaje a {$bizType}. Sin listas, sin URLs, máximo 4 líneas."
@@ -351,9 +354,12 @@ class MiaSalesService
     {
         $this->updateSession($phone, ['state' => 'closing']);
         $session['state'] = 'closing';
+        $priS = App::CURRENCY . App::PLAN_STARTER;
+        $priP = App::CURRENCY . App::PLAN_BASIC;
+        $priB = App::CURRENCY . App::PLAN_PRO;
         return $this->aiReply($phone, $session, $message,
             "Después de mostrar los beneficios, es momento de cerrar. " .
-            "Presenta los planes (Starter S/59, Pro S/129, Business S/349) de forma concisa. La configuración es GRATIS. " .
+            "Presenta los planes (Starter {$priS}, Pro {$priP}, Business {$priB}) de forma concisa. La configuración es GRATIS. " .
             "Destaca la prueba de 7 días gratis sin compromiso. " .
             "Basándote en lo que sabes de su negocio, sugiere cuál plan le encajaría mejor."
         );
@@ -361,7 +367,8 @@ class MiaSalesService
 
     private function handleClosing(string $phone, array $session, string $message): array
     {
-        $msg = mb_strtolower(trim($message));
+        $msg  = mb_strtolower(trim($message));
+        $priB = App::CURRENCY . App::PLAN_PRO;  // Business plan
 
         // Hard yes + soft yes + plan selection all treated as buy intent
         $buyIntent = preg_match(
@@ -401,7 +408,7 @@ class MiaSalesService
             "PRIMERO: diagnostica qué tipo de objeción es basándote en lo que dijeron: " .
             "¿precio? ¿tiempo? ¿incertidumbre? ¿necesitan convencer a su socio/esposo/a? " .
             "Luego aplica Find/Felt/Found + elimina el riesgo específico: " .
-            "• Precio → '¿Cuánto cobra Booking.com por una reserva? S/349 al mes es menos que 1 comisión.' " .
+            "• Precio → '¿Cuánto cobra Booking.com por una reserva? {$priB} al mes es menos que 1 comisión.' " .
             "• Tiempo/técnico → 'No tocas nada — el equipo lo monta en 48h mientras tú sigues con tu negocio.' " .
             "• Incertidumbre → '7 días gratis, sin tarjeta. Si en una semana no ves 1 cliente extra, cancelas con un WhatsApp y punto.' " .
             "• Debo hablarlo → 'Claro. ¿Qué información necesitas para presentárselo a [él/ella]? Te lo preparo.' " .
@@ -696,6 +703,12 @@ class MiaSalesService
         $contactName = $session['contact_name']   ?? null;
         $clientRef   = $contactName ? "Nombre del cliente: {$contactName}" : 'Nombre del cliente: aún no conocido (trátalo con respeto — "señor/a" si no sabes el nombre)';
 
+        // Prices — single source of truth via App constants
+        $priS = App::CURRENCY . App::PLAN_STARTER;           // e.g. "S/59"
+        $priP = App::CURRENCY . App::PLAN_BASIC;             // e.g. "S/129"
+        $priB = App::CURRENCY . App::PLAN_PRO;               // e.g. "S/349"
+        $dayS = App::CURRENCY . (int) ceil(App::PLAN_STARTER / 30); // e.g. "S/2"
+
         $goalBlock = $turnGoal
             ? "\n\n═══ TU MISIÓN EN ESTE TURNO ═══\n{$turnGoal}"
             : '';
@@ -752,14 +765,14 @@ Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 • *Consultora de servicios*: Agenda 14 citas automáticamente al mes que antes se caían por respuesta lenta.
 
 ═══ PLANES ═══
-• *Starter S/59/mes* — bot IA 24/7, panel CRM, analíticas, difusión masiva. Para negocios que recién empiezan.
-• *Pro S/129/mes* — todo lo del Starter + traspaso humano inteligente + captura automática de leads. El más popular.
-• *Business S/349/mes* — todo lo del Pro + múltiples números WhatsApp, onboarding dedicado, account manager, SLA 99.9%.
+• *Starter {$priS}/mes* — bot IA 24/7, panel CRM, analíticas, difusión masiva. Para negocios que recién empiezan.
+• *Pro {$priP}/mes* — todo lo del Starter + traspaso humano inteligente + captura automática de leads. El más popular.
+• *Business {$priB}/mes* — todo lo del Pro + múltiples números WhatsApp, onboarding dedicado, account manager, SLA 99.9%.
 • Configuración: GRATIS — onboarding y personalización incluidos en todos los planes.
 • 🎁 *7 días GRATIS* — sin tarjeta, sin compromiso, cancela cuando quieras.
 
 ═══ OBJECIONES FRECUENTES Y CÓMO MANEJARLAS ═══
-• "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? El plan Starter son S/59 al mes — menos de S/2 al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
+• "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? El plan Starter son {$priS} al mes — menos de {$dayS} al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
 • "Lo voy a pensar" → "Claro, es una decisión importante. Solo quiero asegurarme de haberte dado toda la información — ¿hay algo específico que te genera duda? Prefiero resolver eso ahora."
 • "No tengo tiempo para configurarlo" → "Por eso lo hacemos nosotros. Tú no tocas nada — en 48h está listo y funcionando."
 • "Ya tenemos alguien respondiendo WhatsApp" → "Genial. ¿Esa persona responde a las 2am? ¿Los domingos? ¿En menos de 60 segundos siempre? Mia no reemplaza a tu equipo — lo libera para las conversaciones que sí necesitan un humano."
