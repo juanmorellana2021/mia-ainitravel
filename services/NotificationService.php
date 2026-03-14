@@ -257,3 +257,4 @@ HTML;
         @mail($client['email'], $subject, $html, $headers);
         error_log("[Mia] Disconnect alert sent to {$client['email']} (client {$clientId})");
     }
+}
