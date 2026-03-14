@@ -1,6 +1,9 @@
 /**
  * Mia WhatsApp Bot — Multi-tenant
  *
+ * ⚠️  DEPLOY TARGET: /root/mia-whatsapp-bot/bot.js  (NOT /var/www/html/...)
+ * ⚠️  Use deploy.ps1 — it copies to the correct path and restarts pm2.
+ *
  * Manages WhatsApp sessions for:
  *   1. Mia's own sales bot (mia-bot) → /api/chat
  *   2. Each subscribed client (client_N) → /api/client-chat with client_id
