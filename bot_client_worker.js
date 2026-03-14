@@ -106,10 +106,16 @@ function startSession() {
         }
 
         // ── Media handling ────────────────────────────────────────────────────
-        let messageText = rawBody;
-        let mediaData = null, mediaMime = null, mediaType = null;
+        // Facebook/Instagram ad clicks arrive as notification_template with empty body
+        // The pre-filled ad text lives in msg._data.body; fall back to "Hola" so the bot always greets them
+        const isAdClick = msg.type === 'notification_template';
 
         const isMediaMsg = msg.hasMedia && ['ptt', 'audio', 'image'].includes(msg.type);
+
+        let messageText = isAdClick
+            ? (msg._data?.body?.trim() || rawBody || 'Hola')
+            : rawBody;
+        let mediaData = null, mediaMime = null, mediaType = null;
         if (isMediaMsg) {
             try {
                 const media = await msg.downloadMedia();
@@ -126,7 +132,7 @@ function startSession() {
             }
         }
 
-        if (!messageText && !mediaData) {
+        if (!messageText && !mediaData && !isAdClick) {
             console.log(`[worker:${clientId}] Dropped: empty body, no media (type=${msg.type})`);
             return;
         }
