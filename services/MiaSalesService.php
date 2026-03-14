@@ -340,9 +340,9 @@ class MiaSalesService
             "• Si pregunta qué incluye / funciones / beneficios → explícalos con entusiasmo: " .
             "reservas 24/7, bilingüe automático, traspaso humano inteligente, notificaciones, panel web, sin comisiones, configuración en 48h, 7 días gratis. " .
             "• Si reaccionó positivamente → capitaliza el momento: NO pongas lista de planes. " .
-            "Recomienda UNO según su negocio: alto volumen / hotel / agencia → Pro S/499. Mediano → Básico S/299. Pequeño → Starter S/139. " .
+            "Recomienda UNO según su negocio: alto volumen / hotel / agencia → Business S/349. Mediano → Pro S/129. Pequeño → Starter S/59. " .
             "Menciona los 7 días gratis como eliminador de riesgo. " .
-            "Cierre de elección: '¿Empezamos con el Pro o prefieres el Básico para la prueba?' — no sí/no. " .
+            "Cierre de elección: '¿Empezamos con el Business o prefieres el Pro para la prueba?' — no sí/no. " .
             "Adapta el lenguaje a {$bizType}. Sin listas, sin URLs, máximo 4 líneas."
         );
     }
@@ -353,7 +353,7 @@ class MiaSalesService
         $session['state'] = 'closing';
         return $this->aiReply($phone, $session, $message,
             "Después de mostrar los beneficios, es momento de cerrar. " .
-            "Presenta los planes (Starter S/139, Soporte Básico S/299, Pro S/499, Enterprise S/1,199) de forma concisa. La configuración es GRATIS. " .
+            "Presenta los planes (Starter S/59, Pro S/129, Business S/349) de forma concisa. La configuración es GRATIS. " .
             "Destaca la prueba de 7 días gratis sin compromiso. " .
             "Basándote en lo que sabes de su negocio, sugiere cuál plan le encajaría mejor."
         );
@@ -365,7 +365,7 @@ class MiaSalesService
 
         // Hard yes + soft yes + plan selection all treated as buy intent
         $buyIntent = preg_match(
-            '/\b(empezar|activar|quiero|lo quiero|start|trial|me anoto|nos anotamos|adelante|vamos|acepto|confirmado|dale|listo|si quiero|ya|claro que si|por supuesto|perfecto|de acuerdo|me interesa|suena bien|esta bien|trato hecho|basico|básico|pro|enterprise|starter)\b/i',
+            '/\b(empezar|activar|quiero|lo quiero|start|trial|me anoto|nos anotamos|adelante|vamos|acepto|confirmado|dale|listo|si quiero|ya|claro que si|por supuesto|perfecto|de acuerdo|me interesa|suena bien|esta bien|trato hecho|basico|básico|pro|business|enterprise|starter)\b/i',
             $msg
         ) || preg_match('/\b(1|2|3)\b/', $msg);
 
@@ -401,7 +401,7 @@ class MiaSalesService
             "PRIMERO: diagnostica qué tipo de objeción es basándote en lo que dijeron: " .
             "¿precio? ¿tiempo? ¿incertidumbre? ¿necesitan convencer a su socio/esposo/a? " .
             "Luego aplica Find/Felt/Found + elimina el riesgo específico: " .
-            "• Precio → '¿Cuánto cobra Booking.com por una reserva? S/399 al mes es menos que 1 comisión.' " .
+            "• Precio → '¿Cuánto cobra Booking.com por una reserva? S/349 al mes es menos que 1 comisión.' " .
             "• Tiempo/técnico → 'No tocas nada — el equipo lo monta en 48h mientras tú sigues con tu negocio.' " .
             "• Incertidumbre → '7 días gratis, sin tarjeta. Si en una semana no ves 1 cliente extra, cancelas con un WhatsApp y punto.' " .
             "• Debo hablarlo → 'Claro. ¿Qué información necesitas para presentárselo a [él/ella]? Te lo preparo.' " .
@@ -752,15 +752,14 @@ Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 • *Consultora de servicios*: Agenda 14 citas automáticamente al mes que antes se caían por respuesta lenta.
 
 ═══ PLANES ═══
-• *Starter S/139/mes* — hasta 500 conversaciones/mes. Para negocios que recién empiezan.
-• *Soporte Básico S/299/mes* — hasta 1,000 conversaciones/mes + traspaso humano inteligente.
-• *Pro S/499/mes* — conversaciones ilimitadas + módulo de ventas + panel completo. El más popular.
-• *Enterprise S/1,199/mes* — múltiples números WhatsApp, integraciones personalizadas, soporte VIP.
+• *Starter S/59/mes* — bot IA 24/7, panel CRM, analíticas, difusión masiva. Para negocios que recién empiezan.
+• *Pro S/129/mes* — todo lo del Starter + traspaso humano inteligente + captura automática de leads. El más popular.
+• *Business S/349/mes* — todo lo del Pro + múltiples números WhatsApp, onboarding dedicado, account manager, SLA 99.9%.
 • Configuración: GRATIS — onboarding y personalización incluidos en todos los planes.
 • 🎁 *7 días GRATIS* — sin tarjeta, sin compromiso, cancela cuando quieras.
 
 ═══ OBJECIONES FRECUENTES Y CÓMO MANEJARLAS ═══
-• "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? El plan Starter son S/139 al mes — menos de S/5 al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
+• "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? El plan Starter son S/59 al mes — menos de S/2 al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
 • "Lo voy a pensar" → "Claro, es una decisión importante. Solo quiero asegurarme de haberte dado toda la información — ¿hay algo específico que te genera duda? Prefiero resolver eso ahora."
 • "No tengo tiempo para configurarlo" → "Por eso lo hacemos nosotros. Tú no tocas nada — en 48h está listo y funcionando."
 • "Ya tenemos alguien respondiendo WhatsApp" → "Genial. ¿Esa persona responde a las 2am? ¿Los domingos? ¿En menos de 60 segundos siempre? Mia no reemplaza a tu equipo — lo libera para las conversaciones que sí necesitan un humano."

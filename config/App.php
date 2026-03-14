@@ -17,9 +17,9 @@ class App
 
     // ── Pricing (PEN — Soles) ────────────────────────────────────────────
     public const CURRENCY        = 'S/';
-    public const PLAN_STARTER    = 139;
-    public const PLAN_BASIC      = 299;
-    public const PLAN_PRO        = 499;
+    public const PLAN_STARTER    = 59;
+    public const PLAN_BASIC      = 129;   // "Pro" tier
+    public const PLAN_PRO        = 349;   // "Business" tier
     public const PLAN_ENTERPRISE       = 1199;
     public const PLAN_ENTERPRISE_DUO   = 1999;
     public const PLAN_ENTERPRISE_CHAIN = 3599;

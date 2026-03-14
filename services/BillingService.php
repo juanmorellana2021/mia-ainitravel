@@ -233,8 +233,8 @@ class BillingService
     {
         return [
             'starter'    => ['label' => 'Starter',     'price' => App::PLAN_STARTER],
-            'basic'      => ['label' => 'Básico',      'price' => App::PLAN_BASIC],
-            'pro'        => ['label' => 'Pro',          'price' => App::PLAN_PRO],
+            'basic'      => ['label' => 'Pro',          'price' => App::PLAN_BASIC],
+            'pro'        => ['label' => 'Business',     'price' => App::PLAN_PRO],
             'enterprise' => ['label' => 'Enterprise',   'price' => App::PLAN_ENTERPRISE],
         ];
     }

@@ -13,7 +13,7 @@ ob_start();
 <section class="py-5">
     <div class="container">
         <h1 class="text-center fw-bold mb-2">Planes y Precios</h1>
-        <p class="text-center text-muted mb-5">Elige entre Soporte, Ventas + Soporte, o Suite completa con gestión e integraciones. Todos incluyen 7 días gratis.</p>
+        <p class="text-center text-muted mb-5">3 planes simples. Sin permanencia. Todos incluyen 7 días gratis y configuración sin costo.</p>
 
         <div class="row g-4 justify-content-center">
 
@@ -53,10 +53,11 @@ ob_start();
 
             <!-- Basic -->
             <div class="col-lg-4">
-                <div class="card h-100 border shadow-sm">
-                    <div class="card-header bg-white text-center py-4">
-                        <h5 class="fw-bold mb-1">Básico</h5>
-                        <p class="text-muted small mb-0">Atención automática + traspaso al equipo humano</p>
+                <div class="card h-100 border-success shadow">
+                    <div class="card-header bg-success text-white text-center py-4">
+                        <span class="badge bg-warning text-dark mb-2">Más Popular</span>
+                        <h5 class="fw-bold mb-1">Pro</h5>
+                        <p class="small mb-0 opacity-75">Atención automática + traspaso + captura de leads</p>
                     </div>
                     <div class="card-body text-center">
                         <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_BASIC) ?></div>
@@ -65,68 +66,44 @@ ob_start();
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Starter</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Traspaso humano por WhatsApp</strong> <small class="text-muted">(Mia reconoce "quiero hablar con una persona" y pausa)</small></li>
-                            <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Captura de leads automática</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Captura de leads automática</strong> <small class="text-muted">(Mia pide nombre y contacto y los guarda en tu CRM)</small></li>
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
-                        <a href="<?= $base ?>/register?plan=basic" class="btn btn-outline-success w-100">
+                        <a href="<?= $base ?>/register?plan=basic" class="btn btn-success w-100">
                             <i class="bi bi-rocket me-1"></i>Empezar Gratis
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Pro (highlighted) -->
+            <!-- Business (highlighted) -->
             <div class="col-lg-4">
-                <div class="card h-100 border-success shadow">
-                    <div class="card-header bg-success text-white text-center py-4">
-                        <span class="badge bg-warning text-dark mb-2">Más Popular</span>
-                        <h5 class="fw-bold mb-1">Pro</h5>
-                        <p class="small mb-0 opacity-75">Soporte + traspaso + captura automática de leads</p>
+                <div class="card h-100 border shadow-sm">
+                    <div class="card-header bg-dark text-white text-center py-4">
+                        <h5 class="fw-bold mb-1">Business</h5>
+                        <p class="small mb-0 opacity-75">Suite completa + múltiples canales + soporte dedicado</p>
                     </div>
                     <div class="card-body text-center">
                         <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_PRO) ?></div>
                         <p class="text-muted">/ mes</p>
                         <hr>
                         <ul class="list-unstyled text-start">
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Básico</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Captura de leads automática</strong> <small class="text-muted">(Mia pide nombre y contacto a clientes interesados y los guarda en tu CRM)</small></li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Pro</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Múltiples números WhatsApp</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Onboarding dedicado en 48h</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>SLA 99.9% uptime garantizado</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Account manager dedicado</li>
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
-                        <a href="<?= $base ?>/register?plan=pro" class="btn btn-success w-100">
+                        <a href="<?= $base ?>/register?plan=pro" class="btn btn-dark w-100">
                             <i class="bi bi-rocket me-1"></i>Empezar Gratis
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Enterprise -->
-            <div class="col-lg-4">
-                <div class="card h-100 border shadow-sm">
-                    <div class="card-header bg-white text-center py-4">
-                        <h5 class="fw-bold mb-1">Enterprise</h5>
-                        <p class="text-muted small mb-0">Pro + múltiples sedes + soporte dedicado</p>
-                    </div>
-                    <div class="card-body text-center">
-                        <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_ENTERPRISE) ?></div>
-                        <p class="text-muted">/ mes</p>
-                        <hr>
-                        <ul class="list-unstyled text-start">
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Pro</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Múltiples números WhatsApp</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Onboarding dedicado</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>SLA 99.9% uptime garantizado</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Account manager dedicado</li>
-                        </ul>
-                    </div>
-                    <div class="card-footer bg-white text-center py-3">
-                        <a href="<?= $base ?>/register?plan=enterprise" class="btn btn-outline-success w-100">
-                            <i class="bi bi-rocket me-1"></i>Contactar Ventas
-                        </a>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Corporate tiers -->
