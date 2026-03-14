@@ -872,7 +872,12 @@ PROMPT;
             return [];
         }
         $history = json_decode($data, true) ?? [];
-        return array_slice($history, -self::MAX_HISTORY);
+        // Map 'human_agent' → 'assistant' so Groq/OpenAI only receives valid roles.
+        // Human-agent messages are sent from Mia's number, so they are treated as assistant turns.
+        return array_map(
+            fn($m) => ['role' => $m['role'] === 'human_agent' ? 'assistant' : $m['role'], 'content' => $m['content']],
+            array_slice($history, -self::MAX_HISTORY)
+        );
     }
 
     private function appendHistory(string $phone, string $role, string $content): void

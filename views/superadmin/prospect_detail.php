@@ -50,6 +50,13 @@ require __DIR__ . '/_sidebar.php';
 </div>
 <?php endif; ?>
 
+<?php if (isset($_GET['reset'])): ?>
+<div class="alert border-0 mb-3" style="background:rgba(245,158,11,0.1);color:#fcd34d;border:1px solid rgba(245,158,11,0.25);border-radius:10px;font-size:0.88rem;">
+    <i class="bi bi-arrow-counterclockwise me-2"></i>
+    Estado del bot reiniciado a <strong>Nuevo</strong>. El historial de conversación se ha conservado.
+</div>
+<?php endif; ?>
+
 <?php if (isset($_GET['converted'], $_GET['tmp'])): ?>
 <div class="alert border-0 mb-3" style="background:rgba(0,168,132,0.12);color:#6ee7b7;border:1px solid rgba(0,168,132,0.3);border-radius:10px;font-size:0.88rem;">
     <i class="bi bi-check-circle-fill me-2" style="color:#00a884"></i>
@@ -182,38 +189,74 @@ require __DIR__ . '/_sidebar.php';
             </div>
         </div>
 
+        <!-- Reset state card -->
+        <?php if (!$alreadyClient && $state !== 'new'): ?>
+        <div class="sa-card p-3 mb-3" style="border:1px solid rgba(245,158,11,0.2);">
+            <div class="d-flex align-items-center gap-3">
+                <div>
+                    <div style="font-weight:600;color:#e2e8f0;margin-bottom:3px;">
+                        <i class="bi bi-arrow-counterclockwise me-1" style="color:#f59e0b;"></i>
+                        Reiniciar estado del bot
+                    </div>
+                    <div style="font-size:0.82rem;color:#64748b;">
+                        Vuelve el estado a <strong style="color:#94a3b8">Nuevo</strong> sin borrar el historial de mensajes.
+                        El próximo mensaje del prospecto reinicia el flujo de Mia.
+                    </div>
+                </div>
+                <div class="ms-auto">
+                    <form method="POST" action="<?= $base ?>/superadmin/prospects/<?= (int)$session['id'] ?>/reset-state"
+                          onsubmit="return confirm('¿Reiniciar el estado del bot para este prospecto?\n\nSe conserva el historial. El flujo de Mia empezará de nuevo cuando escriba.');"> 
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App::csrfToken()) ?>">
+                        <button type="submit" class="btn"
+                                style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);border-radius:9px;padding:8px 18px;font-size:0.85rem;font-weight:600;white-space:nowrap;">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reiniciar estado
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Conversation history -->
         <div class="sa-card p-3">
             <div style="font-size:0.8rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">
                 <i class="bi bi-chat-text me-1"></i>
-                Historial de conversación (<?= count($history) ?> mensajes)
+                Conversación
+                <span id="msgCount" style="font-weight:400;color:#475569;">(<?= count($history) ?> mensajes)</span>
             </div>
 
-            <?php if (empty($history)): ?>
-            <div style="color:#475569;font-size:0.85rem;text-align:center;padding:20px 0;">
-                Sin mensajes registrados.
-            </div>
-            <?php else: ?>
-            <div style="display:flex;flex-direction:column;gap:8px;max-height:460px;overflow-y:auto;padding-right:4px;">
+            <!-- Message thread -->
+            <div id="msgThread" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px;margin-bottom:12px;">
+                <?php if (empty($history)): ?>
+                <div style="color:#475569;font-size:0.85rem;text-align:center;padding:20px 0;">
+                    Sin mensajes registrados.
+                </div>
+                <?php else: ?>
                 <?php foreach ($history as $msg):
                     $role    = $msg['role'] ?? 'user';
                     $content = $msg['content'] ?? '';
                     $isMia   = ($role === 'assistant');
+                    $isHuman = ($role === 'human_agent');
+                    $isRight = ($isMia || $isHuman);
                 ?>
-                <div style="display:flex;justify-content:<?= $isMia ? 'flex-start' : 'flex-end' ?>;">
+                <div style="display:flex;justify-content:<?= $isRight ? 'flex-end' : 'flex-start' ?>;">
                     <div style="
-                        max-width:80%;padding:8px 12px;border-radius:<?= $isMia ? '4px 12px 12px 12px' : '12px 4px 12px 12px' ?>;
+                        max-width:80%;padding:8px 12px;border-radius:<?= $isRight ? '12px 4px 12px 12px' : '4px 12px 12px 12px' ?>;
                         font-size:0.83rem;line-height:1.45;
-                        background:<?= $isMia ? '#202c33' : '#005c4b' ?>;
+                        background:<?= $isHuman ? '#1a4731' : ($isMia ? '#202c33' : '#1e293b') ?>;
                         color:#e9edef;
-                        border:none;
+                        border:<?= $isHuman ? '1px solid rgba(0,168,132,0.4)' : 'none' ?>;
                     ">
                         <?php if ($isMia): ?>
                         <div style="font-size:0.7rem;color:#00a884;font-weight:600;margin-bottom:3px;">
                             <i class="bi bi-robot me-1"></i>Mia
                         </div>
+                        <?php elseif ($isHuman): ?>
+                        <div style="font-size:0.7rem;color:#6ee7b7;font-weight:600;margin-bottom:3px;text-align:right;">
+                            <i class="bi bi-person-badge me-1"></i>Tú (agente)
+                        </div>
                         <?php else: ?>
-                        <div style="font-size:0.7rem;color:#8fcebd;font-weight:600;margin-bottom:3px;text-align:right;">
+                        <div style="font-size:0.7rem;color:#8fcebd;font-weight:600;margin-bottom:3px;">
                             Prospecto
                         </div>
                         <?php endif; ?>
@@ -221,11 +264,145 @@ require __DIR__ . '/_sidebar.php';
                     </div>
                 </div>
                 <?php endforeach; ?>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
+
+            <!-- Send message input -->
+            <div id="sendStatus" style="display:none;font-size:0.78rem;padding:6px 10px;border-radius:7px;margin-bottom:8px;"></div>
+            <div style="display:flex;gap:8px;align-items:flex-end;">
+                <textarea id="msgInput" rows="2"
+                    placeholder="Escribe un mensaje para enviar por WhatsApp..."
+                    style="flex:1;resize:none;background:#1e293b;border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:9px 12px;font-size:0.88rem;color:#e2e8f0;outline:none;font-family:inherit;line-height:1.45;"></textarea>
+                <button id="msgSendBtn"
+                    style="background:linear-gradient(135deg,#059669,#065f46);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:1rem;cursor:pointer;flex-shrink:0;align-self:flex-end;box-shadow:0 2px 10px rgba(5,150,105,0.4);"
+                    title="Enviar mensaje por WhatsApp">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+            <div style="font-size:0.72rem;color:#334155;margin-top:5px;">
+                <i class="bi bi-info-circle me-1"></i>
+                El mensaje se enviará por WhatsApp desde el número de Mia.
+            </div>
         </div>
 
     </div>
 </div>
+
+<script>
+(function () {
+    const CSRF        = <?= json_encode(App::csrfToken()) ?>;
+    const BASE        = <?= json_encode($base) ?>;
+    const PROSPECT_ID = <?= (int)$session['id'] ?>;
+
+    const thread    = document.getElementById('msgThread');
+    const input     = document.getElementById('msgInput');
+    const sendBtn   = document.getElementById('msgSendBtn');
+    const statusEl  = document.getElementById('sendStatus');
+    const countEl   = document.getElementById('msgCount');
+
+    let pollTimer = null;
+
+    // ── Render messages ────────────────────────────────────────────────────────
+    function renderMessages(msgs) {
+        if (!Array.isArray(msgs) || msgs.length === 0) {
+            thread.innerHTML = '<div style="color:#475569;font-size:0.85rem;text-align:center;padding:20px 0;">Sin mensajes registrados.</div>';
+            if (countEl) countEl.textContent = '(0 mensajes)';
+            return;
+        }
+        if (countEl) countEl.textContent = '(' + msgs.length + ' mensajes)';
+        thread.innerHTML = msgs.map(function (m) {
+            const role    = m.role || 'user';
+            const content = (m.content || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+            const isMia   = role === 'assistant';
+            const isHuman = role === 'human_agent';
+            const isRight = isMia || isHuman;
+            const justify = isRight ? 'flex-end' : 'flex-start';
+            const bg      = isHuman ? '#1a4731' : (isMia ? '#202c33' : '#1e293b');
+            const border  = isHuman ? '1px solid rgba(0,168,132,0.4)' : 'none';
+            const radius  = isRight ? '12px 4px 12px 12px' : '4px 12px 12px 12px';
+            let label = '';
+            if (isMia)   label = '<div style="font-size:0.7rem;color:#00a884;font-weight:600;margin-bottom:3px;"><i class="bi bi-robot"></i> Mia</div>';
+            else if (isHuman) label = '<div style="font-size:0.7rem;color:#6ee7b7;font-weight:600;margin-bottom:3px;text-align:right;"><i class="bi bi-person-badge"></i> Tú (agente)</div>';
+            else label = '<div style="font-size:0.7rem;color:#8fcebd;font-weight:600;margin-bottom:3px;">Prospecto</div>';
+            return '<div style="display:flex;justify-content:' + justify + ';">' +
+                '<div style="max-width:80%;padding:8px 12px;border-radius:' + radius + ';font-size:0.83rem;line-height:1.45;background:' + bg + ';color:#e9edef;border:' + border + ';">' +
+                label + content + '</div></div>';
+        }).join('');
+        thread.scrollTop = thread.scrollHeight;
+    }
+
+    // ── Load / poll messages ───────────────────────────────────────────────────
+    function loadMessages() {
+        fetch(BASE + '/superadmin/prospects/' + PROSPECT_ID + '/messages', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(msgs) { renderMessages(msgs); })
+            .catch(function() {});
+    }
+
+    function startPolling() {
+        stopPolling();
+        pollTimer = setInterval(loadMessages, 5000);
+    }
+    function stopPolling() {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    startPolling();
+
+    // ── Send message ───────────────────────────────────────────────────────────
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    function sendMessage() {
+        const text = input.value.trim();
+        if (!text) return;
+        input.value      = '';
+        sendBtn.disabled = true;
+
+        const fd = new FormData();
+        fd.append('csrf_token', CSRF);
+        fd.append('message', text);
+
+        fetch(BASE + '/superadmin/prospects/' + PROSPECT_ID + '/send', {
+            method: 'POST', credentials: 'same-origin', body: fd,
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            sendBtn.disabled = false;
+            if (data.success) {
+                loadMessages();
+                if (!data.delivered) {
+                    showStatus('⚠️ Mensaje guardado, pero WhatsApp no está conectado — no fue enviado.', 'warning');
+                } else {
+                    showStatus('✓ Enviado', 'ok');
+                }
+            } else {
+                showStatus('❌ Error: ' + (data.error || 'desconocido'), 'error');
+            }
+        })
+        .catch(function() {
+            sendBtn.disabled = false;
+            showStatus('❌ Error de red.', 'error');
+        });
+    }
+
+    function showStatus(msg, type) {
+        statusEl.textContent    = msg;
+        statusEl.style.display  = 'block';
+        statusEl.style.background = type === 'warning' ? 'rgba(245,158,11,0.15)' :
+                                    type === 'ok'      ? 'rgba(5,150,105,0.15)'   :
+                                                         'rgba(239,68,68,0.15)';
+        statusEl.style.color = type === 'warning' ? '#fbbf24' :
+                               type === 'ok'      ? '#6ee7b7'  : '#f87171';
+        clearTimeout(statusEl._t);
+        statusEl._t = setTimeout(function() { statusEl.style.display = 'none'; }, 4000);
+    }
+
+    // scroll thread to bottom on load
+    thread.scrollTop = thread.scrollHeight;
+})();
+</script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

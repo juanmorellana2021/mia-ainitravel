@@ -248,8 +248,17 @@ match (true) {
     str_starts_with($uri, 'superadmin/prospects/') && str_ends_with($uri, '/convert') && $method === 'POST'
         => (new SuperAdminController())->prospectConvert((int)(explode('/', $uri)[2] ?? 0)),
 
+    str_starts_with($uri, 'superadmin/prospects/') && str_ends_with($uri, '/reset-state') && $method === 'POST'
+        => (new SuperAdminController())->prospectResetState((int)(explode('/', $uri)[2] ?? 0)),
+
     str_starts_with($uri, 'superadmin/prospects/') && str_ends_with($uri, '/chat') && $method === 'GET'
         => (new SuperAdminController())->prospectChat((int)(explode('/', $uri)[2] ?? 0)),
+
+    str_starts_with($uri, 'superadmin/prospects/') && str_ends_with($uri, '/send') && $method === 'POST'
+        => (new SuperAdminController())->prospectSendMessage((int)(explode('/', $uri)[2] ?? 0)),
+
+    str_starts_with($uri, 'superadmin/prospects/') && str_ends_with($uri, '/messages') && $method === 'GET'
+        => (new SuperAdminController())->prospectGetMessages((int)(explode('/', $uri)[2] ?? 0)),
 
     str_starts_with($uri, 'superadmin/prospects/') && $method === 'GET'
         => (new SuperAdminController())->prospectDetail((int)basename($uri)),

@@ -327,6 +327,94 @@ class SuperAdminController
         require __DIR__ . '/../views/superadmin/analytics.php';
     }
 
+    // ── Reset prospect bot state ─────────────────────────────────────────────
+
+    public function prospectResetState(int $id): void
+    {
+        $this->requireSuperAdmin();
+        App::csrfVerify();
+
+        $db   = Database::get();
+        $stmt = $db->prepare(
+            "UPDATE mia_sales_sessions
+             SET state = 'new', updated_at = NOW()
+             WHERE id = ? LIMIT 1"
+        );
+        $stmt->execute([$id]);
+
+        header('Location: ' . App::basePath() . '/superadmin/prospects/' . $id . '?reset=1');
+        exit;
+    }
+
+    // ── Prospect outbound message (human agent → WhatsApp) ───────────────────
+
+    public function prospectSendMessage(int $id): void
+    {
+        header('Content-Type: application/json');
+        $this->requireSuperAdmin();
+        App::csrfVerify();
+
+        $data = (new SuperAdminService())->prospectFull($id);
+        if (!$data) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Prospect not found']);
+            return;
+        }
+
+        $text = trim($_POST['message'] ?? '');
+        if ($text === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Empty message']);
+            return;
+        }
+
+        $phone = $data['session']['phone'];
+
+        // Append to conv_history as 'human_agent' so the AI sees it as context
+        // (MiaSalesService::loadHistory maps human_agent → assistant before sending to Groq)
+        $db   = Database::get();
+        $stmt = $db->prepare('SELECT conv_history FROM mia_sales_sessions WHERE id = ?');
+        $stmt->execute([$id]);
+        $raw     = $stmt->fetchColumn();
+        $history = $raw ? (json_decode($raw, true) ?? []) : [];
+        $history[] = ['role' => 'human_agent', 'content' => $text];
+        $history   = array_slice($history, -30);
+        $db->prepare('UPDATE mia_sales_sessions SET conv_history = ?, updated_at = NOW() WHERE id = ?')
+           ->execute([json_encode($history, JSON_UNESCAPED_UNICODE), $id]);
+
+        // Send via Mia's WhatsApp bot (admin API on 127.0.0.1:3001)
+        $delivered = false;
+        $payload   = json_encode(['to' => $phone, 'message' => $text]);
+        $ctx = stream_context_create(['http' => [
+            'method'        => 'POST',
+            'header'        => "Content-Type: application/json\r\nContent-Length: " . strlen($payload) . "\r\n",
+            'content'       => $payload,
+            'timeout'       => 8,
+            'ignore_errors' => true,
+        ]]);
+        $result = @file_get_contents('http://127.0.0.1:3001/send', false, $ctx);
+        if ($result !== false) {
+            $r = json_decode($result, true);
+            $delivered = !empty($r['success']);
+        }
+
+        echo json_encode(['success' => true, 'delivered' => $delivered]);
+    }
+
+    /** JSON — returns messages array for the live-polled conversation thread */
+    public function prospectGetMessages(int $id): void
+    {
+        header('Content-Type: application/json');
+        $this->requireSuperAdmin();
+        $data = (new SuperAdminService())->prospectFull($id);
+        if (!$data) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Not found']);
+            return;
+        }
+        echo json_encode($data['history'], JSON_UNESCAPED_UNICODE);
+    }
+
     // ── Convert prospect → client ─────────────────────────────────────────────
 
     public function prospectConvert(int $id): void
