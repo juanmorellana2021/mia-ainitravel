@@ -102,7 +102,15 @@ miaClient.on('message', async (msg) => {
 
     // Accept text AND media (voice notes, images)
     const hasMiaMedia = msg.hasMedia && ['ptt', 'audio', 'image'].includes(msg.type);
-    if (!rawBody && !hasMiaMedia) {
+
+    // Facebook/Instagram ad clicks arrive as notification_template with empty body
+    // — the pre-filled ad text lives in msg._data.body; fall back to "Hola" so Mia greets them
+    const isAdClick = msg.type === 'notification_template';
+    if (isAdClick) {
+        const adText = msg._data?.body?.trim() || '';
+        console.log(`[mia-bot] Ad-click from ${msg.from} — extracted text: "${adText || '(empty, using Hola)'}"`);
+        // We'll set rawBody below via messageText; don't drop this message
+    } else if (!rawBody && !hasMiaMedia) {
         console.log(`[mia-bot] Dropped: empty body, no media (type=${msg.type})`);
         return;
     }
@@ -125,7 +133,10 @@ miaClient.on('message', async (msg) => {
     }
 
     // Download media if present (voice notes, images)
-    let messageText = rawBody;
+    // For ad-click (notification_template), try _data.body first, then fall back to "Hola"
+    let messageText = isAdClick
+        ? (msg._data?.body?.trim() || rawBody || 'Hola')
+        : rawBody;
     let mediaData = null, mediaMime = null, mediaType = null;
     if (hasMiaMedia) {
         try {
