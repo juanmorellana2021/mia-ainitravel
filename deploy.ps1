@@ -3,7 +3,7 @@
 # Always run this instead of scp-ing individual files.
 #
 # CRITICAL: The bot runs from /root/mia-whatsapp-bot/bot.js (pm2)
-#           NOT from /var/www/html/mia.ainitravel.com/bot_new.js
+#           NOT from /var/www/html/mia.ainitravel.com/
 
 $VPS = "root@108.175.12.152"
 $WEB = "/var/www/html/mia.ainitravel.com"
@@ -13,7 +13,7 @@ Write-Host "Deploying PHP app..." -ForegroundColor Cyan
 scp -r services config views public api *.php "${VPS}:${WEB}/"
 
 Write-Host "Deploying bot (to correct pm2 path)..." -ForegroundColor Cyan
-scp bot_new.js "${VPS}:${BOT}/bot.js"
+scp bot.js "${VPS}:${BOT}/bot.js"
 scp bot_client_worker.js "${VPS}:${BOT}/bot_client_worker.js"
 
 Write-Host "Restarting bot..." -ForegroundColor Cyan
