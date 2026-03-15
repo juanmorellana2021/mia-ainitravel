@@ -245,6 +245,30 @@ function escapeHtml(t) {
     return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function appendBubble(role, content) {
+    const wrap = document.getElementById('chatMessages');
+    wrap.style.display = 'flex';
+    document.getElementById('chatEmpty').style.display = 'none';
+    const isMia = role === 'assistant';
+    const isAgent = role === 'human_agent';
+    const outer = document.createElement('div');
+    outer.style.cssText = 'display:flex;justify-content:' + (isMia ? 'flex-start' : 'flex-end');
+    const bubble = document.createElement('div');
+    bubble.style.cssText = 'max-width:85%;padding:8px 12px;font-size:0.83rem;line-height:1.45;'
+        + (isMia    ? 'background:#202c33;color:#e9edef;border-radius:4px 12px 12px 12px;'
+         : isAgent  ? 'background:#1a3a5c;color:#e9edef;border-radius:12px 4px 12px 12px;'
+                    : 'background:#005c4b;color:#e9edef;border-radius:12px 4px 12px 12px;');
+    const label = isMia ? '<i class="bi bi-robot me-1"></i>Mia'
+                : isAgent ? '<i class="bi bi-person-badge me-1"></i>Tú (agente)'
+                : 'Prospecto';
+    const color = isMia ? '#00a884' : isAgent ? '#60a5fa' : '#8fcebd';
+    bubble.innerHTML = '<div style="font-size:0.68rem;font-weight:600;margin-bottom:3px;color:' + color + '">'
+        + label + '</div>' + escapeHtml(content).replace(/\n/g, '<br>');
+    outer.appendChild(bubble);
+    wrap.appendChild(outer);
+    wrap.scrollTop = wrap.scrollHeight;
+}
+
 // ── Send message ─────────────────────────────────────────────────────────────
 (function () {
     const sendBtn  = document.getElementById('chatSendBtn');
@@ -261,30 +285,6 @@ function escapeHtml(t) {
                              : type === 'ok'      ? '#6ee7b7' : '#f87171';
         clearTimeout(statusEl._t);
         statusEl._t = setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
-    }
-
-    function appendBubble(role, content) {
-        const wrap = document.getElementById('chatMessages');
-        wrap.style.display = 'flex';
-        document.getElementById('chatEmpty').style.display = 'none';
-        const isMia = role === 'assistant';
-        const isAgent = role === 'human_agent';
-        const outer = document.createElement('div');
-        outer.style.cssText = 'display:flex;justify-content:' + (isMia ? 'flex-start' : 'flex-end');
-        const bubble = document.createElement('div');
-        bubble.style.cssText = 'max-width:85%;padding:8px 12px;font-size:0.83rem;line-height:1.45;'
-            + (isMia    ? 'background:#202c33;color:#e9edef;border-radius:4px 12px 12px 12px;'
-             : isAgent  ? 'background:#1a3a5c;color:#e9edef;border-radius:12px 4px 12px 12px;'
-                        : 'background:#005c4b;color:#e9edef;border-radius:12px 4px 12px 12px;');
-        const label = isMia ? '<i class="bi bi-robot me-1"></i>Mia'
-                    : isAgent ? '<i class="bi bi-person-badge me-1"></i>Tú (agente)'
-                    : 'Prospecto';
-        const color = isMia ? '#00a884' : isAgent ? '#60a5fa' : '#8fcebd';
-        bubble.innerHTML = '<div style="font-size:0.68rem;font-weight:600;margin-bottom:3px;color:' + color + '">'
-            + label + '</div>' + escapeHtml(content).replace(/\n/g, '<br>');
-        outer.appendChild(bubble);
-        wrap.appendChild(outer);
-        wrap.scrollTop = wrap.scrollHeight;
     }
 
     function sendChatMessage() {
