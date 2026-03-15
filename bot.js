@@ -63,6 +63,9 @@ let miaBotStatus   = 'initializing';
 let miaBotPhone    = null;
 let miaBotReadyAt  = 0; // Unix timestamp when bot last connected — used to skip offline backlog
 
+// Dedup: track recently-seen message IDs to prevent double-processing (ad-click duplicates, reconnect storms)
+const recentMsgIds = new Set();
+
 miaClient.on('qr', async (qr) => {
     qrcodeTerminal.generate(qr, { small: true });
     console.log('[mia-bot] Scan QR to connect Mia sales bot');
@@ -92,6 +95,17 @@ miaClient.on('disconnected', (reason) => {
 miaClient.on('message', async (msg) => {
     if (msg.from === 'status@broadcast' || msg.from.includes('@g.us')) return;
     if (msg.fromMe) return;
+
+    // Dedup: WhatsApp sometimes fires the same message twice (FAQ ad-clicks, reconnects)
+    const msgId = msg.id?._serialized || '';
+    if (msgId && recentMsgIds.has(msgId)) {
+        console.log(`[mia-bot] Duplicate msgId ${msgId} — skipping`);
+        return;
+    }
+    if (msgId) {
+        recentMsgIds.add(msgId);
+        setTimeout(() => recentMsgIds.delete(msgId), 300_000); // 5-min TTL
+    }
 
     // Log ALL messages before any filter so nothing is invisible
     const rawBody = msg.body?.trim() || '';

@@ -79,6 +79,13 @@ class MiaSalesService
 
         $state = $session['state'] ?? 'new';
 
+        // Global interceptor: client asks directly about price or how it works
+        // Fires in any early/mid state — skips the funnel and gives a direct answer
+        $earlyStates = ['intro', 'qualifying_size', 'qualifying_method', 'qualifying_pain', 'roi_pitch', 'demo', 'benefits'];
+        if (in_array($state, $earlyStates, true) && $this->detectsPriceOrUsageQuestion($msg)) {
+            return $this->handleDirectPriceQuestion($phone, $session, $message);
+        }
+
         return match ($state) {
             'new'                      => $this->handleNew($phone, $session, $message),
             'collecting_contact_name'  => $this->handleCollectContactName($phone, $session, $message),
@@ -108,6 +115,42 @@ class MiaSalesService
     //  Pattern: extract data from user message → update session state →
     //           call aiReply() with goal instructions for this turn
     // ════════════════════════════════════════════════════════════════════════
+
+    private function detectsPriceOrUsageQuestion(string $msg): bool
+    {
+        // Only trigger on specific price/feature questions — NOT generic "más información"
+        return (bool) preg_match(
+            '/\b(costo|cuesta|precio|plan|planes|cuánto|cuanto|vale|cobran|tarifa|mensual|suscripci[oó]n|' .
+            'c[oó]mo funciona|c[oó]mo se usa|c[oó]mo se utiliza|c[oó]mo trabaja|qu[eé] incluye|' .
+            'c[oó]mo se instala|c[oó]mo se configura|how much|how does|pricing|price)\b/iu',
+            $msg
+        );
+    }
+
+    private function handleDirectPriceQuestion(string $phone, array $session, string $message): array
+    {
+        $priS    = App::CURRENCY . App::PLAN_STARTER;
+        $priP    = App::CURRENCY . App::PLAN_BASIC;
+        $priB    = App::CURRENCY . App::PLAN_PRO;
+        $bizType = $session['business_type'] ?? 'negocio';
+        $name    = $session['contact_name'] ?? null;
+
+        // Advance state to closing so the next message is handled as a close
+        $this->updateSession($phone, ['state' => 'closing']);
+        $session['state'] = 'closing';
+
+        return $this->aiReply($phone, $session, $message,
+            "El cliente preguntó directamente CÓMO FUNCIONA y/o CUÁNTO CUESTA — responde AMBAS preguntas de forma clara y concisa. " .
+            "NO evadas el precio. NO digas 'depende'. Da los números reales. " .
+            ($name ? "El cliente se llama {$name}. " : "") .
+            "Estructura tu respuesta así (en 4-5 líneas máximo, sin listas con viñetas, fluido):\n" .
+            "1) Cómo funciona en 2 frases: se conecta a su WhatsApp, responde automático 24/7, agenda citas, envía recordatorios, el dueño solo recibe notificaciones. Setup gratis en 48h.\n" .
+            "2) Precios: Starter {$priS}/mes (1 número, respuestas básicas), Pro {$priP}/mes (multi-idioma, agenda, recordatorios), Business {$priB}/mes (múltiples números, panel web, reportes). Configuración GRATIS. 7 días de prueba gratis sin tarjeta.\n" .
+            "3) Recomienda el plan que mejor encaja para un {$bizType} basándote en lo que sabes de ellos.\n" .
+            "4) Cierra con UNA pregunta de avance: '¿Quieres empezar con los 7 días gratis?' o '¿Cuál de los planes se adapta mejor a tu negocio?'\n" .
+            "Tono: experto, directo, cálido. No de vendedor apresurado. Como alguien que conoce el negocio del cliente y le da una recomendación honesta."
+        );
+    }
 
     private function handleNew(string $phone, array $session, string $message): array
     {
@@ -812,12 +855,13 @@ PROMPT;
     private function callGroq(array $messages): string
     {
         // Direct Groq API call — no Ollama hop
-        $apiKey = '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';
+        $apiKey = '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';
         $payload = json_encode([
-            'model'       => 'llama-3.3-70b-versatile',
+            'model'       => 'openai/gpt-oss-120b',
             'messages'    => $messages,
             'temperature' => 0.72,
-            'max_tokens'  => 100,
+            'max_tokens'  => 220,
+            'reasoning_effort' => 'low',
             'top_p'       => 0.9,
         ]);
 
@@ -850,12 +894,10 @@ PROMPT;
         }
 
         error_log("[Mia] AI response via Groq direct");
-        // Hard-enforce single paragraph: strip everything after first blank line
+        // Collapse double newlines to single newline (preserves multi-line answers
+        // like pricing breakdowns while keeping WhatsApp layout clean)
         $text = trim($text);
-        $firstBreak = strpos($text, "\n\n");
-        if ($firstBreak !== false) {
-            $text = trim(substr($text, 0, $firstBreak));
-        }
+        $text = preg_replace('/\n{2,}/', "\n", $text);
         return $text;
     }
 

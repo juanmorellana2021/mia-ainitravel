@@ -21,6 +21,10 @@ $base = App::basePath();
            class="sa-nav-item <?= ($activeNav ?? '') === 'mia_bot' ? 'active' : '' ?>">
             <i class="bi bi-whatsapp"></i> Conectar Bot
         </a>
+        <a href="<?= $base ?>/superadmin/mia-brain"
+           class="sa-nav-item <?= ($activeNav ?? '') === 'mia_brain' ? 'active' : '' ?>">
+            <i class="bi bi-cpu"></i> Cerebro de Mia
+        </a>
         <a href="<?= $base ?>/superadmin/prospects"
            class="sa-nav-item <?= ($activeNav ?? '') === 'prospects' ? 'active' : '' ?>">
             <i class="bi bi-chat-square-text"></i> Prospectos

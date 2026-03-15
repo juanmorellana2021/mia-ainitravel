@@ -18,6 +18,31 @@ class SuperAdminController
             header('Location: ' . App::basePath() . '/superadmin/login');
             exit;
         }
+
+        $now      = time();
+        $ttl      = App::SUPERADMIN_SESSION_TTL;
+        $loggedAt = (int)($_SESSION['mia_superadmin_logged_at'] ?? 0);
+        $lastSeen = (int)($_SESSION['mia_superadmin_last_activity'] ?? 0);
+
+        $absoluteExpired = ($loggedAt > 0) && (($now - $loggedAt) > $ttl);
+        $idleExpired     = ($lastSeen > 0) && (($now - $lastSeen) > $ttl);
+
+        if ($absoluteExpired || $idleExpired) {
+            $this->clearSuperAdminSession();
+            header('Location: ' . App::basePath() . '/superadmin/login?expired=1');
+            exit;
+        }
+
+        $_SESSION['mia_superadmin_last_activity'] = $now;
+    }
+
+    private function clearSuperAdminSession(): void
+    {
+        unset(
+            $_SESSION['mia_superadmin'],
+            $_SESSION['mia_superadmin_logged_at'],
+            $_SESSION['mia_superadmin_last_activity']
+        );
     }
 
     // ── Login ─────────────────────────────────────────────────────────────────
@@ -40,7 +65,9 @@ class SuperAdminController
         if ($user === App::SUPERADMIN_USER &&
             password_verify($pass, App::SUPERADMIN_HASH)) {
             session_regenerate_id(true);
-            $_SESSION['mia_superadmin'] = $user;
+            $_SESSION['mia_superadmin']               = $user;
+            $_SESSION['mia_superadmin_logged_at']     = time();
+            $_SESSION['mia_superadmin_last_activity'] = time();
             header('Location: ' . App::basePath() . '/superadmin/dashboard');
             exit;
         }
@@ -51,7 +78,7 @@ class SuperAdminController
 
     public function logout(): void
     {
-        unset($_SESSION['mia_superadmin']);
+        $this->clearSuperAdminSession();
         header('Location: ' . App::basePath() . '/superadmin/login');
         exit;
     }
@@ -141,6 +168,17 @@ class SuperAdminController
         $pageTopTitle = 'Bot Mia — Conexión WhatsApp';
         $activeNav    = 'mia_bot';
         require __DIR__ . '/../views/superadmin/mia_bot.php';
+    }
+
+    // ── Mia brain — behavior & configuration reference ────────────────────────
+
+    public function miaBrain(): void
+    {
+        $this->requireSuperAdmin();
+        $pageTitle    = 'Cerebro de Mia — Comportamientos y Reglas';
+        $pageTopTitle = '🧠 Cerebro de Mia';
+        $activeNav    = 'mia_brain';
+        require __DIR__ . '/../views/superadmin/mia_brain.php';
     }
 
     /** JSON proxy — polls the bot server and returns status+QR to the browser. */

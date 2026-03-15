@@ -10,10 +10,20 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/config/App.php';
+
+$sessionTtl = App::SUPERADMIN_SESSION_TTL;
+ini_set('session.gc_maxlifetime', (string)$sessionTtl);
+session_set_cookie_params([
+    'lifetime' => $sessionTtl,
+    'path'     => App::basePath() ?: '/',
+    'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
 session_start();
 
 // ── Autoload ─────────────────────────────────────────────────────────────────
-require_once __DIR__ . '/config/App.php';
 require_once __DIR__ . '/config/Database.php';
 require_once __DIR__ . '/models/Lead.php';
 require_once __DIR__ . '/models/SalesSession.php';
@@ -240,6 +250,9 @@ match (true) {
 
     $uri === 'superadmin/mia-bot-status' && $method === 'GET'
         => (new SuperAdminController())->miaBotStatus(),
+
+    $uri === 'superadmin/mia-brain'
+        => (new SuperAdminController())->miaBrain(),
 
     // ── Superadmin — Prospects ────────────────────────────────────────────────
     $uri === 'superadmin/prospects' && $method === 'GET'
