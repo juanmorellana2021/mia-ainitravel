@@ -101,7 +101,7 @@ require __DIR__ . '/_sidebar.php';
                 $converted  = !empty($p['client_id']);
             ?>
             <tr style="border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;"
-                onclick="openChat(<?= (int)$p['id'] ?>, <?= json_encode($p['phone']) ?>, <?= json_encode($p['business_name'] ?: '') ?>)">
+                onclick="openChat(<?= (int)$p['id'] ?>, <?= htmlspecialchars(json_encode($p['phone']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($p['business_name'] ?: ''), ENT_QUOTES) ?>)">
                 <td class="ps-3 py-2 align-middle">
                     <span style="font-family:monospace;font-size:0.82rem;" title="<?= htmlspecialchars($p['phone']) ?>">
                         <?= htmlspecialchars(fmtPhone($p['phone'])) ?>
@@ -135,7 +135,7 @@ require __DIR__ . '/_sidebar.php';
                     <?= date('d M H:i', strtotime($p['updated_at'])) ?>
                 </td>
                 <td class="pe-3 py-2 align-middle text-end" onclick="event.stopPropagation()">
-                    <button onclick="openChat(<?= (int)$p['id'] ?>, <?= json_encode($p['phone']) ?>, <?= json_encode($p['business_name'] ?: '') ?>)"
+                    <button onclick="openChat(<?= (int)$p['id'] ?>, <?= htmlspecialchars(json_encode($p['phone']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($p['business_name'] ?: ''), ENT_QUOTES) ?>)"
                        class="btn btn-sm"
                        style="background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:7px;padding:2px 10px;font-size:0.78rem;">
                         <i class="bi bi-chat-text me-1"></i>Chat
