@@ -2,19 +2,50 @@
 /**
  * mia/services/NotificationService.php
  *
- * Sends email alerts to clients when Mia captures a lead.
- * Queries all active clients with notify_on_capture = 1 and emails them.
+ * Sends email alerts using PHPMailer + IONOS SMTP (same config as the PMS).
  */
 
 declare(strict_types=1);
+
+// PHPMailer (shared vendor on the VPS)
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception as MailerException;
 
 class NotificationService
 {
     private PDO $db;
 
+    // IONOS SMTP — same credentials used by all apps on this VPS
+    private const SMTP_HOST = 'smtp.ionos.com';
+    private const SMTP_PORT = 587;
+    private const SMTP_USER = 'support@ainitravel.com';
+    private const SMTP_PASS = 'FpF5vBZ5!t$6LFp';
+    private const FROM_EMAIL = 'support@ainitravel.com';
+    private const FROM_NAME  = 'Mia by AiniTravel';
+
     public function __construct()
     {
         $this->db = Database::get();
+    }
+
+    private function mailer(): PHPMailer
+    {
+        require_once '/var/www/html/manage/vendor/phpmailer/phpmailer/src/Exception.php';
+        require_once '/var/www/html/manage/vendor/phpmailer/phpmailer/src/PHPMailer.php';
+        require_once '/var/www/html/manage/vendor/phpmailer/phpmailer/src/SMTP.php';
+
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = self::SMTP_HOST;
+        $mail->SMTPAuth   = true;
+        $mail->Username   = self::SMTP_USER;
+        $mail->Password   = self::SMTP_PASS;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = self::SMTP_PORT;
+        $mail->CharSet    = 'UTF-8';
+        $mail->setFrom(self::FROM_EMAIL, self::FROM_NAME);
+        return $mail;
     }
 
     /**
@@ -88,13 +119,17 @@ class NotificationService
 </html>
 HTML;
 
-        $headers  = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: Mia by AiniDesk <noreply@ainitravel.com>\r\n";
-        $headers .= "X-Mailer: PHP/" . PHP_VERSION . "\r\n";
-
-        @mail($toEmail, $subject, $html, $headers);
-        error_log("[Mia] Welcome email sent to {$toEmail}");
+        try {
+            $mail = $this->mailer();
+            $mail->addAddress($toEmail);
+            $mail->Subject = $subject;
+            $mail->isHTML(true);
+            $mail->Body = $html;
+            $mail->send();
+            error_log("[Mia] Welcome email sent to {$toEmail}");
+        } catch (\Throwable $e) {
+            error_log("[Mia] Welcome email FAILED to {$toEmail}: " . $e->getMessage());
+        }
     }
 
     public function notifyLeadCaptured(array $session): void
@@ -174,19 +209,21 @@ HTML;
 </html>
 HTML;
 
-        $headers  = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: Mia Alerts <noreply@ainitravel.com>\r\n";
-        $headers .= "X-Mailer: PHP/" . PHP_VERSION . "\r\n";
-
         foreach ($clients as $client) {
             $to = !empty($client['notify_email'])
                 ? $client['notify_email']
                 : $client['email'];
-
-            if (filter_var($to, FILTER_VALIDATE_EMAIL)) {
-                @mail($to, $subject, $html, $headers);
+            if (!filter_var($to, FILTER_VALIDATE_EMAIL)) continue;
+            try {
+                $mail = $this->mailer();
+                $mail->addAddress($to);
+                $mail->Subject = $subject;
+                $mail->isHTML(true);
+                $mail->Body = $html;
+                $mail->send();
                 error_log("[Mia] Lead capture notification sent to {$to}");
+            } catch (\Throwable $e) {
+                error_log("[Mia] Lead notification FAILED to {$to}: " . $e->getMessage());
             }
         }
     }
@@ -250,11 +287,16 @@ HTML;
 </html>
 HTML;
 
-        $headers  = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: Mia by AiniDesk <noreply@ainitravel.com>\r\n";
-
-        @mail($client['email'], $subject, $html, $headers);
-        error_log("[Mia] Disconnect alert sent to {$client['email']} (client {$clientId})");
+        try {
+            $mail = $this->mailer();
+            $mail->addAddress($client['email']);
+            $mail->Subject = $subject;
+            $mail->isHTML(true);
+            $mail->Body = $html;
+            $mail->send();
+            error_log("[Mia] Disconnect alert sent to {$client['email']} (client {$clientId})");
+        } catch (\Throwable $e) {
+            error_log("[Mia] Disconnect alert FAILED for client {$clientId}: " . $e->getMessage());
+        }
     }
 }
