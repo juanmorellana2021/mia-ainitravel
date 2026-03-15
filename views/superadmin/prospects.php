@@ -235,20 +235,7 @@ function openChat(id, phone, bizName) {
             if (!history.length) { document.getElementById('chatEmpty').style.display = 'block'; return; }
             const wrap = document.getElementById('chatMessages');
             wrap.style.display = 'flex';
-            history.forEach(msg => {
-                const isMia = msg.role === 'assistant';
-                const outer = document.createElement('div');
-                outer.style.cssText = 'display:flex;justify-content:' + (isMia ? 'flex-start' : 'flex-end');
-                const bubble = document.createElement('div');
-                bubble.style.cssText = 'max-width:85%;padding:8px 12px;font-size:0.83rem;line-height:1.45;' + (isMia
-                    ? 'background:#202c33;color:#e9edef;border:none;border-radius:4px 12px 12px 12px;'
-                    : 'background:#005c4b;color:#e9edef;border:none;border-radius:12px 4px 12px 12px;');
-                bubble.innerHTML = '<div style="font-size:0.68rem;font-weight:600;margin-bottom:3px;color:' + (isMia ? '#00a884' : '#8fcebd') + '">'  
-                    + (isMia ? '<i class="bi bi-robot me-1"></i>Mia' : 'Prospecto') + '</div>'
-                    + escapeHtml(msg.content || '').replace(/\n/g, '<br>');
-                outer.appendChild(bubble);
-                wrap.appendChild(outer);
-            });
+            history.forEach(msg => appendBubble(msg.role, msg.content || ''));
             wrap.scrollTop = wrap.scrollHeight;
         })
         .catch(() => { document.getElementById('chatLoading').innerHTML = '<span style="color:#f87171">Error al cargar.</span>'; });
@@ -276,11 +263,37 @@ function escapeHtml(t) {
         statusEl._t = setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
     }
 
+    function appendBubble(role, content) {
+        const wrap = document.getElementById('chatMessages');
+        wrap.style.display = 'flex';
+        document.getElementById('chatEmpty').style.display = 'none';
+        const isMia = role === 'assistant';
+        const isAgent = role === 'human_agent';
+        const outer = document.createElement('div');
+        outer.style.cssText = 'display:flex;justify-content:' + (isMia ? 'flex-start' : 'flex-end');
+        const bubble = document.createElement('div');
+        bubble.style.cssText = 'max-width:85%;padding:8px 12px;font-size:0.83rem;line-height:1.45;'
+            + (isMia    ? 'background:#202c33;color:#e9edef;border-radius:4px 12px 12px 12px;'
+             : isAgent  ? 'background:#1a3a5c;color:#e9edef;border-radius:12px 4px 12px 12px;'
+                        : 'background:#005c4b;color:#e9edef;border-radius:12px 4px 12px 12px;');
+        const label = isMia ? '<i class="bi bi-robot me-1"></i>Mia'
+                    : isAgent ? '<i class="bi bi-person-badge me-1"></i>Tú (agente)'
+                    : 'Prospecto';
+        const color = isMia ? '#00a884' : isAgent ? '#60a5fa' : '#8fcebd';
+        bubble.innerHTML = '<div style="font-size:0.68rem;font-weight:600;margin-bottom:3px;color:' + color + '">'
+            + label + '</div>' + escapeHtml(content).replace(/\n/g, '<br>');
+        outer.appendChild(bubble);
+        wrap.appendChild(outer);
+        wrap.scrollTop = wrap.scrollHeight;
+    }
+
     function sendChatMessage() {
         const text = input.value.trim();
         if (!text || !_chatProspectId) return;
         input.value = '';
         sendBtn.disabled = true;
+        // Optimistically show the message immediately
+        appendBubble('human_agent', text);
         const fd = new FormData();
         fd.append('_csrf', CHAT_CSRF);
         fd.append('message', text);
