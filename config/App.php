@@ -46,14 +46,15 @@ class App
     public const MP_PUBLIC_KEY    = 'APP_USR-4a2b9817-53ab-42da-b9f8-2e6b861b342e';
     public const MP_ACCESS_TOKEN  = 'APP_USR-3903199140335229-031021-7b10882587e251e0bba11f9a73c81412-465470205';
 
-    // ── Admin credentials (hash in production) ────────────────────────────
+    // ── Admin credentials ────────────────────────────────────────────────────
     public const ADMIN_USER = 'admin';
-    public const ADMIN_HASH = '$2y$10$MiaAdminDefaultHashChangeMe000000000000000000000';
+    public const ADMIN_HASH = '$2y$10$siuGB9eT0cOzlQ09AWwWNuY48OHsB41EguFPlw8gNqHaY11J/4Tti';
 
     // ── Superadmin credentials ─────────────────────────────────────────────
     // Generate hash: php -r "echo password_hash('yourpassword', PASSWORD_DEFAULT);"
     public const SUPERADMIN_USER = 'juanmia';
     public const SUPERADMIN_HASH = '$2y$10$bT0KnFr.h19vF0TRWyw4w.uz.QtMuZ.29X9v1hhzh0PoLZUZ8jUT.';
+    public const SUPERADMIN_SESSION_TTL = 28800; // 8 hours
 
     // ── CSRF helpers ─────────────────────────────────────────────────────
     public static function csrfToken(): string

@@ -34,9 +34,8 @@ class LeadController
         $user = trim($_POST['username'] ?? '');
         $pass = $_POST['password'] ?? '';
 
-        // For initial setup: accept 'admin' / 'MiaAdmin2026!'
-        // In production, use App::ADMIN_HASH with password_verify
-        if ($user === App::ADMIN_USER && ($pass === 'MiaAdmin2026!' || password_verify($pass, App::ADMIN_HASH))) {
+        // Verify credentials using bcrypt hash only (no plaintext fallback)
+        if ($user === App::ADMIN_USER && password_verify($pass, App::ADMIN_HASH)) {
             $_SESSION['mia_admin'] = true;
             header('Location: ' . App::basePath() . '/admin/leads');
             exit;
