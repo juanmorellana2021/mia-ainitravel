@@ -178,7 +178,7 @@ require __DIR__ . '/_sidebar.php';
                     <?php else: ?>
                     <form method="POST" action="<?= $base ?>/superadmin/prospects/<?= (int)$session['id'] ?>/convert"
                           onsubmit="return confirm('¿Crear cuenta de cliente para <?= htmlspecialchars(addslashes($session['phone'])) ?>?\n\nSe generará una contraseña temporal.');">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App::csrfToken()) ?>">
+                        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
                         <button type="submit" class="btn"
                                 style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:9px;padding:8px 18px;font-size:0.85rem;font-weight:600;white-space:nowrap;box-shadow:0 2px 12px rgba(99,102,241,0.4);">
                             <i class="bi bi-person-plus-fill me-1"></i>Convertir en cliente
@@ -205,8 +205,8 @@ require __DIR__ . '/_sidebar.php';
                 </div>
                 <div class="ms-auto">
                     <form method="POST" action="<?= $base ?>/superadmin/prospects/<?= (int)$session['id'] ?>/reset-state"
-                          onsubmit="return confirm('¿Reiniciar el estado del bot para este prospecto?\n\nSe conserva el historial. El flujo de Mia empezará de nuevo cuando escriba.');"> 
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App::csrfToken()) ?>">
+                          onsubmit="return confirm('¿Reiniciar el estado del bot para este prospecto?\n\nSe conserva el historial. El flujo de Mia empezará de nuevo cuando escriba.');">
+                        <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
                         <button type="submit" class="btn"
                                 style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);border-radius:9px;padding:8px 18px;font-size:0.85rem;font-weight:600;white-space:nowrap;">
                             <i class="bi bi-arrow-counterclockwise me-1"></i>Reiniciar estado
@@ -362,7 +362,7 @@ require __DIR__ . '/_sidebar.php';
         sendBtn.disabled = true;
 
         const fd = new FormData();
-        fd.append('csrf_token', CSRF);
+        fd.append('_csrf', CSRF);
         fd.append('message', text);
 
         fetch(BASE + '/superadmin/prospects/' + PROSPECT_ID + '/send', {

@@ -282,7 +282,7 @@ function escapeHtml(t) {
         input.value = '';
         sendBtn.disabled = true;
         const fd = new FormData();
-        fd.append('csrf_token', CHAT_CSRF);
+        fd.append('_csrf', CHAT_CSRF);
         fd.append('message', text);
         fetch(BASE + '/superadmin/prospects/' + _chatProspectId + '/send', {
             method: 'POST', credentials: 'same-origin', body: fd,
