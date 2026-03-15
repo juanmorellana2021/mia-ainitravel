@@ -122,7 +122,7 @@ class ClientLeadService
             'INSERT INTO mia_client_messages (client_id, lead_id, phone, direction, message, handled_by)
              VALUES (?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$clientId, $leadId, $phone, $message, $direction, $handledBy]);
+        $stmt->execute([$clientId, $leadId, $phone, $direction, $message, $handledBy]);
     }
 
     // ── Stats ─────────────────────────────────────────────────────────────────
