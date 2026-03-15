@@ -169,6 +169,10 @@ require __DIR__ . '/_sidebar.php';
             <div style="font-size:0.78rem;color:#64748b;" id="chatSubtitle"></div>
         </div>
         <div class="ms-auto d-flex gap-2 align-items-center">
+            <a id="chatCallBtn" href="#" target="_blank" title="Llamar por WhatsApp"
+               style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(37,211,102,0.15);color:#25d366;border:1px solid rgba(37,211,102,0.35);font-size:1rem;text-decoration:none;">
+                <i class="bi bi-telephone-fill"></i>
+            </a>
             <a id="chatDetailLink" href="#" class="btn btn-sm" style="font-size:0.75rem;padding:3px 10px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);border-radius:7px;">Ver detalle</a>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
         </div>
@@ -177,8 +181,22 @@ require __DIR__ . '/_sidebar.php';
         <div id="chatLoading" style="display:flex;align-items:center;justify-content:center;height:200px;color:#64748b;font-size:0.88rem;">
             <i class="bi bi-arrow-repeat me-2" style="animation:spin 1s linear infinite"></i>Cargando...
         </div>
-        <div id="chatMessages" style="display:none;flex-direction:column;gap:8px;padding:16px;overflow-y:auto;height:calc(100vh - 130px);"></div>
+        <div id="chatMessages" style="display:none;flex-direction:column;gap:8px;padding:16px;overflow-y:auto;height:calc(100vh - 210px);"></div>
         <div id="chatEmpty" style="display:none;padding:40px 20px;text-align:center;color:#475569;font-size:0.85rem;">Sin mensajes registrados aún.</div>
+        <!-- Message input footer -->
+        <div id="chatInputArea" style="padding:10px 14px 14px;border-top:1px solid rgba(255,255,255,0.07);">
+            <div id="chatSendStatus" style="display:none;font-size:0.75rem;padding:5px 10px;border-radius:7px;margin-bottom:7px;"></div>
+            <div style="display:flex;gap:8px;align-items:flex-end;">
+                <textarea id="chatMsgInput" rows="2"
+                    placeholder="Escribe un mensaje para enviar por WhatsApp..."
+                    style="flex:1;resize:none;background:#1e293b;border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:8px 12px;font-size:0.85rem;color:#e2e8f0;outline:none;font-family:inherit;line-height:1.45;"></textarea>
+                <button id="chatSendBtn"
+                    style="background:linear-gradient(135deg,#059669,#065f46);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:1rem;cursor:pointer;flex-shrink:0;align-self:flex-end;box-shadow:0 2px 8px rgba(5,150,105,0.4);"
+                    title="Enviar por WhatsApp">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -188,7 +206,13 @@ require __DIR__ . '/_sidebar.php';
 
 <script>
 const BASE = '<?= $base ?>';
+const CHAT_CSRF = '<?= App::csrfToken() ?>';
+let _chatProspectId   = null;
+let _chatProspectPhone = null;
+
 function openChat(id, phone, bizName) {
+    _chatProspectId    = id;
+    _chatProspectPhone = phone;
     document.getElementById('chatLoading').style.display = 'flex';
     document.getElementById('chatMessages').style.display = 'none';
     document.getElementById('chatEmpty').style.display = 'none';
@@ -196,7 +220,13 @@ function openChat(id, phone, bizName) {
     document.getElementById('chatTitle').textContent = bizName || phone;
     document.getElementById('chatSubtitle').textContent = bizName ? phone : '';
     document.getElementById('chatDetailLink').href = BASE + '/superadmin/prospects/' + id;
-    new bootstrap.Offcanvas(document.getElementById('chatPanel')).show();
+    // WhatsApp call link — strip non-digits and open wa.me
+    const digits = phone.replace(/[^0-9]/g, '');
+    document.getElementById('chatCallBtn').href = 'https://wa.me/' + digits;
+    // Reset input area
+    document.getElementById('chatMsgInput').value = '';
+    document.getElementById('chatSendStatus').style.display = 'none';
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('chatPanel')).show();
     fetch(BASE + '/superadmin/prospects/' + id + '/chat')
         .then(r => r.json())
         .then(data => {
@@ -223,9 +253,61 @@ function openChat(id, phone, bizName) {
         })
         .catch(() => { document.getElementById('chatLoading').innerHTML = '<span style="color:#f87171">Error al cargar.</span>'; });
 }
+
 function escapeHtml(t) {
     return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Send message ─────────────────────────────────────────────────────────────
+(function () {
+    const sendBtn  = document.getElementById('chatSendBtn');
+    const input    = document.getElementById('chatMsgInput');
+    const statusEl = document.getElementById('chatSendStatus');
+
+    function showChatStatus(msg, type) {
+        statusEl.textContent = msg;
+        statusEl.style.display = 'block';
+        statusEl.style.background = type === 'warning' ? 'rgba(245,158,11,0.15)'
+                                  : type === 'ok'      ? 'rgba(5,150,105,0.15)'
+                                  :                      'rgba(239,68,68,0.15)';
+        statusEl.style.color = type === 'warning' ? '#fbbf24'
+                             : type === 'ok'      ? '#6ee7b7' : '#f87171';
+        clearTimeout(statusEl._t);
+        statusEl._t = setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+    }
+
+    function sendChatMessage() {
+        const text = input.value.trim();
+        if (!text || !_chatProspectId) return;
+        input.value = '';
+        sendBtn.disabled = true;
+        const fd = new FormData();
+        fd.append('csrf_token', CHAT_CSRF);
+        fd.append('message', text);
+        fetch(BASE + '/superadmin/prospects/' + _chatProspectId + '/send', {
+            method: 'POST', credentials: 'same-origin', body: fd,
+        })
+        .then(r => r.json())
+        .then(data => {
+            sendBtn.disabled = false;
+            if (data.success) {
+                if (!data.delivered) {
+                    showChatStatus('⚠️ Guardado, WhatsApp no conectado — no enviado.', 'warning');
+                } else {
+                    showChatStatus('✓ Enviado', 'ok');
+                }
+            } else {
+                showChatStatus('❌ Error: ' + (data.error || 'desconocido'), 'error');
+            }
+        })
+        .catch(() => { sendBtn.disabled = false; showChatStatus('❌ Error de red.', 'error'); });
+    }
+
+    sendBtn.addEventListener('click', sendChatMessage);
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+    });
+})();
 </script>
 
 <?php require __DIR__ . '/_foot.php'; ?>
