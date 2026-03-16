@@ -32,7 +32,7 @@ class ClientBotService
     private const PLAN_CAPS = [
         'trial'           => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
         'starter'         => [],
-        'basic'           => ['handoff'],
+        'basic'           => ['handoff', 'leads'],   // Mia Ventas: closes sales + captures leads
         'pro'             => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
         'enterprise'      => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
         'enterprise_duo'  => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
@@ -253,9 +253,13 @@ class ClientBotService
             ? "Si el cliente claramente pide hablar con una persona real (ej: 'quiero hablar con alguien', 'necesito un humano', 'comunícame con el equipo'), responde: 'Entendido, aviso al equipo de {$bizName} ahora mismo. Alguien te contactará en breve 👋'. NO actives esto si el cliente pregunta sobre servicios, agentes de viaje, o cualquier otra cosa que incluya las palabras humano/agente/persona en otro contexto."
             : "Si el cliente pide hablar con una persona, dile que puede comunicarse directamente con el negocio.";
 
-        $leadBlock = $this->canCaptureLead
-            ? "- Si el cliente muestra interés en comprar/reservar algo específico, pide su nombre y número/email de forma natural para que el equipo lo contacte."
-            : '';
+        // Mia Ventas (basic) = closes sales herself. Pro/Enterprise = capture for team follow-up.
+        $leadBlock = '';
+        if ($this->canCaptureLead) {
+            $leadBlock = $this->client->plan === 'basic'
+                ? "- Tu objetivo es CERRAR LA VENTA en esta conversación. Guía al cliente activamente hacia la decisión de comprar/reservar. Pregunta lo que necesites (nombre, preferencias, fecha, presupuesto) de forma natural para confirmar. Registra sus datos en el CRM. No esperes a que pidan hablar con el equipo — intenta cerrar tú mismo hasta el final."
+                : "- Si el cliente muestra interés en comprar/reservar algo específico, pide su nombre y número/email de forma natural para que el equipo lo contacte.";
+        }
 
         $servicesBlock = $services ? "SERVICIOS Y PRODUCTOS:\n{$services}" : '';
         $pricingBlock  = $pricing  ? "PRECIOS:\n{$pricing}"               : '';

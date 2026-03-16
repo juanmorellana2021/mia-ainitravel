@@ -13,7 +13,7 @@ $planStatus  = $client->plan_status;
 // ── AI Tier definitions ─────────────────────────────────────────────────────
 $_billingAiTiers = [
     'starter' => ['name'=>'Mia Soporte',  'icon'=>'bi-headset',        'color'=>'#6c757d', 'bg'=>'rgba(108,117,125,0.08)', 'border'=>'rgba(108,117,125,0.2)',  'desc'=>'IA de soporte 24/7 · FAQs · 50+ idiomas'],
-    'basic'   => ['name'=>'Mia Ventas',   'icon'=>'bi-graph-up-arrow', 'color'=>'#0d6efd', 'bg'=>'rgba(13,110,253,0.07)',   'border'=>'rgba(13,110,253,0.18)', 'desc'=>'IA de ventas · captura leads · traspaso humano inteligente'],
+    'basic'   => ['name'=>'Mia Ventas',   'icon'=>'bi-graph-up-arrow', 'color'=>'#0d6efd', 'bg'=>'rgba(13,110,253,0.07)',   'border'=>'rgba(13,110,253,0.18)', 'desc'=>'Cierra ventas · califica leads · traspaso disponible si se pide'],
     'default' => ['name'=>'Mia Business', 'icon'=>'bi-buildings',      'color'=>'#25d366', 'bg'=>'rgba(37,211,102,0.07)',   'border'=>'rgba(37,211,102,0.2)',  'desc'=>'Suite completa · citas · difusión · secuencias · ilimitado'],
 ];
 $_billingAi = match($currentPlan) {
@@ -257,7 +257,7 @@ $_upgradeLabel = match(htmlspecialchars($_GET['upgrade'])) {
         <?php
         $features = [
             'starter'    => ['Módulo Soporte 24/7', 'Hasta 500 conversaciones/mes', 'Respuestas automáticas por WhatsApp', '1 usuario incluido', 'Multilingüe (50+ idiomas)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp'],
-            'basic'      => ['Módulo Soporte 24/7', 'Hasta 1,000 conversaciones/mes', 'Respuestas automáticas por WhatsApp', 'Traspaso humano inteligente', 'Multilingüe (ES · EN · PT · FR + 50 más)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp'],
+            'basic'      => ['Módulo Soporte 24/7 + Módulo Ventas', 'Hasta 1,000 conversaciones/mes', 'Cierra ventas directamente por WhatsApp', 'Captura de leads automática (guardados en tu CRM)', 'Traspaso humano disponible (si el cliente lo pide)', 'Multilingüe (ES · EN · PT · FR + 50 más)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp'],
             'pro'        => ['Todo lo del Soporte Básico', 'Conversaciones ilimitadas', 'Módulo Ventas (captura y calificación de leads)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp', 'Agenda de citas con recordatorios automáticos', 'Asientos adicionales de equipo disponibles', 'Soporte prioritario 24/7'],
             'enterprise'      => ['Todo lo del Pro', 'Módulo Gestión de negocio completo', 'Múltiples números WhatsApp', 'Integraciones (API, webhooks, Zapier/Make)', 'Account manager dedicado + SLA 99.9%'],
             'enterprise_duo'  => ['Todo lo del Enterprise', '2 números WhatsApp activos', 'Portal unificado para 2 negocios', 'Reportes combinados', 'Soporte prioritario'],

@@ -67,7 +67,7 @@ ob_start();
                     <div class="card-header bg-success text-white text-center py-4">
                         <span class="badge bg-warning text-dark mb-2">Más Popular</span>
                         <h5 class="fw-bold mb-1">Pro</h5>
-                        <p class="small mb-0 opacity-75">Atención automática + traspaso + captura de leads</p>
+                        <p class="small mb-0 opacity-75">IA que cierra ventas · califica leads · traspaso si se pide</p>
                     </div>
                     <div class="card-body text-center">
                         <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_BASIC) ?></div>
@@ -76,14 +76,15 @@ ob_start();
                             <i class="bi bi-graph-up-arrow" style="color:#0d6efd;font-size:1.25rem;flex-shrink:0"></i>
                             <div class="text-start">
                                 <div class="fw-bold" style="font-size:.85rem;color:#0d6efd">Mia Ventas</div>
-                                <div class="text-muted" style="font-size:.75rem">IA de ventas · captura leads · traspaso humano inteligente</div>
+                                <div class="text-muted" style="font-size:.75rem">Cierra ventas · califica leads · traspaso si se pide</div>
                             </div>
                         </div>
                         <hr>
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Starter</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Traspaso humano por WhatsApp</strong> <small class="text-muted">(Mia reconoce "quiero hablar con una persona" y pausa)</small></li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Captura de leads automática</strong> <small class="text-muted">(Mia pide nombre y contacto y los guarda en tu CRM)</small></li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Cierra ventas por WhatsApp</strong> <small class="text-muted">(Mia guía al cliente y cierra directamente en la conversación)</small></li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Captura de leads automática</strong> <small class="text-muted">(Mia recoge nombre y contacto y los guarda en tu CRM)</small></li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Traspaso humano opcional</strong> <small class="text-muted">(disponible si el cliente pide hablar con una persona)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Agenda de citas</strong> <small class="text-muted">(Mia agenda, confirma y envía recordatorios automáticos)</small></li>
