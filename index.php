@@ -119,6 +119,10 @@ match (true) {
     $uri === 'api/track'
         => (new ApiController())->track(),
 
+    // Onboarding help chat (auth required, rate-limited)
+    $uri === 'api/onboarding-help' && $method === 'POST'
+        => (new ApiController())->onboardingHelp(),
+
     // ── Client auth ───────────────────────────────────────────────────────
     $uri === 'login' && $method === 'GET'
         => (new AuthController())->loginForm(),
@@ -247,6 +251,9 @@ match (true) {
 
     $uri === 'dashboard/settings/save' && $method === 'POST'
         => (new SettingsController())->save(),
+
+    $uri === 'dashboard/settings/finish-onboarding' && $method === 'POST'
+        => (new SettingsController())->finishOnboarding(),
 
     $uri === 'dashboard/settings/wa-qr' && $method === 'GET'
         => (new SettingsController())->waQr(),

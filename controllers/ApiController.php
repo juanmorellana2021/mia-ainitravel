@@ -265,4 +265,102 @@ class ApiController
 
         echo json_encode(['success' => true], JSON_UNESCAPED_UNICODE);
     }
+
+    // ── Onboarding help chat (authenticated clients only) ─────────────────────
+    // POST /api/onboarding-help  { message: string, history: [{role,content},...] }
+    public function onboardingHelp(): void
+    {
+        header('Content-Type: application/json');
+
+        if (empty($_SESSION['mia_client_id'])) {
+            http_response_code(401);
+            echo json_encode(['error' => 'No autenticado']);
+            return;
+        }
+
+        // Rate-limit: max 40 messages per PHP session to prevent API abuse
+        $_SESSION['ob_help_count'] = ($_SESSION['ob_help_count'] ?? 0) + 1;
+        if ($_SESSION['ob_help_count'] > 40) {
+            echo json_encode(['reply' => 'Has alcanzado el límite de mensajes por sesión. ¡Ya casi terminas la configuración! 😊']);
+            return;
+        }
+
+        $raw  = file_get_contents('php://input');
+        $data = json_decode($raw ?: '', true) ?: [];
+
+        $userMessage = substr(strip_tags(trim((string)($data['message'] ?? ''))), 0, 500);
+        if ($userMessage === '') {
+            http_response_code(422);
+            echo json_encode(['error' => 'Mensaje vacío']);
+            return;
+        }
+
+        // Sanitize and limit history to last 6 turns
+        $history = [];
+        foreach (array_slice((array)($data['history'] ?? []), -6) as $turn) {
+            $role    = ($turn['role'] ?? '') === 'assistant' ? 'assistant' : 'user';
+            $content = substr(strip_tags((string)($turn['content'] ?? '')), 0, 300);
+            if ($content !== '') {
+                $history[] = ['role' => $role, 'content' => $content];
+            }
+        }
+
+        $bizName = htmlspecialchars(
+            $_SESSION['mia_client']['business_name'] ?? 'tu negocio',
+            ENT_QUOTES
+        );
+
+        $systemPrompt =
+            "Eres Mia, la asistente de configuración de 'Mia by AiniTravel'. " .
+            "Estás ayudando a {$bizName} a configurar su bot de WhatsApp en su panel de Mia. " .
+            "Responde SIEMPRE en español. Sé muy breve (máximo 3 oraciones). " .
+            "Solo responde preguntas sobre: configurar el perfil del negocio, conectar WhatsApp " .
+            "(escanear QR con WhatsApp Business → Dispositivos vinculados), planes y precios de Mia, " .
+            "características del bot (captura de leads, respuesta automática, personalidad del bot), " .
+            "y el proceso de bienvenida. " .
+            "Si preguntan algo fuera de tema, redirige amablemente a la configuración. " .
+            "Usa máximo 1 emoji por respuesta. Sé directa y amigable.";
+
+        $messages   = [['role' => 'system', 'content' => $systemPrompt]];
+        foreach ($history as $h) {
+            $messages[] = $h;
+        }
+        $messages[] = ['role' => 'user', 'content' => $userMessage];
+
+        $apiKey  = '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';
+        $payload = json_encode([
+            'model'       => 'llama-3.3-70b-versatile',
+            'messages'    => $messages,
+            'temperature' => 0.5,
+            'max_tokens'  => 180,
+        ]);
+
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey,
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlErr) {
+            echo json_encode(['reply' => 'Tuve un problema técnico. Intenta de nuevo. 🙏'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $result = json_decode($response, true);
+        $reply  = trim($result['choices'][0]['message']['content'] ?? '');
+        if ($reply === '') {
+            $reply = '¿En qué parte de la configuración necesitas ayuda? 😊';
+        }
+
+        echo json_encode(['reply' => $reply], JSON_UNESCAPED_UNICODE);
+    }
 }

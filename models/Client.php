@@ -31,7 +31,8 @@ class Client
     public ?string $notify_email          = null;
     public int     $notify_on_capture     = 1;
     public int     $notify_daily_summary  = 0;
-
+    // ── Onboarding ────────────────────────────────────────────────────────
+    public int     $onboarding_done       = 0;  // 0 = not done, 1 = completed
     public static function fromRow(array $row): self
     {
         $c = new self();

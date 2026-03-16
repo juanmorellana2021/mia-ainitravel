@@ -48,7 +48,11 @@ class AuthController
         $_SESSION['mia_client_id'] = $client->id;
         $_SESSION['mia_client']    = (new BillingService())->clientToSession($client);
 
-        header('Location: ' . App::basePath() . '/dashboard');
+        // First-time users go to the setup wizard; returning users go to dashboard
+        $dest = $client->onboarding_done === 0
+            ? App::basePath() . '/dashboard/settings?onboarding=1'
+            : App::basePath() . '/dashboard';
+        header('Location: ' . $dest);
         exit;
     }
 
@@ -104,7 +108,7 @@ class AuthController
             $_SESSION['mia_client_id'] = $client->id;
             $_SESSION['mia_client']    = (new BillingService())->clientToSession($client);
 
-            header('Location: ' . App::basePath() . '/dashboard?welcome=1');
+            header('Location: ' . App::basePath() . '/dashboard/settings?onboarding=1');
             exit;
         } catch (RuntimeException $e) {
             $error = $e->getMessage();

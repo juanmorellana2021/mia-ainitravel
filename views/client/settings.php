@@ -55,6 +55,61 @@ require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
 ?>
 
+<?php if ($onboarding): ?>
+<!-- ── Onboarding wizard progress banner ───────────────────────────────────── -->
+<?php
+$_hasBotCfg   = !empty($bc['description']) || !empty($bc['services']);
+$_hasWa       = $client->bot_wa_status === 'connected';
+$_obStep      = $_hasWa ? 3 : ($_hasBotCfg ? 2 : 1);
+?>
+<div class="mc-table-card mb-4" style="border:2px solid rgba(37,211,102,0.35)">
+    <div class="p-4">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <div style="width:44px;height:44px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi bi-whatsapp text-white" style="font-size:1.3rem"></i>
+            </div>
+            <div>
+                <h6 class="fw-bold mb-0">Bienvenido/a, <?= htmlspecialchars($client->contact_name) ?> 👋</h6>
+                <p class="text-muted small mb-0">Sigue estos 3 pasos para activar tu Mia en WhatsApp.</p>
+            </div>
+            <a href="<?= $base ?>/dashboard" class="btn btn-sm btn-outline-secondary ms-auto d-none d-md-inline">Configurar después</a>
+        </div>
+
+        <div class="row g-3">
+            <?php
+            $steps = [
+                ['Configura tu negocio',   'Cuéntale a Mia sobre tu empresa, servicios y precios.',        $_obStep >= 2],
+                ['Conecta tu WhatsApp',    'Escanea el QR desde WhatsApp Business → Dispositivos vinculados.', $_obStep >= 3],
+                ['¡Mia está lista! 🎉', 'Tu bot ya responde automáticamente en WhatsApp.',            $_obStep === 3],
+            ];
+            foreach ($steps as $i => [$title, $desc, $done]):
+                $num     = $i + 1;
+                $active  = ($num === $_obStep);
+                $bgCard  = $done ? 'rgba(37,211,102,0.08)' : '#f8fafc';
+                $bgBadge = $done ? '#25d366' : ($active ? 'rgba(37,211,102,0.45)' : '#dee2e6');
+                $txtNum  = ($done || $active) ? '#fff' : '#495057';
+            ?>
+            <div class="col-md-4">
+                <div class="d-flex align-items-start gap-3 p-3 rounded-3 h-100" style="background:<?= $bgCard ?>">
+                    <div style="width:32px;height:32px;border-radius:50%;background:<?= $bgBadge ?>;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <?php if ($done): ?>
+                        <i class="bi bi-check-lg" style="color:#fff;font-size:.85rem"></i>
+                        <?php else: ?>
+                        <span style="font-size:.82rem;font-weight:700;color:<?= $txtNum ?>"><?= $num ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div>
+                        <div class="fw-semibold small <?= $active ? 'text-success' : '' ?>"><?= $title ?></div>
+                        <div class="text-muted" style="font-size:.74rem"><?= $desc ?></div>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php if ($saved): ?>
 <div class="alert border-0 rounded-3 mb-4" style="background:rgba(37,211,102,0.12);color:#155724">
     <i class="bi bi-check-circle me-2"></i><strong>Cambios guardados.</strong>
@@ -917,6 +972,30 @@ require __DIR__ . '/_sidebar.php';
     });
 })();
 </script>
+<?php endif; ?>
+
+<?php if ($onboarding): ?>
+<!-- ── Onboarding: finish CTA ─────────────────────────────────────────────── -->
+<div class="mc-table-card mt-4 p-4" style="border:2px solid rgba(37,211,102,0.35)">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <h6 class="fw-bold mb-1">¿Listo para empezar?</h6>
+            <p class="text-muted small mb-0">Puedes ajustar cualquier cosa en cualquier momento desde Configuración.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <a href="<?= $base ?>/dashboard" class="btn btn-outline-secondary btn-sm">
+                Configurar después
+            </a>
+            <form method="POST" action="<?= $base ?>/dashboard/settings/finish-onboarding">
+                <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
+                <button type="submit" class="btn btn-success px-4"
+                        style="background:#25d366;border-color:#25d366">
+                    <i class="bi bi-rocket-takeoff me-2"></i>¡Ir al Dashboard!
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
 
 <?php require __DIR__ . '/_foot.php'; ?>

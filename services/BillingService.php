@@ -350,13 +350,14 @@ class BillingService
     public function clientToSession(Client $client): array
     {
         return [
-            'id'            => $client->id,
-            'business_name' => $client->business_name,
-            'contact_name'  => $client->contact_name,
-            'email'         => $client->email,
-            'plan'          => $client->plan,
-            'plan_status'   => $client->plan_status,
-            'trial_ends_at' => $client->trial_ends_at,
+            'id'              => $client->id,
+            'business_name'   => $client->business_name,
+            'contact_name'    => $client->contact_name,
+            'email'           => $client->email,
+            'plan'            => $client->plan,
+            'plan_status'     => $client->plan_status,
+            'trial_ends_at'   => $client->trial_ends_at,
+            'onboarding_done' => $client->onboarding_done,
         ];
     }
 }

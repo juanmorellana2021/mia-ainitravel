@@ -14,6 +14,25 @@ class ClientService
     public function __construct()
     {
         $this->db = Database::get();
+        $this->ensureOnboardingColumn();
+    }
+
+    private function ensureOnboardingColumn(): void
+    {
+        try {
+            $this->db->exec(
+                'ALTER TABLE mia_clients ADD COLUMN onboarding_done TINYINT(1) NOT NULL DEFAULT 0'
+            );
+        } catch (\Throwable $e) {
+            // Column already exists — ignore
+        }
+    }
+
+    public function markOnboardingDone(int $clientId): void
+    {
+        $this->db->prepare(
+            'UPDATE mia_clients SET onboarding_done = 1, updated_at = NOW() WHERE id = ? LIMIT 1'
+        )->execute([$clientId]);
     }
 
     // ── Registration ──────────────────────────────────────────────────────────

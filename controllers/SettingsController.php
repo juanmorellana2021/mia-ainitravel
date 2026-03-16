@@ -90,9 +90,20 @@ class SettingsController
 
     public function index(): void
     {
-        $client = $this->requireClient();
-        $saved  = isset($_GET['saved']);
+        $client     = $this->requireClient();
+        $saved      = isset($_GET['saved']);
+        $onboarding = isset($_GET['onboarding']) && $client->onboarding_done === 0;
         require __DIR__ . '/../views/client/settings.php';
+    }
+
+    public function finishOnboarding(): void
+    {
+        App::csrfVerify();
+        $client = $this->requireClient();
+        (new ClientService())->markOnboardingDone($client->id);
+        $_SESSION['mia_client']['onboarding_done'] = 1;
+        header('Location: ' . App::basePath() . '/dashboard');
+        exit;
     }
 
     public function save(): void
