@@ -112,6 +112,9 @@ class ClientService
             'language'       => trim($data['bot_language']    ?? 'es'),
             'tone'           => trim($data['bot_tone']        ?? 'friendly'),
             'char_skills'    => (array)($data['char_skills']  ?? []),
+            // Business hours
+            'hours_enabled'  => !empty($data['hours_enabled']),
+            'hours_config'   => $data['hours_config'] ?? [],
         ], JSON_UNESCAPED_UNICODE);
 
         $stmt = $this->db->prepare(

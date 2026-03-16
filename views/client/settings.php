@@ -22,6 +22,8 @@ $bc = array_merge([
     'language'      => 'es',
     'tone'          => 'friendly',
     'char_skills'   => [],
+    'hours_enabled' => false,
+    'hours_config'  => [],
 ], $bc);
 $activeSkills = (array)($bc['char_skills'] ?? []);
 
@@ -116,6 +118,41 @@ require __DIR__ . '/_sidebar.php';
                        class="btn btn-outline-success btn-sm">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Probar enlace
                     </a>
+
+                    <!-- ── QR & Deep link generator ─────────────────────── -->
+                    <hr class="my-3">
+                    <p class="small fw-semibold mb-2"><i class="bi bi-qr-code me-1"></i>Tu enlace directo de WhatsApp</p>
+                    <div id="waLinkBox">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="genWaLinkBtn">
+                            <i class="bi bi-qr-code-scan me-1"></i>Generar QR y enlace
+                        </button>
+                    </div>
+                    <div id="waLinkResult" class="d-none mt-3">
+                        <div class="d-flex flex-wrap gap-4 align-items-start">
+                            <img id="waQrImg" src="" alt="QR WhatsApp"
+                                 style="width:150px;height:150px;border:1px solid #dee2e6;border-radius:8px">
+                            <div>
+                                <p class="text-muted small mb-1">Enlace directo (compártelo o ponlo en tu web):</p>
+                                <div class="input-group input-group-sm" style="max-width:380px">
+                                    <input type="text" id="waDeepLink" class="form-control" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" id="copyWaLinkBtn"
+                                            title="Copiar enlace">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                <div class="mt-2 d-flex gap-2">
+                                    <a id="waQrDownload" href="#" download="qr-whatsapp.png"
+                                       class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-download me-1"></i>Descargar QR
+                                    </a>
+                                    <a id="waLinkOpen" href="#" target="_blank"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Abrir
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 <?php else: ?>
                     <p class="text-muted small mb-3">
                         Conecta tu WhatsApp de negocio para que Mia responda automáticamente a tus clientes.
@@ -367,6 +404,120 @@ require __DIR__ . '/_sidebar.php';
                     <?php endif; ?>
 
                 </div><!-- /row -->
+            </div>
+        </div>
+
+        <!-- ── Business Hours ────────────────────────────────────────────── -->
+        <div class="col-12">
+            <div class="mc-table-card p-4">
+                <div class="d-flex align-items-center gap-3 mb-1">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-clock me-2 text-info"></i>Horario de atención</h6>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                               name="hours_enabled" value="1" id="hoursEnabled"
+                               <?= !empty($bc['hours_enabled']) ? 'checked' : '' ?>
+                               onchange="document.getElementById('hoursConfig').style.display=this.checked?'':'none'">
+                        <label class="form-check-label small fw-semibold" for="hoursEnabled">Activar</label>
+                    </div>
+                </div>
+                <p class="text-muted small mb-3">
+                    Cuando estés fuera de horario, Mia responde con un mensaje de cierre en lugar de usar la IA.
+                </p>
+
+                <?php
+                $hcData = $bc['hours_config'] ?? [];
+                $hcTz   = $hcData['timezone'] ?? 'America/Lima';
+                $hcSch  = $hcData['schedule'] ?? [];
+                $hcMsg  = $hcData['closed_message'] ?? '';
+                $days   = [
+                    'mon' => 'Lunes',   'tue' => 'Martes',  'wed' => 'Miércoles',
+                    'thu' => 'Jueves',  'fri' => 'Viernes', 'sat' => 'Sábado',
+                    'sun' => 'Domingo',
+                ];
+                $defaultTimes = [
+                    'mon'=>['open'=>'09:00','close'=>'18:00','enabled'=>true],
+                    'tue'=>['open'=>'09:00','close'=>'18:00','enabled'=>true],
+                    'wed'=>['open'=>'09:00','close'=>'18:00','enabled'=>true],
+                    'thu'=>['open'=>'09:00','close'=>'18:00','enabled'=>true],
+                    'fri'=>['open'=>'09:00','close'=>'17:00','enabled'=>true],
+                    'sat'=>['open'=>'09:00','close'=>'13:00','enabled'=>false],
+                    'sun'=>['open'=>'','close'=>'','enabled'=>false],
+                ];
+                $hcSch = array_merge($defaultTimes, $hcSch);
+                ?>
+
+                <div id="hoursConfig" <?= empty($bc['hours_enabled']) ? 'style="display:none"' : '' ?>>
+
+                    <div class="mb-3" style="max-width:300px">
+                        <label class="form-label small fw-semibold text-muted">Zona horaria</label>
+                        <select name="hours_timezone" class="form-select form-select-sm">
+                            <?php
+                            $tzGroups = [
+                                'América del Sur'  => ['America/Lima','America/Bogota','America/Santiago','America/Buenos_Aires','America/La_Paz','America/Caracas','America/Guayaquil'],
+                                'América Central'  => ['America/Mexico_City','America/Guatemala','America/Costa_Rica','America/Panama'],
+                                'América del Norte'=> ['America/New_York','America/Chicago','America/Denver','America/Los_Angeles'],
+                                'Europa'           => ['Europe/Madrid','Europe/London','Europe/Paris'],
+                            ];
+                            foreach ($tzGroups as $grpLabel => $tzList):
+                            ?>
+                            <optgroup label="<?= htmlspecialchars($grpLabel) ?>">
+                                <?php foreach ($tzList as $tz): ?>
+                                <option value="<?= $tz ?>" <?= $hcTz === $tz ? 'selected' : '' ?>><?= $tz ?></option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm align-middle" style="max-width:520px">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th style="width:110px">Día</th>
+                                    <th style="width:60px" class="text-center">Activo</th>
+                                    <th>Apertura</th>
+                                    <th>Cierre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($days as $slug => $label):
+                                $d = $hcSch[$slug];
+                            ?>
+                            <tr>
+                                <td class="fw-semibold small"><?= $label ?></td>
+                                <td class="text-center">
+                                    <input type="checkbox" name="hours_<?= $slug ?>_enabled" value="1"
+                                           class="form-check-input hours-day-toggle"
+                                           data-day="<?= $slug ?>"
+                                           <?= !empty($d['enabled']) ? 'checked' : '' ?>>
+                                </td>
+                                <td>
+                                    <input type="time" name="hours_<?= $slug ?>_open" class="form-control form-control-sm"
+                                           style="max-width:110px"
+                                           value="<?= htmlspecialchars($d['open'] ?? '09:00') ?>"
+                                           <?= empty($d['enabled']) ? 'disabled' : '' ?>>
+                                </td>
+                                <td>
+                                    <input type="time" name="hours_<?= $slug ?>_close" class="form-control form-control-sm"
+                                           style="max-width:110px"
+                                           value="<?= htmlspecialchars($d['close'] ?? '18:00') ?>"
+                                           <?= empty($d['enabled']) ? 'disabled' : '' ?>>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="max-width:520px">
+                        <label class="form-label small fw-semibold text-muted">Mensaje fuera de horario</label>
+                        <textarea name="hours_closed_message" class="form-control" rows="3"
+                                  maxlength="400"
+                                  placeholder="Ej: Estamos cerrados en este momento. Nuestro horario es de lunes a viernes 9am–6pm. ¡Te respondemos cuando abramos! 🕐"><?= htmlspecialchars($hcMsg) ?></textarea>
+                        <div class="form-text">Máx. 400 caracteres. Usa texto claro y amigable.</div>
+                    </div>
+
+                </div><!-- /hoursConfig -->
             </div>
         </div>
 
@@ -629,6 +780,62 @@ require __DIR__ . '/_sidebar.php';
                             if (el) el.value = map[n];
                         });
                         banner.innerHTML = '<div class="px-3 py-2 rounded-3 text-success small fw-semibold" style="background:rgba(37,211,102,0.10);border:1.5px solid rgba(37,211,102,0.3)"><i class="bi bi-check-circle-fill me-2"></i>Plantilla aplicada — edita los campos con los datos reales de tu negocio y guarda los cambios.</div>';
+                    });
+                }
+            })();
+
+            // ── Business hours: toggle time inputs when day checkbox changes ─
+            (function() {
+                document.querySelectorAll('.hours-day-toggle').forEach(function(cb) {
+                    cb.addEventListener('change', function() {
+                        var day  = this.dataset.day;
+                        var row  = this.closest('tr');
+                        var inputs = row.querySelectorAll('input[type=time]');
+                        inputs.forEach(function(inp) { inp.disabled = !cb.checked; });
+                    });
+                });
+            })();
+
+            // ── WA QR & Link generator ────────────────────────────────────
+            (function() {
+                var genBtn  = document.getElementById('genWaLinkBtn');
+                var result  = document.getElementById('waLinkResult');
+                var qrImg   = document.getElementById('waQrImg');
+                var linkInp = document.getElementById('waDeepLink');
+                var copyBtn = document.getElementById('copyWaLinkBtn');
+                var dlBtn   = document.getElementById('waQrDownload');
+                var openBtn = document.getElementById('waLinkOpen');
+                if (!genBtn) return;
+
+                genBtn.addEventListener('click', function() {
+                    genBtn.disabled = true;
+                    genBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generando...';
+                    fetch('<?= App::basePath() ?>/dashboard/settings/wa-link')
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            genBtn.disabled = false;
+                            genBtn.innerHTML = '<i class="bi bi-qr-code-scan me-1"></i>Generar QR y enlace';
+                            if (data.error) { alert(data.error); return; }
+                            qrImg.src       = data.qr_url;
+                            linkInp.value   = data.link;
+                            dlBtn.href      = data.qr_url;
+                            openBtn.href    = data.link;
+                            result.classList.remove('d-none');
+                        })
+                        .catch(function() {
+                            genBtn.disabled = false;
+                            genBtn.innerHTML = '<i class="bi bi-qr-code-scan me-1"></i>Generar QR y enlace';
+                        });
+                });
+
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', function() {
+                        if (linkInp.value) {
+                            navigator.clipboard.writeText(linkInp.value).then(function() {
+                                copyBtn.innerHTML = '<i class="bi bi-check2"></i>';
+                                setTimeout(function() { copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
+                            });
+                        }
                     });
                 }
             })();

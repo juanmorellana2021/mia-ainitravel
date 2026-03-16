@@ -40,6 +40,32 @@ class SettingsController
         echo $response; // bot server returns {status, qr_image} JSON
     }
 
+    /**
+     * GET /dashboard/settings/wa-link
+     * Returns JSON with the wa.me deep link and a Google Charts QR image URL.
+     */
+    public function waLink(): void
+    {
+        header('Content-Type: application/json');
+        $client = $this->requireClient();
+
+        if (!$client->whatsapp_number) {
+            http_response_code(400);
+            echo json_encode(['error' => 'WhatsApp no conectado']);
+            return;
+        }
+
+        $num  = ltrim($client->whatsapp_number, '+');
+        // Only digits allowed after stripping the +
+        $num  = preg_replace('/[^0-9]/', '', $num);
+        $text = urlencode('Hola, me interesa saber más sobre ' . $client->business_name);
+        $link = "https://wa.me/{$num}?text={$text}";
+        // Google Charts QR — safe external URL for generating QR codes
+        $qrUrl = 'https://chart.googleapis.com/chart?cht=qr&chs=250x250&chld=M|1&chl=' . urlencode($link);
+
+        echo json_encode(['link' => $link, 'qr_url' => $qrUrl]);
+    }
+
     public function waConnect(): void
     {
         header('Content-Type: application/json');
@@ -79,6 +105,27 @@ class SettingsController
         $rawSkills = $_POST['char_skills'] ?? [];
         $charSkills = array_values(array_intersect((array)$rawSkills, $allowedSkills));
 
+        // Build hours_config from posted day schedule
+        $allowedDays  = ['mon','tue','wed','thu','fri','sat','sun'];
+        $allowedTz    = timezone_identifiers_list();
+        $postedTz     = $_POST['hours_timezone'] ?? 'America/Lima';
+        $hoursTimezone = in_array($postedTz, $allowedTz) ? $postedTz : 'America/Lima';
+
+        $schedule = [];
+        foreach ($allowedDays as $d) {
+            $schedule[$d] = [
+                'enabled' => !empty($_POST["hours_{$d}_enabled"]),
+                'open'    => preg_replace('/[^0-9:]/', '', $_POST["hours_{$d}_open"]  ?? ''),
+                'close'   => preg_replace('/[^0-9:]/', '', $_POST["hours_{$d}_close"] ?? ''),
+            ];
+        }
+
+        $hoursConfig = [
+            'timezone'       => $hoursTimezone,
+            'schedule'       => $schedule,
+            'closed_message' => substr(trim($_POST['hours_closed_message'] ?? ''), 0, 400),
+        ];
+
         (new ClientService())->updateSettings($client->id, [
             'contact_name'        => $_POST['contact_name']        ?? '',
             'phone'               => $_POST['phone']               ?? '',
@@ -97,6 +144,8 @@ class SettingsController
             'notify_email'        => $_POST['notify_email']        ?? '',
             'notify_on_capture'   => $_POST['notify_on_capture']   ?? 0,
             'notify_daily_summary'=> $_POST['notify_daily_summary']?? 0,
+            'hours_enabled'       => $_POST['hours_enabled']       ?? 0,
+            'hours_config'        => $hoursConfig,
         ]);
 
         header('Location: ' . App::basePath() . '/dashboard/settings?saved=1');

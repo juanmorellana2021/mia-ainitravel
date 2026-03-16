@@ -130,6 +130,16 @@ class ClientBotService
         }
         // ─────────────────────────────────────────────────────────────────────
 
+        // ── Business-hours check ──────────────────────────────────────────────
+        if (!$this->isWithinHours()) {
+            $closedMsg = $this->cfg['hours_config']['closed_message']
+                ?? 'Estamos cerrados por el momento. Te responderemos en cuanto abramos. ¡Gracias por escribirnos! 🕐';
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg,       'inbound',  'bot');
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $closedMsg, 'outbound', 'bot');
+            return ['reply' => $closedMsg];
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         // Save inbound message to CRM
         $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg, 'inbound', 'bot');
 
@@ -363,6 +373,54 @@ PROMPT;
         // Strip WhatsApp suffix (@c.us, @s.whatsapp.net, etc.) then keep digits only
         $phone = explode('@', $phone)[0];
         return preg_replace('/[^0-9]/', '', $phone);
+    }
+
+    /**
+     * Returns true if the current time is within the client's configured business hours.
+     * If hours mode is disabled (hours_enabled = false/absent), always returns true.
+     */
+    private function isWithinHours(): bool
+    {
+        if (empty($this->cfg['hours_enabled'])) {
+            return true; // feature off → always open
+        }
+        $hc = $this->cfg['hours_config'] ?? [];
+        if (empty($hc['schedule'])) {
+            return true; // no schedule configured → don't block
+        }
+
+        $tz  = $hc['timezone'] ?? 'America/Lima';
+        try {
+            $now = new DateTimeImmutable('now', new DateTimeZone($tz));
+        } catch (\Exception $e) {
+            return true; // invalid timezone → don't block
+        }
+
+        // DateTimeImmutable::format('D') = Mon, Tue, Wed … lowercase = mon, tue …
+        $dow = strtolower($now->format('D'));
+        $day = $hc['schedule'][$dow] ?? null;
+
+        if (!$day || empty($day['enabled'])) {
+            return false; // day is off
+        }
+        if (empty($day['open']) || empty($day['close'])) {
+            return false; // day enabled but no times set
+        }
+
+        try {
+            $tzObj = new DateTimeZone($tz);
+            $open  = DateTimeImmutable::createFromFormat('H:i', $day['open'],  $tzObj);
+            $close = DateTimeImmutable::createFromFormat('H:i', $day['close'], $tzObj);
+            if (!$open || !$close) return true;
+            // Set open/close to today's date so comparison works
+            $todayStr = $now->format('Y-m-d');
+            $open  = new DateTimeImmutable("{$todayStr} {$day['open']}",  $tzObj);
+            $close = new DateTimeImmutable("{$todayStr} {$day['close']}", $tzObj);
+        } catch (\Exception $e) {
+            return true;
+        }
+
+        return $now >= $open && $now < $close;
     }
 
     private function ensureTable(): void

@@ -299,4 +299,23 @@ HTML;
             error_log("[Mia] Disconnect alert FAILED for client {$clientId}: " . $e->getMessage());
         }
     }
+
+    /**
+     * Send a raw HTML email to any address.
+     * Used by cron jobs (appointment reminders, digest, etc.).
+     */
+    public function sendRaw(string $toEmail, string $subject, string $htmlBody): void
+    {
+        if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) return;
+        try {
+            $mail = $this->mailer();
+            $mail->addAddress($toEmail);
+            $mail->Subject = $subject;
+            $mail->isHTML(true);
+            $mail->Body    = $htmlBody;
+            $mail->send();
+        } catch (\Throwable $e) {
+            error_log("[Mia] sendRaw FAILED to {$toEmail}: " . $e->getMessage());
+        }
+    }
 }

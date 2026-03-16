@@ -54,6 +54,11 @@ require_once __DIR__ . '/models/SequenceStep.php';
 require_once __DIR__ . '/models/LeadSequence.php';
 require_once __DIR__ . '/services/SequenceService.php';
 require_once __DIR__ . '/controllers/SequenceController.php';
+// ── Scheduler / Citas ────────────────────────────────────────────────────────
+require_once __DIR__ . '/models/Availability.php';
+require_once __DIR__ . '/models/Appointment.php';
+require_once __DIR__ . '/services/AppointmentService.php';
+require_once __DIR__ . '/controllers/AppointmentController.php';
 
 // ── Route resolution ─────────────────────────────────────────────────────────
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -200,6 +205,22 @@ match (true) {
     preg_match('#^dashboard/sequences/(\d+)/unenroll/(\d+)$#', $uri, $m) && $method === 'POST'
         => (new SequenceController())->unenroll((int)$m[1], (int)$m[2]),
 
+    // ── Appointments ──────────────────────────────────────────────────────────
+    $uri === 'dashboard/appointments' && $method === 'GET'
+        => (new AppointmentController())->index(),
+
+    $uri === 'dashboard/appointments/settings' && $method === 'GET'
+        => (new AppointmentController())->settings(),
+
+    $uri === 'dashboard/appointments/settings/save' && $method === 'POST'
+        => (new AppointmentController())->saveSettings(),
+
+    preg_match('#^dashboard/appointments/(\d+)/cancel$#', $uri, $m) && $method === 'POST'
+        => (new AppointmentController())->cancel((int)$m[1]),
+
+    $uri === 'api/appointments/slots' && $method === 'GET'
+        => (new AppointmentController())->slots(),
+
     // ── Settings ──────────────────────────────────────────────────────────────
     $uri === 'dashboard/settings' && $method === 'GET'
         => (new SettingsController())->index(),
@@ -209,6 +230,9 @@ match (true) {
 
     $uri === 'dashboard/settings/wa-qr' && $method === 'GET'
         => (new SettingsController())->waQr(),
+
+    $uri === 'dashboard/settings/wa-link' && $method === 'GET'
+        => (new SettingsController())->waLink(),
 
     $uri === 'dashboard/settings/wa-connect' && $method === 'POST'
         => (new SettingsController())->waConnect(),

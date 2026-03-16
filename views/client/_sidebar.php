@@ -82,6 +82,19 @@ $initials      = strtoupper(substr($clientName, 0, 2));
             <span class="badge bg-warning text-dark ms-auto" style="font-size:.6rem;padding:2px 5px">Pro</span>
         </a>
         <?php endif; ?>
+        <?php $_hasAppointments = in_array($plan, $_proPlans); ?>
+        <?php if ($_hasAppointments): ?>
+        <a href="<?= $base ?>/dashboard/appointments"
+           class="mc-nav-item <?= $activeNav === 'appointments' ? 'active' : '' ?>">
+            <i class="bi bi-calendar-check"></i> Citas
+        </a>
+        <?php else: ?>
+        <a href="<?= $base ?>/dashboard/billing?upgrade=appointments"
+           class="mc-nav-item" style="opacity:.5" title="Disponible desde el plan Business">
+            <i class="bi bi-calendar-check"></i> Citas
+            <span class="badge bg-warning text-dark ms-auto" style="font-size:.6rem;padding:2px 5px">Pro</span>
+        </a>
+        <?php endif; ?>
         <a href="<?= $base ?>/dashboard/billing"
            class="mc-nav-item <?= $activeNav === 'billing' ? 'active' : '' ?>">
             <i class="bi bi-credit-card"></i> Suscripción
