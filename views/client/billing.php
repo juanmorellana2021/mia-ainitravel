@@ -16,11 +16,18 @@ require __DIR__ . '/_sidebar.php';
 
 <!-- Alerts -->
 <?php if (!empty($_GET['upgrade'])): ?>
+<?php
+$_upgradeLabel = match(htmlspecialchars($_GET['upgrade'])) {
+    'broadcast'    => 'Difusión masiva',
+    'appointments' => 'Agenda de citas (Scheduler)',
+    default        => 'Automatizaciones (Secuencias)',
+};
+?>
 <div class="alert border-0 mb-4" style="background:rgba(255,193,7,0.14);color:#856404">
     <i class="bi bi-lock me-2"></i>
     <strong>Función bloqueada.</strong>
-    <?= htmlspecialchars($_GET['upgrade']) === 'broadcast' ? 'Difusión' : 'Automatizaciones' ?>
-    está disponible desde el plan <strong>Business (S/ 349/mes)</strong>. Actualiza tu plan para acceder.
+    <?= $_upgradeLabel ?>
+    está disponible desde el plan <strong>Pro</strong>. Actualiza tu plan para acceder.
 </div>
 <?php endif; ?>
 <?php if (isset($_GET['payment']) && $_GET['payment'] === 'success'): ?>
@@ -138,9 +145,9 @@ require __DIR__ . '/_sidebar.php';
         <?php
         $mpConfigured = !str_starts_with(App::MP_ACCESS_TOKEN, 'PLACEHOLDER');
         $features = [
-            'starter'    => ['Módulo Soporte 24/7', 'Hasta 500 conversaciones/mes', 'Respuestas automáticas por WhatsApp', '1 usuario incluido', 'Multilingüe (50+ idiomas)'],
-            'basic'      => ['Módulo Soporte 24/7', 'Hasta 1,000 conversaciones/mes', 'Respuestas automáticas por WhatsApp', 'Traspaso humano inteligente', 'Multilingüe (ES · EN · PT · FR + 50 más)'],
-            'pro'        => ['Todo lo del Soporte Básico', 'Conversaciones ilimitadas', 'Módulo Ventas (captura y calificación de leads)', 'Asientos adicionales de equipo disponibles', 'Soporte prioritario 24/7'],
+            'starter'    => ['Módulo Soporte 24/7', 'Hasta 500 conversaciones/mes', 'Respuestas automáticas por WhatsApp', '1 usuario incluido', 'Multilingüe (50+ idiomas)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp'],
+            'basic'      => ['Módulo Soporte 24/7', 'Hasta 1,000 conversaciones/mes', 'Respuestas automáticas por WhatsApp', 'Traspaso humano inteligente', 'Multilingüe (ES · EN · PT · FR + 50 más)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp'],
+            'pro'        => ['Todo lo del Soporte Básico', 'Conversaciones ilimitadas', 'Módulo Ventas (captura y calificación de leads)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp', 'Agenda de citas con recordatorios automáticos', 'Asientos adicionales de equipo disponibles', 'Soporte prioritario 24/7'],
             'enterprise'      => ['Todo lo del Pro', 'Módulo Gestión de negocio completo', 'Múltiples números WhatsApp', 'Integraciones (API, webhooks, Zapier/Make)', 'Account manager dedicado + SLA 99.9%'],
             'enterprise_duo'  => ['Todo lo del Enterprise', '2 números WhatsApp activos', 'Portal unificado para 2 negocios', 'Reportes combinados', 'Soporte prioritario'],
             'enterprise_chain'=> ['Todo lo del Enterprise Duo', 'Hasta 5 números / sedes', 'Panel multi-sucursal', 'API access + webhooks', 'Account manager dedicado'],

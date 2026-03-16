@@ -39,8 +39,11 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Difusión masiva a leads por WhatsApp</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Chat directo desde el panel (Mia pausa al instante)</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Notificaciones al dueño</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable (bot respeta tu horario)</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Traspaso humano por WhatsApp</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Captura de leads automática</li>
+                            <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Agenda de citas con recordatorios</li>
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
@@ -67,6 +70,9 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Starter</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Traspaso humano por WhatsApp</strong> <small class="text-muted">(Mia reconoce "quiero hablar con una persona" y pausa)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Captura de leads automática</strong> <small class="text-muted">(Mia pide nombre y contacto y los guarda en tu CRM)</small></li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Agenda de citas</strong> <small class="text-muted">(Mia agenda, confirma y envía recordatorios automáticos)</small></li>
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
@@ -91,6 +97,9 @@ ob_start();
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Pro</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Múltiples números WhatsApp</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Agenda de citas</strong> <small class="text-muted">(Mia agenda, confirma y envía recordatorios automáticos)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Onboarding dedicado en 48h</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>SLA 99.9% uptime garantizado</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Account manager dedicado</li>

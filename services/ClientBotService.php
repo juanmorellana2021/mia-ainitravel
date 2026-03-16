@@ -23,6 +23,7 @@ class ClientBotService
     private bool $canHandoff;
     private bool $canBroadcast;
     private bool $canSequences;
+    private bool $canAppointments;
 
     private const GROQ_KEY   = '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';
     private const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -47,20 +48,21 @@ class ClientBotService
         $this->cfg    = json_decode($client->bot_config ?? '{}', true) ?: [];
 
         $planCaps = [
-            'trial'           => ['handoff', 'leads', 'broadcast', 'sequences'], // trial = full pro experience
+            'trial'           => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'], // trial = full pro experience
             'starter'         => [],
             'basic'           => ['handoff'],
-            'pro'             => ['handoff', 'leads', 'broadcast', 'sequences'],
-            'enterprise'      => ['handoff', 'leads', 'broadcast', 'sequences'],
-            'enterprise_duo'  => ['handoff', 'leads', 'broadcast', 'sequences'],
-            'enterprise_chain'=> ['handoff', 'leads', 'broadcast', 'sequences'],
-            'enterprise_corp' => ['handoff', 'leads', 'broadcast', 'sequences'],
+            'pro'             => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+            'enterprise'      => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+            'enterprise_duo'  => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+            'enterprise_chain'=> ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+            'enterprise_corp' => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
         ];
         $caps = $planCaps[$client->plan] ?? [];
         $this->canHandoff     = in_array('handoff',   $caps);
         $this->canCaptureLead = in_array('leads',     $caps);
         $this->canBroadcast   = in_array('broadcast', $caps);
         $this->canSequences   = in_array('sequences', $caps);
+        $this->canAppointments = in_array('appointments', $caps);
 
         $this->ensureTable();
     }
