@@ -53,14 +53,34 @@ $initials      = strtoupper(substr($clientName, 0, 2));
            class="mc-nav-item <?= $activeNav === 'analytics' ? 'active' : '' ?>">
             <i class="bi bi-bar-chart"></i> Analíticas
         </a>
+        <?php
+        $_hasBroadcast = ClientBotService::planHasCap($plan, 'broadcast');
+        $_hasSequences = ClientBotService::planHasCap($plan, 'sequences');
+        ?>
+        <?php if ($_hasBroadcast): ?>
         <a href="<?= $base ?>/dashboard/broadcast"
            class="mc-nav-item <?= $activeNav === 'broadcast' ? 'active' : '' ?>">
             <i class="bi bi-megaphone"></i> Difusión
         </a>
+        <?php else: ?>
+        <a href="<?= $base ?>/dashboard/billing?upgrade=broadcast"
+           class="mc-nav-item" style="opacity:.5" title="Disponible desde el plan Business">
+            <i class="bi bi-megaphone"></i> Difusión
+            <span class="badge bg-warning text-dark ms-auto" style="font-size:.6rem;padding:2px 5px">Pro</span>
+        </a>
+        <?php endif; ?>
+        <?php if ($_hasSequences): ?>
         <a href="<?= $base ?>/dashboard/sequences"
            class="mc-nav-item <?= $activeNav === 'sequences' ? 'active' : '' ?>">
             <i class="bi bi-send-check"></i> Automatizaciones
         </a>
+        <?php else: ?>
+        <a href="<?= $base ?>/dashboard/billing?upgrade=sequences"
+           class="mc-nav-item" style="opacity:.5" title="Disponible desde el plan Business">
+            <i class="bi bi-send-check"></i> Automatizaciones
+            <span class="badge bg-warning text-dark ms-auto" style="font-size:.6rem;padding:2px 5px">Pro</span>
+        </a>
+        <?php endif; ?>
         <a href="<?= $base ?>/dashboard/billing"
            class="mc-nav-item <?= $activeNav === 'billing' ? 'active' : '' ?>">
             <i class="bi bi-credit-card"></i> Suscripción

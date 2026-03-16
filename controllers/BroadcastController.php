@@ -29,8 +29,13 @@ class BroadcastController
     public function index(): void
     {
         $client  = $this->requireClient();
-        $service = new BroadcastService();
 
+        if (!ClientBotService::planHasCap($client->plan, 'broadcast')) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?upgrade=broadcast');
+            exit;
+        }
+
+        $service = new BroadcastService();
         $leads   = $service->leadsWithPhone($client->id);
         $history = $service->history($client->id);
 
@@ -41,6 +46,11 @@ class BroadcastController
     {
         App::csrfVerify();
         $client  = $this->requireClient();
+
+        if (!ClientBotService::planHasCap($client->plan, 'broadcast')) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?upgrade=broadcast');
+            exit;
+        }
         $message = trim($_POST['message'] ?? '');
 
         if ($message === '') {

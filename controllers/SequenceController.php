@@ -38,6 +38,12 @@ class SequenceController
     public function index(): void
     {
         $client  = $this->requireClient();
+
+        if (!ClientBotService::planHasCap($client->plan, 'sequences')) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?upgrade=sequences');
+            exit;
+        }
+
         $service = new SequenceService();
 
         $sequences   = $service->all($client->id);
@@ -56,6 +62,12 @@ class SequenceController
     public function edit(int $id = 0): void
     {
         $client  = $this->requireClient();
+
+        if (!ClientBotService::planHasCap($client->plan, 'sequences')) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?upgrade=sequences');
+            exit;
+        }
+
         $service = new SequenceService();
 
         if ($id > 0) {

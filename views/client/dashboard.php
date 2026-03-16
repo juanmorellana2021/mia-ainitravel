@@ -191,12 +191,21 @@ $_planName = $_planNames[$client->plan] ?? ucfirst($client->plan);
         <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
             <i class="bi bi-check2 me-1"></i>Captura de leads
         </span>
+        <?php else: ?>
+        <span class="badge bg-light text-muted border" style="font-size:.78rem">
+            <i class="bi bi-lock me-1"></i>Captura de leads
+        </span>
+        <?php endif; ?>
+        <?php if (in_array('broadcast', $_myFeats)): ?>
+        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
+            <i class="bi bi-check2 me-1"></i>Difusión
+        </span>
         <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
             <i class="bi bi-check2 me-1"></i>Automatizaciones
         </span>
         <?php else: ?>
         <span class="badge bg-light text-muted border" style="font-size:.78rem">
-            <i class="bi bi-lock me-1"></i>Captura de leads
+            <i class="bi bi-lock me-1"></i>Difusión &amp; Automatizaciones
         </span>
         <?php endif; ?>
         <?php if ($convLimit === 0): ?>

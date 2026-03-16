@@ -15,6 +15,14 @@ require __DIR__ . '/_sidebar.php';
 ?>
 
 <!-- Alerts -->
+<?php if (!empty($_GET['upgrade'])): ?>
+<div class="alert border-0 mb-4" style="background:rgba(255,193,7,0.14);color:#856404">
+    <i class="bi bi-lock me-2"></i>
+    <strong>Función bloqueada.</strong>
+    <?= htmlspecialchars($_GET['upgrade']) === 'broadcast' ? 'Difusión' : 'Automatizaciones' ?>
+    está disponible desde el plan <strong>Business (S/ 349/mes)</strong>. Actualiza tu plan para acceder.
+</div>
+<?php endif; ?>
 <?php if (isset($_GET['payment']) && $_GET['payment'] === 'success'): ?>
 <div class="alert alert-success border-0 mb-4" style="background:rgba(37,211,102,0.12);color:#155724">
     <i class="bi bi-check-circle me-2"></i><strong>¡Pago exitoso!</strong> Tu suscripción ha sido activada.

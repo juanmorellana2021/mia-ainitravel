@@ -21,6 +21,9 @@ class ClientBotService
     // Plan-based feature flags
     private bool $canCaptureLead;
     private bool $canHandoff;
+    private bool $canBroadcast;
+    private bool $canSequences;
+    private bool $canSequences;
 
     private const GROQ_KEY   = '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';
     private const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -45,18 +48,20 @@ class ClientBotService
         $this->cfg    = json_decode($client->bot_config ?? '{}', true) ?: [];
 
         $planCaps = [
-            'trial'           => ['handoff', 'leads'], // trial = full Pro experience so users see everything
+            'trial'           => ['handoff', 'leads', 'broadcast', 'sequences'], // trial = full pro experience
             'starter'         => [],
             'basic'           => ['handoff'],
-            'pro'             => ['handoff', 'leads'],
-            'enterprise'      => ['handoff', 'leads'],
-            'enterprise_duo'  => ['handoff', 'leads'],
-            'enterprise_chain'=> ['handoff', 'leads'],
-            'enterprise_corp' => ['handoff', 'leads'],
+            'pro'             => ['handoff', 'leads', 'broadcast', 'sequences'],
+            'enterprise'      => ['handoff', 'leads', 'broadcast', 'sequences'],
+            'enterprise_duo'  => ['handoff', 'leads', 'broadcast', 'sequences'],
+            'enterprise_chain'=> ['handoff', 'leads', 'broadcast', 'sequences'],
+            'enterprise_corp' => ['handoff', 'leads', 'broadcast', 'sequences'],
         ];
         $caps = $planCaps[$client->plan] ?? [];
-        $this->canHandoff     = in_array('handoff', $caps);
-        $this->canCaptureLead = in_array('leads', $caps);
+        $this->canHandoff     = in_array('handoff',   $caps);
+        $this->canCaptureLead = in_array('leads',     $caps);
+        $this->canBroadcast   = in_array('broadcast', $caps);
+        $this->canSequences   = in_array('sequences', $caps);
 
         $this->ensureTable();
     }
