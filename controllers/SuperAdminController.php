@@ -15,8 +15,18 @@ class SuperAdminController
     private function requireSuperAdmin(): void
     {
         if (empty($_SESSION['mia_superadmin'])) {
-            header('Location: ' . App::basePath() . '/superadmin/login');
-            exit;
+            // No active session — try remember-me cookie before redirecting to login
+            $cookieToken = $_COOKIE['mia_sa_remember'] ?? '';
+            if ($cookieToken && $this->verifyRememberMeToken($cookieToken)) {
+                session_regenerate_id(true);
+                $_SESSION['mia_superadmin']               = App::SUPERADMIN_USER;
+                $_SESSION['mia_superadmin_logged_at']     = time();
+                $_SESSION['mia_superadmin_last_activity'] = time();
+                $this->setRememberMeCookie(); // rotate token on every recovery
+            } else {
+                header('Location: ' . App::basePath() . '/superadmin/login');
+                exit;
+            }
         }
 
         $now      = time();
@@ -45,6 +55,66 @@ class SuperAdminController
         );
     }
 
+    // ── Remember-me helpers ───────────────────────────────────────────────────
+
+    private function rememberMeFile(): string
+    {
+        return __DIR__ . '/../tmp/sa_remember.json';
+    }
+
+    private function setRememberMeCookie(): void
+    {
+        $token  = bin2hex(random_bytes(32)); // 64-char hex, cryptographically random
+        $expiry = time() + (30 * 24 * 3600); // 30 days
+        $data   = ['hash' => hash('sha256', $token), 'expires' => $expiry];
+
+        $dir = dirname($this->rememberMeFile());
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0700, true);
+        }
+        file_put_contents($this->rememberMeFile(), json_encode($data), LOCK_EX);
+
+        setcookie('mia_sa_remember', $token, [
+            'expires'  => $expiry,
+            'path'     => App::basePath() ?: '/',
+            'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+    }
+
+    private function verifyRememberMeToken(string $token): bool
+    {
+        $file = $this->rememberMeFile();
+        if (!file_exists($file)) {
+            return false;
+        }
+        $data = json_decode((string)file_get_contents($file), true);
+        if (!is_array($data) || empty($data['hash']) || empty($data['expires'])) {
+            return false;
+        }
+        if ($data['expires'] < time()) {
+            @unlink($file);
+            return false;
+        }
+        return hash_equals((string)$data['hash'], hash('sha256', $token));
+    }
+
+    private function clearRememberMeCookie(): void
+    {
+        $file = $this->rememberMeFile();
+        if (file_exists($file)) {
+            @unlink($file);
+        }
+        setcookie('mia_sa_remember', '', [
+            'expires'  => time() - 3600,
+            'path'     => App::basePath() ?: '/',
+            'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+            'httponly' => true,
+            'samesite' => 'Strict',
+        ]);
+    }
+
     // ── Login ─────────────────────────────────────────────────────────────────
 
     public function loginForm(): void
@@ -53,7 +123,8 @@ class SuperAdminController
             header('Location: ' . App::basePath() . '/superadmin/dashboard');
             exit;
         }
-        $error = $_GET['error'] ?? '';
+        $error   = $_GET['error']   ?? '';
+        $expired = $_GET['expired'] ?? '';
         require __DIR__ . '/../views/superadmin/login.php';
     }
 
@@ -68,6 +139,11 @@ class SuperAdminController
             $_SESSION['mia_superadmin']               = $user;
             $_SESSION['mia_superadmin_logged_at']     = time();
             $_SESSION['mia_superadmin_last_activity'] = time();
+
+            if (!empty($_POST['remember_me'])) {
+                $this->setRememberMeCookie();
+            }
+
             header('Location: ' . App::basePath() . '/superadmin/dashboard');
             exit;
         }
@@ -79,6 +155,7 @@ class SuperAdminController
     public function logout(): void
     {
         $this->clearSuperAdminSession();
+        $this->clearRememberMeCookie();
         header('Location: ' . App::basePath() . '/superadmin/login');
         exit;
     }

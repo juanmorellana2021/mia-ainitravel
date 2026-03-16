@@ -34,7 +34,11 @@ $base = App::basePath();
     <h1>Panel de administración</h1>
     <p class="sub">Solo para uso interno</p>
 
-    <?php if ($error): ?>
+    <?php if ($expired): ?>
+    <div class="alert py-2 px-3 mb-3" style="font-size:0.85rem;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);color:#fcd34d;border-radius:8px;">
+        <i class="bi bi-clock me-1"></i> Sesión expirada. Inicia sesión de nuevo.
+    </div>
+    <?php elseif ($error): ?>
     <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:0.85rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:8px;">
         <i class="bi bi-exclamation-triangle me-1"></i> Credenciales incorrectas
     </div>
@@ -49,6 +53,13 @@ $base = App::basePath();
         <div class="mb-4">
             <label class="form-label">Contraseña</label>
             <input type="password" name="password" class="form-control" required>
+        </div>
+        <div class="mb-4 d-flex align-items-center gap-2">
+            <input type="checkbox" name="remember_me" id="remember_me" value="1"
+                   style="width:16px;height:16px;accent-color:#6366f1;cursor:pointer">
+            <label for="remember_me" style="color:#94a3b8;font-size:0.82rem;cursor:pointer;margin:0">
+                Recordarme 30 días
+            </label>
         </div>
         <button type="submit" class="btn btn-sa">Entrar</button>
     </form>

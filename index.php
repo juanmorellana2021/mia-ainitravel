@@ -12,8 +12,19 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config/App.php';
 
+// ── Session: use app-local save path so the Ubuntu system cron (which reads
+//    /etc/php/*/fpm/php.ini and purges /var/lib/php/sessions/ after ~3600s)
+//    cannot destroy our long-lived superadmin sessions.
+$_sessionSavePath = __DIR__ . '/tmp/sessions';
+if (!is_dir($_sessionSavePath)) {
+    @mkdir($_sessionSavePath, 0700, true);
+}
+session_save_path($_sessionSavePath);
+
 $sessionTtl = App::SUPERADMIN_SESSION_TTL;
 ini_set('session.gc_maxlifetime', (string)$sessionTtl);
+ini_set('session.gc_probability', '1');
+ini_set('session.gc_divisor',     '100');
 session_set_cookie_params([
     'lifetime' => $sessionTtl,
     'path'     => App::basePath() ?: '/',
