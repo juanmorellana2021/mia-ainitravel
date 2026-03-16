@@ -54,8 +54,9 @@ $initials      = strtoupper(substr($clientName, 0, 2));
             <i class="bi bi-bar-chart"></i> Analíticas
         </a>
         <?php
-        $_hasBroadcast = ClientBotService::planHasCap($plan, 'broadcast');
-        $_hasSequences = ClientBotService::planHasCap($plan, 'sequences');
+        $_proPlans = ['trial', 'pro', 'enterprise', 'enterprise_duo', 'enterprise_chain', 'enterprise_corp'];
+        $_hasBroadcast = in_array($plan, $_proPlans);
+        $_hasSequences = in_array($plan, $_proPlans);
         ?>
         <?php if ($_hasBroadcast): ?>
         <a href="<?= $base ?>/dashboard/broadcast"
