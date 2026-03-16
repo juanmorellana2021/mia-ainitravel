@@ -168,6 +168,70 @@ class ApiController
         }
     }
 
+    // ── Public page-event tracking pixel ─────────────────────────────────────
+    // GET/POST /api/track
+    // Params (query-string or JSON body):
+    //   event      string  pageview | pageleave | cta_click
+    //   session_id string  client-generated UUID (persisted in localStorage)
+    //   page       string  page path / URL
+    //   referrer   string  document.referrer
+    //   utm_*      string  UTM campaign parameters
+    //   device     string  mobile | desktop | tablet
+    //   duration   int     milliseconds on page (pageleave only)
+    public function track(): void
+    {
+        // Accept both GET params and JSON body
+        $raw   = file_get_contents('php://input');
+        $body  = $raw ? (json_decode($raw, true) ?: []) : [];
+        $p     = array_merge($_GET, $body);
+
+        $allowedEvents = ['pageview', 'pageleave', 'cta_click'];
+        $event         = in_array($p['event'] ?? '', $allowedEvents, true) ? $p['event'] : 'pageview';
+        $sessionId     = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($p['session_id'] ?? '')), 0, 64);
+        $page          = substr(strip_tags((string)($p['page']     ?? '')), 0, 255);
+        $referrer      = substr(strip_tags((string)($p['referrer'] ?? '')), 0, 500);
+        $utmSource     = substr(preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)($p['utm_source']   ?? '')), 0, 100);
+        $utmMedium     = substr(preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)($p['utm_medium']   ?? '')), 0, 100);
+        $utmCampaign   = substr(preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)($p['utm_campaign'] ?? '')), 0, 100);
+        $allowedDevices = ['mobile', 'desktop', 'tablet'];
+        $device        = in_array($p['device'] ?? '', $allowedDevices, true) ? $p['device'] : '';
+        $durationMs    = max(0, (int)($p['duration'] ?? 0));
+        $ipHash        = hash('sha256', $_SERVER['REMOTE_ADDR'] ?? '');
+
+        $db = Database::get();
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS `mia_page_events` (
+                `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `event`        VARCHAR(30)     NOT NULL DEFAULT '',
+                `session_id`   VARCHAR(64)     NOT NULL DEFAULT '',
+                `ip_hash`      VARCHAR(64)     NOT NULL DEFAULT '',
+                `page`         VARCHAR(255)    NOT NULL DEFAULT '',
+                `referrer`     VARCHAR(500)    NOT NULL DEFAULT '',
+                `utm_source`   VARCHAR(100)    NOT NULL DEFAULT '',
+                `utm_medium`   VARCHAR(100)    NOT NULL DEFAULT '',
+                `utm_campaign` VARCHAR(100)    NOT NULL DEFAULT '',
+                `device`       VARCHAR(20)     NOT NULL DEFAULT '',
+                `duration_ms`  INT UNSIGNED    NOT NULL DEFAULT 0,
+                `created_at`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_event_date` (`event`, `created_at`),
+                KEY `idx_created`    (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $db->prepare("
+            INSERT INTO mia_page_events
+                (event, session_id, ip_hash, page, referrer, utm_source, utm_medium, utm_campaign, device, duration_ms)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ")->execute([$event, $sessionId, $ipHash, $page, $referrer, $utmSource, $utmMedium, $utmCampaign, $device, $durationMs]);
+
+        // Return a 1×1 transparent GIF so it can be used as an <img> src pixel
+        header('Content-Type: image/gif');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    }
+
     // ── WA status callback (called by bot.js when client session connects/disconnects) ─
     // POST /api/client-status  { client_id, status, phone? }
     public function clientStatus(): void
