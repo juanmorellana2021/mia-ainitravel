@@ -23,7 +23,6 @@ class ClientBotService
     private bool $canHandoff;
     private bool $canBroadcast;
     private bool $canSequences;
-    private bool $canSequences;
 
     private const GROQ_KEY   = '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';
     private const GROQ_MODEL = 'llama-3.3-70b-versatile';
