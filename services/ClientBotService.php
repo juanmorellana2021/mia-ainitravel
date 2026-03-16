@@ -350,7 +350,9 @@ PROMPT;
 
     private function normalizePhone(string $phone): string
     {
-        return preg_replace('/[^0-9@]/', '', $phone);
+        // Strip WhatsApp suffix (@c.us, @s.whatsapp.net, etc.) then keep digits only
+        $phone = explode('@', $phone)[0];
+        return preg_replace('/[^0-9]/', '', $phone);
     }
 
     private function ensureTable(): void
