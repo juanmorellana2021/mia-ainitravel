@@ -15,6 +15,14 @@ require __DIR__ . '/_sidebar.php';
 <div class="alert alert-success small py-2 mb-3 border-0" style="background:rgba(37,211,102,0.1);color:#155724">
     <i class="bi bi-check-circle me-1"></i>Lead actualizado correctamente.
 </div>
+<?php elseif (!empty($_GET['enrolled'])): ?>
+<div class="alert small py-2 mb-3 border-0" style="background:rgba(37,211,102,0.1);color:#155724">
+    <i class="bi bi-send-check me-1"></i>Lead inscrito en la secuencia. Los mensajes se enviarán automáticamente.
+</div>
+<?php elseif (!empty($_GET['unenrolled'])): ?>
+<div class="alert alert-secondary small py-2 mb-3 border-0">
+    <i class="bi bi-x-circle me-1"></i>Secuencia cancelada para este lead.
+</div>
 <?php endif; ?>
 
 <div class="row g-3">
@@ -84,6 +92,81 @@ require __DIR__ . '/_sidebar.php';
                 <i class="bi bi-arrow-left me-1"></i>Volver a leads
             </a>
         </div>
+
+        <!-- ── Sequences ─────────────────────────────────────────────────── -->
+        <?php if (!empty($sequences)): ?>
+        <div class="mc-table-card p-0 mt-3">
+            <div class="card-header-bar"><i class="bi bi-send-check me-2 text-muted"></i>Automatizaciones</div>
+            <div class="p-3">
+
+                <?php if (!empty($leadEnrollments)): ?>
+                <div class="mb-3">
+                    <?php foreach ($leadEnrollments as $e): ?>
+                    <div class="d-flex align-items-center justify-content-between mb-2 p-2 rounded"
+                         style="background:#f8f9fa;font-size:.82rem">
+                        <div>
+                            <div class="fw-semibold"><?= htmlspecialchars($e['seq_name']) ?></div>
+                            <span class="badge text-bg-<?= LeadSequence::fromRow($e)->statusClass() ?>" style="font-size:.68rem">
+                                <?= LeadSequence::fromRow($e)->statusLabel() ?>
+                            </span>
+                            <?php if ($e['status'] === 'active'): ?>
+                            <div class="text-muted" style="font-size:.74rem;margin-top:2px">
+                                Próximo: <?= date('d M, H:i', strtotime($e['next_fire_at'])) ?>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($e['status'] === 'active' || $e['status'] === 'paused'): ?>
+                        <form method="POST"
+                              action="<?= $base ?>/dashboard/sequences/<?= (int)$e['sequence_id'] ?>/unenroll/<?= $lead->id ?>">
+                            <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
+                            <button class="btn btn-sm btn-link text-danger p-0" title="Cancelar secuencia"
+                                    onclick="return confirm('¿Cancelar esta secuencia para este lead?')">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </form>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+
+                <?php
+                $enrolledIds = array_column($leadEnrollments, 'sequence_id');
+                $available   = array_filter($sequences, fn($s) => !in_array($s->id, $enrolledIds) && $s->status !== 'archived');
+                ?>
+                <?php if (!empty($available)): ?>
+                <form method="POST" action="#" id="enrollForm">
+                    <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
+                    <div class="d-flex gap-2">
+                        <select name="seq_id" id="enrollSelect" class="form-select form-select-sm" style="font-size:.82rem">
+                            <option value="">— elegir secuencia —</option>
+                            <?php foreach ($available as $s): ?>
+                            <option value="<?= $s->id ?>"><?= htmlspecialchars($s->name) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="btn btn-sm fw-medium" style="background:#25d366;color:#fff;white-space:nowrap">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </form>
+                <script>
+                document.getElementById('enrollForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const id = document.getElementById('enrollSelect').value;
+                    if (!id) return;
+                    this.action = <?= json_encode($base) ?> + '/dashboard/sequences/' + id + '/enroll/<?= $lead->id ?>';
+                    this.submit();
+                });
+                </script>
+                <?php else: ?>
+                <p class="text-muted small mb-0">
+                    <?= empty($leadEnrollments) ? 'No hay secuencias disponibles.' : 'Lead ya inscrito en todas las secuencias.' ?>
+                </p>
+                <?php endif; ?>
+
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- ── Message thread ─────────────────────────────────────────────────── -->

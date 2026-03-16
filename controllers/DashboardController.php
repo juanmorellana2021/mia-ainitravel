@@ -73,7 +73,10 @@ class DashboardController
             return;
         }
 
-        $messages = $leadService->messagesForLead($lead->id, $client->id);
+        $messages        = $leadService->messagesForLead($lead->id, $client->id);
+        $seqService      = new SequenceService();
+        $sequences       = $seqService->all($client->id);
+        $leadEnrollments = $seqService->enrollmentsForLead($lead->id, $client->id);
 
         require __DIR__ . '/../views/client/lead_detail.php';
     }
