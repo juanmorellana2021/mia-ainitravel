@@ -29,6 +29,22 @@ class ClientBotService
     private const GROQ_MODEL = 'llama-3.3-70b-versatile';
     private const MAX_HISTORY = 10; // message pairs
 
+    private const PLAN_CAPS = [
+        'trial'           => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+        'starter'         => [],
+        'basic'           => ['handoff'],
+        'pro'             => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+        'enterprise'      => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+        'enterprise_duo'  => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+        'enterprise_chain'=> ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+        'enterprise_corp' => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
+    ];
+
+    public static function planHasCap(string $plan, string $cap): bool
+    {
+        return in_array($cap, self::PLAN_CAPS[$plan] ?? [], true);
+    }
+
     // Monthly conversation limits per plan (0 = unlimited)
     public const CONV_LIMITS = [
         'trial'           => 0,    // trial = full Pro experience, unlimited
@@ -47,21 +63,11 @@ class ClientBotService
         $this->client = $client;
         $this->cfg    = json_decode($client->bot_config ?? '{}', true) ?: [];
 
-        $planCaps = [
-            'trial'           => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'], // trial = full pro experience
-            'starter'         => [],
-            'basic'           => ['handoff'],
-            'pro'             => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
-            'enterprise'      => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
-            'enterprise_duo'  => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
-            'enterprise_chain'=> ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
-            'enterprise_corp' => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
-        ];
-        $caps = $planCaps[$client->plan] ?? [];
-        $this->canHandoff     = in_array('handoff',   $caps);
-        $this->canCaptureLead = in_array('leads',     $caps);
-        $this->canBroadcast   = in_array('broadcast', $caps);
-        $this->canSequences   = in_array('sequences', $caps);
+        $caps = self::PLAN_CAPS[$client->plan] ?? [];
+        $this->canHandoff     = in_array('handoff',      $caps);
+        $this->canCaptureLead = in_array('leads',        $caps);
+        $this->canBroadcast   = in_array('broadcast',    $caps);
+        $this->canSequences   = in_array('sequences',    $caps);
         $this->canAppointments = in_array('appointments', $caps);
 
         $this->ensureTable();
