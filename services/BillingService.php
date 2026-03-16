@@ -167,8 +167,17 @@ class BillingService
         }
 
         if ($type === 'payment') {
-            // A recurring payment was made — check if it's linked to a preapproval
-            $payment = $this->mpGet('v1/payments/' . urlencode($dataId));
+            $payment       = $this->mpGet('v1/payments/' . urlencode($dataId));
+            $externalRef   = $payment['external_reference'] ?? '';
+            $paymentStatus = $payment['status'] ?? '';
+
+            // ── Add-on single payment ──────────────────────────────────────
+            if (str_starts_with($externalRef, 'addon-') && $paymentStatus === 'approved') {
+                (new AddonService())->activateByExternalRef($externalRef, $dataId);
+                return;
+            }
+
+            // ── Recurring subscription payment ─────────────────────────────
             $preapprovalId = $payment['metadata']['preapproval_id'] ?? '';
             if ($preapprovalId) {
                 // Update billing_period_end to extend by 1 month

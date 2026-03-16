@@ -113,26 +113,48 @@ class ClientBotService
         // ── Monthly conversation limit check ─────────────────────────────────
         $limit = self::CONV_LIMITS[$this->client->plan] ?? 0;
         if ($limit > 0) {
-            $stmtExist = $this->pdo->prepare(
-                "SELECT COUNT(*) FROM mia_client_messages
-                 WHERE client_id = ? AND phone = ? AND direction = 'inbound'
-                   AND YEAR(created_at) = YEAR(NOW()) AND MONTH(created_at) = MONTH(NOW())"
-            );
-            $stmtExist->execute([$this->client->id, $guestPhone]);
-            $isNewConvo = ((int)$stmtExist->fetchColumn() === 0);
+            $addonSvc = new AddonService();
 
-            if ($isNewConvo) {
-                $stmtCount = $this->pdo->prepare(
-                    "SELECT COUNT(DISTINCT phone) FROM mia_client_messages
-                     WHERE client_id = ? AND direction = 'inbound'
+            // If the client bought an unlimited-month add-on, skip the cap entirely
+            if (!$addonSvc->hasUnlimitedThisMonth($this->client->id)) {
+
+                $stmtExist = $this->pdo->prepare(
+                    "SELECT COUNT(*) FROM mia_client_messages
+                     WHERE client_id = ? AND phone = ? AND direction = 'inbound'
                        AND YEAR(created_at) = YEAR(NOW()) AND MONTH(created_at) = MONTH(NOW())"
                 );
-                $stmtCount->execute([$this->client->id]);
-                $used = (int)$stmtCount->fetchColumn();
+                $stmtExist->execute([$this->client->id, $guestPhone]);
+                $isNewConvo = ((int)$stmtExist->fetchColumn() === 0);
 
-                if ($used >= $limit) {
-                    error_log("[ClientBot:{$this->client->id}] Conv limit reached ({$used}/{$limit}) — blocking {$guestPhone}");
-                    return ['reply' => '']; // silent block; owner should upgrade
+                if ($isNewConvo) {
+                    $stmtCount = $this->pdo->prepare(
+                        "SELECT COUNT(DISTINCT phone) FROM mia_client_messages
+                         WHERE client_id = ? AND direction = 'inbound'
+                           AND YEAR(created_at) = YEAR(NOW()) AND MONTH(created_at) = MONTH(NOW())"
+                    );
+                    $stmtCount->execute([$this->client->id]);
+                    $used = (int)$stmtCount->fetchColumn();
+
+                    // Add any purchased extra conversation slots
+                    $effectiveLimit = $limit + $addonSvc->getExtraConvosThisMonth($this->client->id);
+
+                    if ($used >= $effectiveLimit) {
+                        error_log("[ClientBot:{$this->client->id}] Conv limit reached ({$used}/{$effectiveLimit}) — blocking {$guestPhone}");
+
+                        // Notify the owner once per month (not on every blocked message)
+                        if (!$addonSvc->limitNoticeAlreadySentThisMonth($this->client->id)) {
+                            (new NotificationService())->notifyConvLimitHit($this->client);
+                            $addonSvc->markLimitNoticeSent($this->client->id);
+                        }
+
+                        // Save the inbound message so it appears in the CRM
+                        $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg, 'inbound', 'bot');
+
+                        // Polite reply to the guest instead of silent drop
+                        $limitReply = '¡Hola! En este momento estamos atendiendo alta demanda. Te responderemos muy pronto. ¡Gracias por tu paciencia! 🙏';
+                        $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $limitReply, 'outbound', 'bot');
+                        return ['reply' => $limitReply];
+                    }
                 }
             }
         }

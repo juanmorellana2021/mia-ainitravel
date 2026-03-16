@@ -59,6 +59,9 @@ require_once __DIR__ . '/models/Availability.php';
 require_once __DIR__ . '/models/Appointment.php';
 require_once __DIR__ . '/services/AppointmentService.php';
 require_once __DIR__ . '/controllers/AppointmentController.php';
+// ── Add-on credits ────────────────────────────────────────────────────────────
+require_once __DIR__ . '/models/ClientAddon.php';
+require_once __DIR__ . '/services/AddonService.php';
 
 // ── Route resolution ─────────────────────────────────────────────────────────
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -167,6 +170,12 @@ match (true) {
 
     $uri === 'dashboard/billing/webhook' && $method === 'POST'
         => (new BillingController())->webhook(),
+
+    $uri === 'dashboard/billing/addon' && $method === 'POST'
+        => (new BillingController())->addonCheckout(),
+
+    $uri === 'dashboard/billing/addon-return' && $method === 'GET'
+        => (new BillingController())->addonReturn(),
 
     // ── Analytics ─────────────────────────────────────────────────────────────
     $uri === 'dashboard/analytics'

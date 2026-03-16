@@ -46,6 +46,18 @@ $_upgradeLabel = match(htmlspecialchars($_GET['upgrade'])) {
 <div class="alert alert-success border-0 mb-4" style="background:rgba(37,211,102,0.12);color:#155724">
     <i class="bi bi-check-circle me-2"></i><strong>¡Pago exitoso!</strong> Tu suscripción ha sido activada.
 </div>
+<?php elseif (isset($_GET['addon']) && $_GET['addon'] === 'success'): ?>
+<div class="alert alert-success border-0 mb-4" style="background:rgba(37,211,102,0.12);color:#155724">
+    <i class="bi bi-infinity me-2"></i><strong>¡Complemento activado!</strong> Tu capacidad extra ya está disponible este mes.
+</div>
+<?php elseif (isset($_GET['addon']) && $_GET['addon'] === 'pending'): ?>
+<div class="alert alert-warning border-0 mb-4">
+    <i class="bi bi-clock me-2"></i>El pago está siendo procesado. Se activará automáticamente en unos minutos.
+</div>
+<?php elseif (isset($_GET['addon']) && $_GET['addon'] === 'failed'): ?>
+<div class="alert alert-danger border-0 mb-4">
+    <i class="bi bi-x-circle me-2"></i>El pago fue cancelado. Puedes intentarlo de nuevo cuando quieras.
+</div>
 <?php elseif (isset($_GET['payment']) && $_GET['payment'] === 'cancelled'): ?>
 <div class="alert alert-warning border-0 mb-4">
     <i class="bi bi-info-circle me-2"></i>El pago fue cancelado. Puedes intentarlo de nuevo cuando quieras.
@@ -158,6 +170,84 @@ $_upgradeLabel = match(htmlspecialchars($_GET['upgrade'])) {
             </div>
         </div>
         <?php endif; ?>
+
+        <?php
+        // ── Add-on purchases (only for plans with a monthly conv limit) ──────
+        $mpConfigured = !str_starts_with(App::MP_ACCESS_TOKEN, 'PLACEHOLDER');
+        $_convLimit = ClientBotService::CONV_LIMITS[$currentPlan] ?? 0;
+        if ($_convLimit > 0):
+            $_addonSvc      = new AddonService();
+            $_activeAddons  = $_addonSvc->activeThisMonth($client->id);
+            $_hasUnlimited  = $_addonSvc->hasUnlimitedThisMonth($client->id);
+            $_extraConvos   = $_addonSvc->getExtraConvosThisMonth($client->id);
+        ?>
+        <div class="mc-table-card mt-4 p-4">
+            <h6 class="fw-bold mb-1"><i class="bi bi-plus-circle me-2 text-muted"></i>Aumenta tu capacidad este mes</h6>
+            <p class="text-muted small mb-3">
+                Tu plan incluye <strong><?= number_format($_convLimit) ?> conversaciones/mes</strong>.
+                <?php if ($_hasUnlimited): ?>
+                    <span class="badge text-bg-success ms-1"><i class="bi bi-infinity me-1"></i>Ilimitado activo este mes</span>
+                <?php elseif ($_extraConvos > 0): ?>
+                    <span class="badge" style="background:rgba(37,211,102,0.15);color:#0a5c36;border:1px solid rgba(37,211,102,0.3)">+<?= number_format($_extraConvos) ?> extra activos</span>
+                <?php endif; ?>
+            </p>
+
+            <?php if (!empty($_activeAddons)): ?>
+            <div class="mb-3">
+                <?php foreach ($_activeAddons as $addon): ?>
+                <div class="d-flex align-items-center gap-2 mb-1 text-success small">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span><?= htmlspecialchars($addon->label()) ?> — activado <?= date('d/m/Y', strtotime($addon->created_at)) ?></span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!$_hasUnlimited && $mpConfigured): ?>
+            <div class="row g-2">
+                <!-- Extra 500 -->
+                <div class="col-6">
+                    <div class="border rounded-3 p-3 h-100" style="border-color:rgba(37,211,102,0.25)!important">
+                        <div class="fw-bold small mb-1">+500 conversaciones</div>
+                        <div class="text-muted" style="font-size:.78rem">Apilable · solo este mes</div>
+                        <div class="mt-2 fw-bold" style="color:#25d366;font-size:1.1rem">
+                            <?= App::CURRENCY ?><?= App::ADDON_EXTRA_500_PRICE ?>
+                        </div>
+                        <form method="POST" action="<?= $base ?>/dashboard/billing/addon" class="mt-2">
+                            <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
+                            <input type="hidden" name="type" value="extra_500">
+                            <button type="submit" class="btn btn-sm w-100" style="background:#25d366;color:#fff">
+                                <i class="bi bi-credit-card me-1"></i>Comprar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <!-- Unlimited month -->
+                <div class="col-6">
+                    <div class="border rounded-3 p-3 h-100" style="border-color:rgba(13,110,253,0.25)!important">
+                        <div class="fw-bold small mb-1">Ilimitado este mes</div>
+                        <div class="text-muted" style="font-size:.78rem">Sin límite por <?= date('F') ?></div>
+                        <div class="mt-2 fw-bold" style="color:#0d6efd;font-size:1.1rem">
+                            <?= App::CURRENCY ?><?= App::ADDON_UNLIMITED_PRICE ?>
+                        </div>
+                        <form method="POST" action="<?= $base ?>/dashboard/billing/addon" class="mt-2">
+                            <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
+                            <input type="hidden" name="type" value="unlimited_month">
+                            <button type="submit" class="btn btn-sm w-100 btn-outline-primary">
+                                <i class="bi bi-infinity me-1"></i>Activar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <?php elseif (!$mpConfigured): ?>
+            <div class="alert alert-info small py-2 mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                Para comprar complementos, <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', App::WHATSAPP) ?>" class="fw-medium" target="_blank">escríbenos por WhatsApp</a>.
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- ── Plan selection ─────────────────────────────────────────────────── -->
@@ -165,7 +255,6 @@ $_upgradeLabel = match(htmlspecialchars($_GET['upgrade'])) {
         <h6 class="fw-bold mb-3"><i class="bi bi-grid me-2 text-muted"></i>Elige tu plan</h6>
 
         <?php
-        $mpConfigured = !str_starts_with(App::MP_ACCESS_TOKEN, 'PLACEHOLDER');
         $features = [
             'starter'    => ['Módulo Soporte 24/7', 'Hasta 500 conversaciones/mes', 'Respuestas automáticas por WhatsApp', '1 usuario incluido', 'Multilingüe (50+ idiomas)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp'],
             'basic'      => ['Módulo Soporte 24/7', 'Hasta 1,000 conversaciones/mes', 'Respuestas automáticas por WhatsApp', 'Traspaso humano inteligente', 'Multilingüe (ES · EN · PT · FR + 50 más)', 'Horario de atención configurable', 'Enlace y código QR de WhatsApp'],

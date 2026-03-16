@@ -126,4 +126,74 @@ class BillingController
         http_response_code(200);
         echo json_encode(['received' => true]);
     }
+
+    // ── Add-on checkout ───────────────────────────────────────────────────────
+
+    /**
+     * POST /dashboard/billing/addon
+     * Initiates a Mercado Pago single-payment Preference for an add-on.
+     * $_POST['type']: 'extra_500' | 'unlimited_month'
+     */
+    public function addonCheckout(): void
+    {
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        $type = $_POST['type'] ?? '';
+        if (!in_array($type, ['extra_500', 'unlimited_month'], true)) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?error=Complemento+inv%C3%A1lido');
+            exit;
+        }
+
+        // Only plans with a conv limit can purchase add-ons
+        $limit = ClientBotService::CONV_LIMITS[$client->plan] ?? 0;
+        if ($limit === 0) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?error=Tu+plan+ya+es+ilimitado');
+            exit;
+        }
+
+        $result = (new AddonService())->createCheckout($client, $type);
+
+        if (!empty($result['error'])) {
+            $msg = urlencode($result['error']);
+            header('Location: ' . App::basePath() . '/dashboard/billing?error=' . $msg);
+            exit;
+        }
+
+        header('Location: ' . $result['url']);
+        exit;
+    }
+
+    /**
+     * GET /dashboard/billing/addon-return
+     * MP redirects here after the add-on payment is approved/failed.
+     * Query params: status, collection_id (payment_id), ref (external_reference)
+     */
+    public function addonReturn(): void
+    {
+        $client = $this->requireClient();
+
+        $status    = $_GET['status']        ?? '';
+        $paymentId = $_GET['collection_id'] ?? '';
+        $extRef    = $_GET['ref']           ?? '';
+
+        if ($status === 'approved' && $paymentId && $extRef) {
+            // Verify with MP and activate
+            $addonSvc = new AddonService();
+            $payment  = $addonSvc->mpGetPayment($paymentId);
+
+            if (($payment['status'] ?? '') === 'approved'
+                && ($payment['external_reference'] ?? '') === $extRef) {
+                $addonSvc->activateByExternalRef($extRef, $paymentId);
+                header('Location: ' . App::basePath() . '/dashboard/billing?addon=success');
+            } else {
+                header('Location: ' . App::basePath() . '/dashboard/billing?addon=pending');
+            }
+        } elseif ($status === 'pending') {
+            header('Location: ' . App::basePath() . '/dashboard/billing?addon=pending');
+        } else {
+            header('Location: ' . App::basePath() . '/dashboard/billing?addon=failed');
+        }
+        exit;
+    }
 }

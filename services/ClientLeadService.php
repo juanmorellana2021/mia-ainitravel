@@ -136,7 +136,8 @@ class ClientLeadService
                 SUM(status = 'interested') AS interested,
                 SUM(status = 'closed_won') AS won,
                 SUM(status = 'closed_lost') AS lost,
-                SUM(value_estimate) AS pipeline_value
+                -- Pipeline value = only active (not yet closed) leads with a value set
+                SUM(CASE WHEN status IN ('new','interested','demo') THEN value_estimate ELSE 0 END) AS pipeline_value
              FROM mia_client_leads
              WHERE client_id = ?"
         );

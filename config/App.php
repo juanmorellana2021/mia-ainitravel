@@ -27,6 +27,10 @@ class App
     public const SETUP_FEE             = 0;
     public const FREE_TRIAL_DAYS = 7;
 
+    // ── Add-on credits (one-time monthly purchases, not recurring) ────────
+    public const ADDON_EXTRA_500_PRICE   = 50;   // S/50  → 500 extra conversations this month
+    public const ADDON_UNLIMITED_PRICE   = 100;  // S/100 → unlimited conversations this month
+
     // ── Asset base path (auto-detect local vs subdomain) ─────────────────
     public static function basePath(): string
     {

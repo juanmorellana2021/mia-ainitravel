@@ -318,4 +318,98 @@ HTML;
             error_log("[Mia] sendRaw FAILED to {$toEmail}: " . $e->getMessage());
         }
     }
+
+    /**
+     * Notify a client's owner that their monthly conversation limit has been reached.
+     * Called at most once per month per client (AddonService tracks the flag).
+     *
+     * The email explains their options:
+     *   1. Buy +500 conversations for S/50
+     *   2. Buy unlimited-this-month for S/100
+     *   3. Upgrade to the next plan
+     */
+    public function notifyConvLimitHit(Client $client): void
+    {
+        $to = !empty($client->notify_email) ? $client->notify_email : $client->email;
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) return;
+
+        $name       = htmlspecialchars($client->contact_name ?: 'equipo');
+        $bizName    = htmlspecialchars($client->business_name);
+        $billingUrl = App::URL . '/dashboard/billing';
+        $month      = date('F Y');
+        $limit      = number_format(ClientBotService::CONV_LIMITS[$client->plan] ?? 0);
+        $subject    = "📊 Mia alcanzó el límite de conversaciones — {$bizName}";
+
+        $extra500Price   = number_format(App::ADDON_EXTRA_500_PRICE);
+        $unlimitedPrice  = number_format(App::ADDON_UNLIMITED_PRICE);
+        $currency        = App::CURRENCY;
+
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8">
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;margin:0;padding:20px}
+  .card{background:#fff;border-radius:12px;max-width:560px;margin:0 auto;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+  .hd{background:#1a1a2e;color:#fff;padding:28px 24px;text-align:center}
+  .hd h2{margin:8px 0 4px;color:#fbbf24;font-size:20px}
+  .bd{padding:24px}
+  .opt{border:1px solid #e9ecef;border-radius:10px;padding:16px 18px;margin:12px 0}
+  .opt-title{font-weight:700;font-size:.95rem;margin:0 0 4px}
+  .opt-desc{color:#6c757d;font-size:.83rem;margin:0}
+  .price{color:#25d366;font-weight:800;font-size:1.1rem}
+  .btn{display:inline-block;background:#25d366;color:#fff!important;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;margin-top:20px}
+  .ft{background:#f8f9fa;padding:14px 24px;text-align:center;font-size:12px;color:#adb5bd}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd">
+    <div style="font-size:2.2rem">📊</div>
+    <h2>Límite de conversaciones alcanzado</h2>
+    <p style="margin:0;color:#ccc;font-size:13px">{$month}</p>
+  </div>
+  <div class="bd">
+    <p>Hola <strong>{$name}</strong>,</p>
+    <p>Tu bot Mia para <strong>{$bizName}</strong> ha alcanzado el límite de <strong>{$limit} conversaciones</strong> del mes.
+    Los nuevos clientes recibirán una respuesta de alta demanda hasta que amplíes tu capacidad.</p>
+    <p><strong>Tienes 3 opciones:</strong></p>
+
+    <div class="opt">
+      <p class="opt-title">+500 conversaciones este mes <span class="price">{$currency}{$extra500Price}</span></p>
+      <p class="opt-desc">Pago único, se agrega inmediatamente. Apilable: puedes comprar varias veces.</p>
+    </div>
+
+    <div class="opt">
+      <p class="opt-title">Ilimitado este mes <span class="price">{$currency}{$unlimitedPrice}</span></p>
+      <p class="opt-desc">Sin límite de conversaciones por lo que reste de {$month}. El próximo mes vuelve a tu plan normal.</p>
+    </div>
+
+    <div class="opt">
+      <p class="opt-title">Subir de plan</p>
+      <p class="opt-desc">Mia Ventas o Mia Business tienen límites mayores o ilimitados permanentemente, y más funcionalidades.</p>
+    </div>
+
+    <div style="text-align:center">
+      <a href="{$billingUrl}" class="btn">Ver opciones en mi cuenta →</a>
+    </div>
+  </div>
+  <div class="ft">Mia by AiniTravel &middot; mia.ainitravel.com</div>
+</div>
+</body>
+</html>
+HTML;
+
+        try {
+            $mail = $this->mailer();
+            $mail->addAddress($to);
+            $mail->Subject = $subject;
+            $mail->isHTML(true);
+            $mail->Body    = $html;
+            $mail->send();
+            error_log("[Mia] Conv-limit notification sent to {$to} (client {$client->id})");
+        } catch (\Throwable $e) {
+            error_log("[Mia] Conv-limit notification FAILED for client {$client->id}: " . $e->getMessage());
+        }
+    }
 }
