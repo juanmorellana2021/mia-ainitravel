@@ -133,7 +133,10 @@ require __DIR__ . '/_sidebar.php';
             'starter'    => ['Módulo Soporte 24/7', 'Hasta 500 conversaciones/mes', 'Respuestas automáticas por WhatsApp', '1 usuario incluido', 'Multilingüe (50+ idiomas)'],
             'basic'      => ['Módulo Soporte 24/7', 'Hasta 1,000 conversaciones/mes', 'Respuestas automáticas por WhatsApp', 'Traspaso humano inteligente', 'Multilingüe (ES · EN · PT · FR + 50 más)'],
             'pro'        => ['Todo lo del Soporte Básico', 'Conversaciones ilimitadas', 'Módulo Ventas (captura y calificación de leads)', 'Asientos adicionales de equipo disponibles', 'Soporte prioritario 24/7'],
-            'enterprise' => ['Todo lo del Pro', 'Módulo Gestión de negocio completo', 'Múltiples números WhatsApp', 'Integraciones (API, webhooks, Zapier/Make)', 'Account manager dedicado + SLA 99.9%'],
+            'enterprise'      => ['Todo lo del Pro', 'Módulo Gestión de negocio completo', 'Múltiples números WhatsApp', 'Integraciones (API, webhooks, Zapier/Make)', 'Account manager dedicado + SLA 99.9%'],
+            'enterprise_duo'  => ['Todo lo del Enterprise', '2 números WhatsApp activos', 'Portal unificado para 2 negocios', 'Reportes combinados', 'Soporte prioritario'],
+            'enterprise_chain'=> ['Todo lo del Enterprise Duo', 'Hasta 5 números / sedes', 'Panel multi-sucursal', 'API access + webhooks', 'Account manager dedicado'],
+            'enterprise_corp' => ['Todo lo del Enterprise Cadena', 'Números ilimitados', 'Integraciones avanzadas (Zapier · Make · REST)', 'SLA 99.9% garantizado', 'Soporte técnico 24/7 dedicado'],
         ];
         ?>
 

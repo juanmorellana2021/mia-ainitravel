@@ -131,6 +131,94 @@ $monthName = mb_strtoupper(strftime('%B', mktime(0,0,0, (int)date('m'), 1, (int)
     </div>
 </div>
 
+<!-- ── Plan status bar ─────────────────────────────────────────────────────── -->
+<?php
+$_planNames = [
+    'trial'           => 'Prueba gratuita',
+    'starter'         => 'Starter',
+    'basic'           => 'Pro',
+    'pro'             => 'Business',
+    'enterprise'      => 'Enterprise',
+    'enterprise_duo'  => 'Enterprise Duo',
+    'enterprise_chain'=> 'Enterprise Cadena',
+    'enterprise_corp' => 'Enterprise Corporativo',
+];
+$_planFeats = [
+    'trial'           => ['handoff', 'leads'],
+    'starter'         => [],
+    'basic'           => ['handoff'],
+    'pro'             => ['handoff', 'leads'],
+    'enterprise'      => ['handoff', 'leads'],
+    'enterprise_duo'  => ['handoff', 'leads'],
+    'enterprise_chain'=> ['handoff', 'leads'],
+    'enterprise_corp' => ['handoff', 'leads'],
+];
+$_myFeats  = $_planFeats[$client->plan] ?? [];
+$_planName = $_planNames[$client->plan] ?? ucfirst($client->plan);
+?>
+<div class="mc-table-card p-3 mb-4 d-flex align-items-center flex-wrap gap-3">
+    <div style="min-width:150px">
+        <div class="fw-bold" style="font-size:.95rem"><?= htmlspecialchars($_planName) ?></div>
+        <?php if ($client->plan_status === 'trial'): ?>
+            <span class="badge bg-warning text-dark mt-1" style="font-size:.7rem">
+                <i class="bi bi-clock me-1"></i>Prueba &middot; <?= $client->trialDaysLeft() ?> días
+            </span>
+        <?php elseif ($client->plan_status === 'active'): ?>
+            <span class="badge mt-1" style="background:rgba(37,211,102,0.15);color:#0a5c36;border:1px solid rgba(37,211,102,0.3);font-size:.7rem">
+                <i class="bi bi-check-circle me-1"></i>Activo
+            </span>
+        <?php elseif ($client->plan_status === 'expired'): ?>
+            <span class="badge bg-danger mt-1" style="font-size:.7rem"><i class="bi bi-x-circle me-1"></i>Prueba vencida</span>
+        <?php else: ?>
+            <span class="badge bg-secondary mt-1" style="font-size:.7rem"><?= htmlspecialchars($client->plan_status) ?></span>
+        <?php endif; ?>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 flex-fill">
+        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size:.78rem">
+            <i class="bi bi-check2 me-1"></i>Bot 24/7
+        </span>
+        <?php if (in_array('handoff', $_myFeats)): ?>
+        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
+            <i class="bi bi-check2 me-1"></i>Traspaso humano
+        </span>
+        <?php else: ?>
+        <span class="badge bg-light text-muted border" style="font-size:.78rem">
+            <i class="bi bi-lock me-1"></i>Traspaso humano
+        </span>
+        <?php endif; ?>
+        <?php if (in_array('leads', $_myFeats)): ?>
+        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
+            <i class="bi bi-check2 me-1"></i>Captura de leads
+        </span>
+        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
+            <i class="bi bi-check2 me-1"></i>Automatizaciones
+        </span>
+        <?php else: ?>
+        <span class="badge bg-light text-muted border" style="font-size:.78rem">
+            <i class="bi bi-lock me-1"></i>Captura de leads
+        </span>
+        <?php endif; ?>
+        <?php if ($convLimit === 0): ?>
+        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size:.78rem">
+            <i class="bi bi-infinity me-1"></i>Conversaciones ilimitadas
+        </span>
+        <?php else: ?>
+        <span class="badge bg-light text-muted border" style="font-size:.78rem">
+            <i class="bi bi-chat me-1"></i><?= number_format($convLimit) ?>/mes
+        </span>
+        <?php endif; ?>
+    </div>
+
+    <a href="<?= $base ?>/dashboard/billing" class="btn btn-sm btn-outline-secondary" style="white-space:nowrap;font-size:.8rem">
+        <?php if ($client->plan_status === 'trial' || $client->plan_status === 'expired'): ?>
+            <i class="bi bi-lightning me-1"></i>Activar plan
+        <?php else: ?>
+            <i class="bi bi-receipt me-1"></i>Mi suscripción
+        <?php endif; ?>
+    </a>
+</div>
+
 <!-- ── Recent leads table ────────────────────────────────────────────────────── -->
 <div class="mc-table-card mb-4">
     <div class="card-header-bar">

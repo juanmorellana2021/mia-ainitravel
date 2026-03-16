@@ -232,10 +232,13 @@ class BillingService
     public static function planOptions(): array
     {
         return [
-            'starter'    => ['label' => 'Starter',     'price' => App::PLAN_STARTER],
-            'basic'      => ['label' => 'Pro',          'price' => App::PLAN_BASIC],
-            'pro'        => ['label' => 'Business',     'price' => App::PLAN_PRO],
-            'enterprise' => ['label' => 'Enterprise',   'price' => App::PLAN_ENTERPRISE],
+            'starter'         => ['label' => 'Starter',              'price' => App::PLAN_STARTER],
+            'basic'           => ['label' => 'Pro',                  'price' => App::PLAN_BASIC],
+            'pro'             => ['label' => 'Business',             'price' => App::PLAN_PRO],
+            'enterprise'      => ['label' => 'Enterprise',           'price' => App::PLAN_ENTERPRISE],
+            'enterprise_duo'  => ['label' => 'Enterprise Duo',       'price' => App::PLAN_ENTERPRISE_DUO],
+            'enterprise_chain'=> ['label' => 'Enterprise Cadena',    'price' => App::PLAN_ENTERPRISE_CHAIN],
+            'enterprise_corp' => ['label' => 'Enterprise Corporativo','price' => App::PLAN_ENTERPRISE_CORP],
         ];
     }
 

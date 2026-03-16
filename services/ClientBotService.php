@@ -28,11 +28,14 @@ class ClientBotService
 
     // Monthly conversation limits per plan (0 = unlimited)
     public const CONV_LIMITS = [
-        'trial'      => 0,    // trial = full Pro experience, unlimited
-        'starter'    => 500,
-        'basic'      => 1000,
-        'pro'        => 0,
-        'enterprise' => 0,
+        'trial'           => 0,    // trial = full Pro experience, unlimited
+        'starter'         => 500,
+        'basic'           => 1000,
+        'pro'             => 0,
+        'enterprise'      => 0,
+        'enterprise_duo'  => 0,
+        'enterprise_chain'=> 0,
+        'enterprise_corp' => 0,
     ];
 
     public function __construct(Client $client)
@@ -42,11 +45,14 @@ class ClientBotService
         $this->cfg    = json_decode($client->bot_config ?? '{}', true) ?: [];
 
         $planCaps = [
-            'trial'      => ['handoff', 'leads'], // trial = full Pro experience so users see everything
-            'starter'    => [],
-            'basic'      => ['handoff'],
-            'pro'        => ['handoff', 'leads'],
-            'enterprise' => ['handoff', 'leads'],
+            'trial'           => ['handoff', 'leads'], // trial = full Pro experience so users see everything
+            'starter'         => [],
+            'basic'           => ['handoff'],
+            'pro'             => ['handoff', 'leads'],
+            'enterprise'      => ['handoff', 'leads'],
+            'enterprise_duo'  => ['handoff', 'leads'],
+            'enterprise_chain'=> ['handoff', 'leads'],
+            'enterprise_corp' => ['handoff', 'leads'],
         ];
         $caps = $planCaps[$client->plan] ?? [];
         $this->canHandoff     = in_array('handoff', $caps);
