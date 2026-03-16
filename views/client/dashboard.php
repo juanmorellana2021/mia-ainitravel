@@ -131,9 +131,72 @@ $monthName = mb_strtoupper(strftime('%B', mktime(0,0,0, (int)date('m'), 1, (int)
     </div>
 </div>
 
-<!-- ── Plan status bar ─────────────────────────────────────────────────────── -->
+<!-- ── Tu IA Mia ────────────────────────────────────────────────────────────── -->
 <?php
-$_planNames = [
+$_aiTiers = [
+    'starter' => [
+        'name'  => 'Mia Soporte',
+        'icon'  => 'bi-headset',
+        'color' => '#6c757d',
+        'bg'    => 'rgba(108,117,125,0.08)',
+        'border'=> 'rgba(108,117,125,0.22)',
+        'desc'  => 'IA de soporte 24/7 que atiende consultas, responde FAQs y habla más de 50 idiomas automáticamente.',
+        'caps'  => [
+            ['icon'=>'bi-robot',          'label'=>'Bot IA 24/7 en WhatsApp',             'on'=>true ],
+            ['icon'=>'bi-translate',      'label'=>'50+ idiomas automáticos',              'on'=>true ],
+            ['icon'=>'bi-chat-dots',      'label'=>'500 conversaciones/mes',               'on'=>true ],
+            ['icon'=>'bi-gear',           'label'=>'Horario de atención configurable',     'on'=>true ],
+            ['icon'=>'bi-qr-code',        'label'=>'Enlace y código QR de WhatsApp',       'on'=>true ],
+            ['icon'=>'bi-person-check',   'label'=>'Traspaso humano inteligente',          'on'=>false],
+            ['icon'=>'bi-person-plus',    'label'=>'Captura de leads automática',          'on'=>false],
+            ['icon'=>'bi-megaphone',      'label'=>'Difusión masiva a leads',              'on'=>false],
+            ['icon'=>'bi-arrow-repeat',   'label'=>'Automatizaciones y secuencias',        'on'=>false],
+            ['icon'=>'bi-calendar-check', 'label'=>'Agenda de citas con recordatorios',    'on'=>false],
+        ],
+    ],
+    'basic' => [
+        'name'  => 'Mia Ventas',
+        'icon'  => 'bi-graph-up-arrow',
+        'color' => '#0d6efd',
+        'bg'    => 'rgba(13,110,253,0.07)',
+        'border'=> 'rgba(13,110,253,0.2)',
+        'desc'  => 'IA de ventas que captura leads, reconoce la intención de compra y transfiere clientes a un humano en el momento justo.',
+        'caps'  => [
+            ['icon'=>'bi-robot',          'label'=>'Bot IA 24/7 en WhatsApp',             'on'=>true ],
+            ['icon'=>'bi-translate',      'label'=>'50+ idiomas automáticos',              'on'=>true ],
+            ['icon'=>'bi-chat-dots',      'label'=>'1,000 conversaciones/mes',             'on'=>true ],
+            ['icon'=>'bi-gear',           'label'=>'Horario de atención configurable',     'on'=>true ],
+            ['icon'=>'bi-qr-code',        'label'=>'Enlace y código QR de WhatsApp',       'on'=>true ],
+            ['icon'=>'bi-person-check',   'label'=>'Traspaso humano inteligente',          'on'=>true ],
+            ['icon'=>'bi-person-plus',    'label'=>'Captura de leads automática',          'on'=>false],
+            ['icon'=>'bi-megaphone',      'label'=>'Difusión masiva a leads',              'on'=>false],
+            ['icon'=>'bi-arrow-repeat',   'label'=>'Automatizaciones y secuencias',        'on'=>false],
+            ['icon'=>'bi-calendar-check', 'label'=>'Agenda de citas con recordatorios',    'on'=>false],
+        ],
+    ],
+    'default' => [
+        'name'  => 'Mia Business',
+        'icon'  => 'bi-buildings',
+        'color' => '#25d366',
+        'bg'    => 'rgba(37,211,102,0.07)',
+        'border'=> 'rgba(37,211,102,0.22)',
+        'desc'  => 'Suite completa de IA para negocios: capta leads, agenda citas, envía difusiones, automatiza seguimientos y nunca descansa.',
+        'caps'  => [
+            ['icon'=>'bi-robot',          'label'=>'Bot IA 24/7 en WhatsApp',             'on'=>true ],
+            ['icon'=>'bi-translate',      'label'=>'50+ idiomas automáticos',              'on'=>true ],
+            ['icon'=>'bi-infinity',       'label'=>'Conversaciones ilimitadas',            'on'=>true ],
+            ['icon'=>'bi-gear',           'label'=>'Horario de atención configurable',     'on'=>true ],
+            ['icon'=>'bi-qr-code',        'label'=>'Enlace y código QR de WhatsApp',       'on'=>true ],
+            ['icon'=>'bi-person-check',   'label'=>'Traspaso humano inteligente',          'on'=>true ],
+            ['icon'=>'bi-person-plus',    'label'=>'Captura de leads automática',          'on'=>true ],
+            ['icon'=>'bi-megaphone',      'label'=>'Difusión masiva a leads',              'on'=>true ],
+            ['icon'=>'bi-arrow-repeat',   'label'=>'Automatizaciones y secuencias',        'on'=>true ],
+            ['icon'=>'bi-calendar-check', 'label'=>'Agenda de citas con recordatorios',    'on'=>true ],
+        ],
+    ],
+];
+
+$_planLabels = [
     'trial'           => 'Prueba gratuita',
     'starter'         => 'Starter',
     'basic'           => 'Pro',
@@ -143,89 +206,85 @@ $_planNames = [
     'enterprise_chain'=> 'Enterprise Cadena',
     'enterprise_corp' => 'Enterprise Corporativo',
 ];
-$_planFeats = [
-    'trial'           => ['handoff', 'leads'],
-    'starter'         => [],
-    'basic'           => ['handoff'],
-    'pro'             => ['handoff', 'leads'],
-    'enterprise'      => ['handoff', 'leads'],
-    'enterprise_duo'  => ['handoff', 'leads'],
-    'enterprise_chain'=> ['handoff', 'leads'],
-    'enterprise_corp' => ['handoff', 'leads'],
-];
-$_myFeats  = $_planFeats[$client->plan] ?? [];
-$_planName = $_planNames[$client->plan] ?? ucfirst($client->plan);
+
+$_tier      = match($client->plan) {
+    'starter' => $_aiTiers['starter'],
+    'basic'   => $_aiTiers['basic'],
+    default   => $_aiTiers['default'],
+};
+$_planLabel = $_planLabels[$client->plan] ?? ucfirst($client->plan);
 ?>
-<div class="mc-table-card p-3 mb-4 d-flex align-items-center flex-wrap gap-3">
-    <div style="min-width:150px">
-        <div class="fw-bold" style="font-size:.95rem"><?= htmlspecialchars($_planName) ?></div>
-        <?php if ($client->plan_status === 'trial'): ?>
-            <span class="badge bg-warning text-dark mt-1" style="font-size:.7rem">
-                <i class="bi bi-clock me-1"></i>Prueba &middot; <?= $client->trialDaysLeft() ?> días
-            </span>
-        <?php elseif ($client->plan_status === 'active'): ?>
-            <span class="badge mt-1" style="background:rgba(37,211,102,0.15);color:#0a5c36;border:1px solid rgba(37,211,102,0.3);font-size:.7rem">
-                <i class="bi bi-check-circle me-1"></i>Activo
-            </span>
-        <?php elseif ($client->plan_status === 'expired'): ?>
-            <span class="badge bg-danger mt-1" style="font-size:.7rem"><i class="bi bi-x-circle me-1"></i>Prueba vencida</span>
-        <?php else: ?>
-            <span class="badge bg-secondary mt-1" style="font-size:.7rem"><?= htmlspecialchars($client->plan_status) ?></span>
-        <?php endif; ?>
-    </div>
 
-    <div class="d-flex flex-wrap gap-2 flex-fill">
-        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size:.78rem">
-            <i class="bi bi-check2 me-1"></i>Bot 24/7
-        </span>
-        <?php if (in_array('handoff', $_myFeats)): ?>
-        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
-            <i class="bi bi-check2 me-1"></i>Traspaso humano
-        </span>
-        <?php else: ?>
-        <span class="badge bg-light text-muted border" style="font-size:.78rem">
-            <i class="bi bi-lock me-1"></i>Traspaso humano
-        </span>
-        <?php endif; ?>
-        <?php if (in_array('leads', $_myFeats)): ?>
-        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
-            <i class="bi bi-check2 me-1"></i>Captura de leads
-        </span>
-        <?php else: ?>
-        <span class="badge bg-light text-muted border" style="font-size:.78rem">
-            <i class="bi bi-lock me-1"></i>Captura de leads
-        </span>
-        <?php endif; ?>
-        <?php if (in_array('broadcast', $_myFeats)): ?>
-        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
-            <i class="bi bi-check2 me-1"></i>Difusión
-        </span>
-        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:.78rem">
-            <i class="bi bi-check2 me-1"></i>Automatizaciones
-        </span>
-        <?php else: ?>
-        <span class="badge bg-light text-muted border" style="font-size:.78rem">
-            <i class="bi bi-lock me-1"></i>Difusión &amp; Automatizaciones
-        </span>
-        <?php endif; ?>
-        <?php if ($convLimit === 0): ?>
-        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size:.78rem">
-            <i class="bi bi-infinity me-1"></i>Conversaciones ilimitadas
-        </span>
-        <?php else: ?>
-        <span class="badge bg-light text-muted border" style="font-size:.78rem">
-            <i class="bi bi-chat me-1"></i><?= number_format($convLimit) ?>/mes
-        </span>
-        <?php endif; ?>
-    </div>
+<div class="mc-table-card p-4 mb-4">
+    <div class="row g-3 align-items-start">
 
-    <a href="<?= $base ?>/dashboard/billing" class="btn btn-sm btn-outline-secondary" style="white-space:nowrap;font-size:.8rem">
-        <?php if ($client->plan_status === 'trial' || $client->plan_status === 'expired'): ?>
-            <i class="bi bi-lightning me-1"></i>Activar plan
-        <?php else: ?>
-            <i class="bi bi-receipt me-1"></i>Mi suscripción
-        <?php endif; ?>
-    </a>
+        <!-- AI identity -->
+        <div class="col-md-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div style="width:54px;height:54px;border-radius:14px;background:<?= $_tier['bg'] ?>;border:1px solid <?= $_tier['border'] ?>;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:<?= $_tier['color'] ?>;flex-shrink:0">
+                    <i class="bi <?= $_tier['icon'] ?>"></i>
+                </div>
+                <div>
+                    <div class="fw-bold" style="font-size:1.1rem;color:<?= $_tier['color'] ?>"><?= htmlspecialchars($_tier['name']) ?></div>
+                    <div class="text-muted small">Plan <?= htmlspecialchars($_planLabel) ?></div>
+                </div>
+            </div>
+            <p class="text-muted small mb-3" style="line-height:1.55"><?= htmlspecialchars($_tier['desc']) ?></p>
+            <?php if ($client->plan_status === 'trial'): ?>
+                <span class="badge bg-warning text-dark" style="font-size:.74rem">
+                    <i class="bi bi-clock me-1"></i>Prueba &middot; <?= $client->trialDaysLeft() ?> días restantes
+                </span>
+            <?php elseif ($client->plan_status === 'active'): ?>
+                <span class="badge" style="background:rgba(37,211,102,0.15);color:#0a5c36;border:1px solid rgba(37,211,102,0.3);font-size:.74rem">
+                    <i class="bi bi-check-circle me-1"></i>Suscripción activa
+                </span>
+            <?php elseif ($client->plan_status === 'expired'): ?>
+                <span class="badge bg-danger" style="font-size:.74rem"><i class="bi bi-x-circle me-1"></i>Prueba vencida</span>
+            <?php else: ?>
+                <span class="badge bg-secondary" style="font-size:.74rem"><?= htmlspecialchars($client->plan_status) ?></span>
+            <?php endif; ?>
+        </div>
+
+        <!-- Capabilities list -->
+        <div class="col-md-5">
+            <div class="text-uppercase text-muted fw-semibold mb-2" style="font-size:.68rem;letter-spacing:.07em">Capacidades de tu IA</div>
+            <?php foreach ($_tier['caps'] as $cap): ?>
+            <div class="d-flex align-items-center gap-2 mb-1 <?= $cap['on'] ? '' : 'opacity-40' ?>">
+                <?php if ($cap['on']): ?>
+                    <i class="bi <?= $cap['icon'] ?> text-success" style="font-size:.9rem;width:17px;text-align:center;flex-shrink:0"></i>
+                    <span class="small"><?= htmlspecialchars($cap['label']) ?></span>
+                <?php else: ?>
+                    <i class="bi bi-lock" style="font-size:.85rem;width:17px;text-align:center;flex-shrink:0;color:#adb5bd"></i>
+                    <span class="small text-muted" style="text-decoration:line-through"><?= htmlspecialchars($cap['label']) ?></span>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- CTA -->
+        <div class="col-md-3 d-flex flex-column gap-2">
+            <?php if ($client->plan_status === 'trial' || $client->plan_status === 'expired'): ?>
+            <a href="<?= $base ?>/dashboard/billing" class="btn fw-semibold" style="background:#25d366;color:#fff">
+                <i class="bi bi-lightning me-1"></i>Activar plan
+            </a>
+            <?php else: ?>
+            <a href="<?= $base ?>/dashboard/billing" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-receipt me-1"></i>Mi suscripción
+            </a>
+            <?php endif; ?>
+            <?php if (in_array($client->plan, ['starter', 'basic'])): ?>
+            <a href="<?= $base ?>/dashboard/billing" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-arrow-up-circle me-1"></i>Mejorar IA
+            </a>
+            <div class="text-muted" style="font-size:.72rem">
+                <?= $client->plan === 'starter'
+                    ? 'Actualiza a <strong>Mia Ventas</strong> o <strong>Mia Business</strong> para desbloquear toda la automatización.'
+                    : 'Actualiza a <strong>Mia Business</strong> para difusión, secuencias y agenda de citas.' ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
+    </div>
 </div>
 
 <!-- ── Recent leads table ────────────────────────────────────────────────────── -->

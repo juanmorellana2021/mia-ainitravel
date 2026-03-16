@@ -27,6 +27,13 @@ ob_start();
                     <div class="card-body text-center">
                         <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_STARTER) ?></div>
                         <p class="text-muted">/ mes</p>
+                        <div class="mb-3 p-2 rounded-2 d-flex align-items-center gap-2" style="background:rgba(108,117,125,0.08);border:1px solid rgba(108,117,125,0.2)">
+                            <i class="bi bi-headset" style="color:#6c757d;font-size:1.25rem;flex-shrink:0"></i>
+                            <div class="text-start">
+                                <div class="fw-bold" style="font-size:.85rem;color:#495057">Mia Soporte</div>
+                                <div class="text-muted" style="font-size:.75rem">IA de soporte 24/7 · FAQs · 50+ idiomas</div>
+                            </div>
+                        </div>
                         <hr>
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Bot IA 24/7 en WhatsApp</li>
@@ -65,6 +72,13 @@ ob_start();
                     <div class="card-body text-center">
                         <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_BASIC) ?></div>
                         <p class="text-muted">/ mes</p>
+                        <div class="mb-3 p-2 rounded-2 d-flex align-items-center gap-2" style="background:rgba(13,110,253,0.07);border:1px solid rgba(13,110,253,0.18)">
+                            <i class="bi bi-graph-up-arrow" style="color:#0d6efd;font-size:1.25rem;flex-shrink:0"></i>
+                            <div class="text-start">
+                                <div class="fw-bold" style="font-size:.85rem;color:#0d6efd">Mia Ventas</div>
+                                <div class="text-muted" style="font-size:.75rem">IA de ventas · captura leads · traspaso humano inteligente</div>
+                            </div>
+                        </div>
                         <hr>
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Starter</li>
@@ -93,6 +107,13 @@ ob_start();
                     <div class="card-body text-center">
                         <div class="display-5 fw-bold mb-1"><?= App::CURRENCY ?><?= number_format(App::PLAN_PRO) ?></div>
                         <p class="text-muted">/ mes</p>
+                        <div class="mb-3 p-2 rounded-2 d-flex align-items-center gap-2" style="background:rgba(37,211,102,0.09);border:1px solid rgba(37,211,102,0.22)">
+                            <i class="bi bi-buildings" style="color:#25d366;font-size:1.25rem;flex-shrink:0"></i>
+                            <div class="text-start">
+                                <div class="fw-bold" style="font-size:.85rem;color:#25d366">Mia Business</div>
+                                <div class="text-muted" style="font-size:.75rem">Suite completa · citas · difusión · secuencias · ilimitado</div>
+                            </div>
+                        </div>
                         <hr>
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Pro</li>

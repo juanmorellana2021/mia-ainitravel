@@ -10,6 +10,18 @@ $activeNav    = 'billing';
 $currentPlan = $client->plan;
 $planStatus  = $client->plan_status;
 
+// ── AI Tier definitions ─────────────────────────────────────────────────────
+$_billingAiTiers = [
+    'starter' => ['name'=>'Mia Soporte',  'icon'=>'bi-headset',        'color'=>'#6c757d', 'bg'=>'rgba(108,117,125,0.08)', 'border'=>'rgba(108,117,125,0.2)',  'desc'=>'IA de soporte 24/7 · FAQs · 50+ idiomas'],
+    'basic'   => ['name'=>'Mia Ventas',   'icon'=>'bi-graph-up-arrow', 'color'=>'#0d6efd', 'bg'=>'rgba(13,110,253,0.07)',   'border'=>'rgba(13,110,253,0.18)', 'desc'=>'IA de ventas · captura leads · traspaso humano inteligente'],
+    'default' => ['name'=>'Mia Business', 'icon'=>'bi-buildings',      'color'=>'#25d366', 'bg'=>'rgba(37,211,102,0.07)',   'border'=>'rgba(37,211,102,0.2)',  'desc'=>'Suite completa · citas · difusión · secuencias · ilimitado'],
+];
+$_billingAi = match($currentPlan) {
+    'starter' => $_billingAiTiers['starter'],
+    'basic'   => $_billingAiTiers['basic'],
+    default   => $_billingAiTiers['default'],
+};
+
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
 ?>
@@ -53,6 +65,16 @@ $_upgradeLabel = match(htmlspecialchars($_GET['upgrade'])) {
     <div class="col-md-5">
         <div class="mc-table-card p-4">
             <h6 class="fw-bold mb-3"><i class="bi bi-lightning me-2 text-warning"></i>Tu plan actual</h6>
+
+            <div class="d-flex align-items-center gap-3 p-3 mb-3 rounded-3" style="background:<?= $_billingAi['bg'] ?>;border:1px solid <?= $_billingAi['border'] ?>">
+                <div style="width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,0.55);display:flex;align-items:center;justify-content:center;font-size:1.35rem;color:<?= $_billingAi['color'] ?>;flex-shrink:0">
+                    <i class="bi <?= $_billingAi['icon'] ?>"></i>
+                </div>
+                <div>
+                    <div class="fw-bold" style="font-size:1rem;color:<?= $_billingAi['color'] ?>"><?= htmlspecialchars($_billingAi['name']) ?></div>
+                    <div class="text-muted" style="font-size:.78rem"><?= htmlspecialchars($_billingAi['desc']) ?></div>
+                </div>
+            </div>
 
             <?php if ($planStatus === 'trial'): ?>
                 <div class="text-center py-3 mb-3" style="background:#f8f9fa;border-radius:10px">
