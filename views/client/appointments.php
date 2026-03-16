@@ -152,9 +152,9 @@ foreach (array_merge($upcoming, $past) as $_appt) {
                 dots += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${statusColor(a.status)};margin:0 1px"></span>`;
             });
 
-            const cellBg   = isToday ? '#25d366' : '';
+            const cellBg   = isToday ? '#25d366' : (isPast ? '#f5f5f5' : '#f8fafc');
             const cellColor= isToday ? '#fff'    : (isPast && appts.length === 0 ? '#adb5bd' : '#212529');
-            const cellBorder= appts.length > 0 && !isToday ? '1px solid rgba(37,211,102,0.35)' : '';
+            const cellBorder= appts.length > 0 && !isToday ? '2px solid rgba(37,211,102,0.6)' : '1px solid #e9ecef';
             const cursor   = appts.length > 0 ? 'pointer' : 'default';
 
             html += `<div class="col text-center py-1 rounded-2"
