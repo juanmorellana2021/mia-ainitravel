@@ -82,6 +82,15 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
         history.forEach(function(t){ buildMsgEl(t.content, t.role === 'assistant' ? 'bot' : 'user'); });
     }
 
+    // ── Fire highlight if we arrived via Mia's "Ir ahora" button ──────────────
+    var urlParams = new URLSearchParams(window.location.search);
+    var miaHl = urlParams.get('mia_hl');
+    if (miaHl) {
+        // Clean the URL param without reloading
+        history.length && window.history.replaceState({}, '', window.location.pathname);
+        setTimeout(function(){ doHighlight(decodeURIComponent(miaHl)); miaHelpOpen(); }, 600);
+    }
+
     // ── Open / close ──────────────────────────────────────────────────────────
     window.miaHelpOpen = function(){
         open = true;
@@ -132,13 +141,18 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
             saveHistory(history);
             // Append a navigate button if Mia wants to send user to another page
             if (d.navigate) {
+                // Pass the page-specific highlight as a URL param so it fires after load
+                var dest = d.navigate;
+                if (d.highlight && !d.highlight.startsWith('a[href')) {
+                    dest += (dest.includes('?') ? '&' : '?') + 'mia_hl=' + encodeURIComponent(d.highlight);
+                }
                 var btn = document.createElement('a');
-                btn.href = d.navigate;
+                btn.href = dest;
                 btn.textContent = 'Ir ahora →';
                 btn.style.cssText = 'display:inline-block;margin-top:6px;padding:5px 12px;background:#25d366;color:#fff;border-radius:16px;font-size:.78rem;font-weight:600;text-decoration:none';
                 typing.appendChild(document.createElement('br'));
                 typing.appendChild(btn);
-                // Also highlight the sidebar link for that section
+                // Highlight the sidebar nav item pointing to that section
                 doHighlight('a[href*="' + d.navigate.split('/').pop() + '"]');
             } else if (d.highlight) {
                 doHighlight(d.highlight);
