@@ -377,7 +377,7 @@ class SuperAdminController
                     WHEN referrer LIKE '%facebook.com%' OR referrer LIKE '%fb.com%' THEN 'facebook.com'
                     WHEN referrer LIKE '%instagram.com%' THEN 'instagram.com'
                     WHEN referrer LIKE '%google.com%'    THEN 'google.com'
-                    WHEN referrer LIKE '%mia.ainitravel.com%' THEN 'mia.ainitravel.com (interno)'
+                    WHEN referrer LIKE '%mia-whatsapp.com%' OR referrer LIKE '%mia.ainitravel.com%' THEN 'mia-whatsapp.com (interno)'
                     ELSE SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(referrer,'https://',''),'http://',''),'/',1),'?',1)
                 END AS ref,
                 COUNT(*) AS cnt

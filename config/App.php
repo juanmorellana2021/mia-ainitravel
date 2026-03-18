@@ -12,7 +12,7 @@ class App
     // ── Branding ─────────────────────────────────────────────────────────
     public const NAME       = 'Mia by AiniTravel';
     public const TAGLINE    = 'Responde todos tus leads de WhatsApp automáticamente. 24/7.';
-    public const URL        = 'https://mia.ainitravel.com';
+    public const URL        = 'https://mia-whatsapp.com';
     public const WHATSAPP   = '+51920076034';  // Mia WhatsApp Business number
 
     // ── Pricing (PEN — Soles) ────────────────────────────────────────────

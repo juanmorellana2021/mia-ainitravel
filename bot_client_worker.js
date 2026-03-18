@@ -23,7 +23,7 @@ const qrcodeImage           = require('qrcode');
 const https                 = require('https');
 const path                  = require('path');
 
-const MIA_API_HOST   = 'mia.ainitravel.com';
+const MIA_API_HOST   = 'mia-whatsapp.com';
 const MIA_API_PORT   = 443;
 const MIA_BOT_SECRET = 'mia-bot-secret-2026';
 const AUTH_DIR       = path.join(__dirname, '.wwebjs_auth');

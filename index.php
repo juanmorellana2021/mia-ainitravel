@@ -5,7 +5,7 @@
  * Routes all requests through a single entry point.
  * Maps URI paths to Controller actions (MVC).
  *
- * URL: mia.ainitravel.com  (or /mia/ locally)
+ * URL: mia-whatsapp.com  (or /mia/ locally)
  */
 
 declare(strict_types=1);

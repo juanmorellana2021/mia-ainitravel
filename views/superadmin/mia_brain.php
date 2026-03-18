@@ -760,7 +760,7 @@ require __DIR__ . '/_sidebar.php';
                 'Usa el idioma del cliente: español si escribe en español, inglés si escribe en inglés. NUNCA mezcla.',
                 'Detecta buy intent en cualquier momento del flujo y avanza directo a pedir el email',
                 'Respeta si el cliente dice "no me interesa" — cierra bien y sin presión',
-                'Si no sabe algo, conecta al equipo en mia.ainitravel.com',
+                'Si no sabe algo, conecta al equipo en mia-whatsapp.com',
                 'Avanza el estado de la sesión en cada mensaje — nunca se queda bloqueado',
                 'Un máximo de 1-2 emojis por mensaje, solo si suman contexto',
             ];
@@ -779,7 +779,7 @@ require __DIR__ . '/_sidebar.php';
                 'Explicar su razonamiento — solo da el resultado',
                 'Repetir información que ya dijo anteriormente en el historial',
                 'Hacer dos preguntas en el mismo mensaje',
-                'Usar URLs largas — solo "mia.ainitravel.com" si es necesario',
+                'Usar URLs largas — solo "mia-whatsapp.com" si es necesario',
                 'Hacer handoff a humano cuando el cliente pide el producto/bot/IA (solo cuando piden explícitamente una persona)',
                 'Dar el precio sin mencionar los 7 días gratis',
                 'Usar "señor/a" si ya sabe el nombre del cliente',

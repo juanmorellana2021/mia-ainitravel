@@ -86,7 +86,7 @@ $base = App::basePath();
                 <h6 class="fw-bold">Contacto</h6>
                 <p class="text-secondary mb-1"><i class="bi bi-whatsapp me-2"></i><?= App::WHATSAPP ?></p>
                 <p class="text-secondary mb-1"><i class="bi bi-envelope me-2"></i>hola@ainitravel.com</p>
-                <p class="text-secondary"><i class="bi bi-globe me-2"></i>mia.ainitravel.com</p>
+                <p class="text-secondary"><i class="bi bi-globe me-2"></i>mia-whatsapp.com</p>
             </div>
         </div>
         <hr class="border-secondary">

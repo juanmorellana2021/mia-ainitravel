@@ -32,7 +32,7 @@ const path                  = require('path');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MIA_BOT_SECRET = 'mia-bot-secret-2026';
-const MIA_API_HOST   = 'mia.ainitravel.com';
+const MIA_API_HOST   = 'mia-whatsapp.com';
 const MIA_API_PORT   = 443;
 const AUTH_DIR       = path.join(__dirname, '.wwebjs_auth');
 

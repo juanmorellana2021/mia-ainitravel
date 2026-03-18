@@ -3,10 +3,10 @@
 # Always run this instead of scp-ing individual files.
 #
 # CRITICAL: The bot runs from /root/mia-whatsapp-bot/bot.js (pm2)
-#           NOT from /var/www/html/mia.ainitravel.com/
+#           NOT from /var/www/html/mia-whatsapp.com/
 
 $VPS = "root@108.175.12.152"
-$WEB = "/var/www/html/mia.ainitravel.com"
+$WEB = "/var/www/html/mia-whatsapp.com"
 $BOT = "/root/mia-whatsapp-bot"
 
 Write-Host "Deploying PHP app..." -ForegroundColor Cyan

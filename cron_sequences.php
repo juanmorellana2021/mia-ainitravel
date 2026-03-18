@@ -5,10 +5,10 @@
  * Fires due follow-up sequence steps for all clients.
  * Run every hour via cron on the VPS:
  *
- *   0 * * * * php /var/www/html/mia.ainitravel.com/cron_sequences.php >> /var/log/mia_sequences.log 2>&1
+ *   0 * * * * php /var/www/html/mia-whatsapp.com/cron_sequences.php >> /var/log/mia_sequences.log 2>&1
  *
  * Can also be triggered manually:
- *   php /var/www/html/mia.ainitravel.com/cron_sequences.php
+ *   php /var/www/html/mia-whatsapp.com/cron_sequences.php
  */
 
 declare(strict_types=1);

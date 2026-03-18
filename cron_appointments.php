@@ -5,10 +5,10 @@
  * Sends 24-hour appointment reminders via WhatsApp + email.
  * Run every hour via cron on the VPS:
  *
- *   0 * * * * php /var/www/html/mia.ainitravel.com/cron_appointments.php >> /var/log/mia_appointments.log 2>&1
+ *   0 * * * * php /var/www/html/mia-whatsapp.com/cron_appointments.php >> /var/log/mia_appointments.log 2>&1
  *
  * Can also be triggered manually:
- *   php /var/www/html/mia.ainitravel.com/cron_appointments.php
+ *   php /var/www/html/mia-whatsapp.com/cron_appointments.php
  */
 
 declare(strict_types=1);

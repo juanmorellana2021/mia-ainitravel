@@ -663,7 +663,7 @@ class MiaSalesService
             "¡TODO LISTO! Horario guardado: '{$hours}'. La configuración de Mia para {$bizName} está completa. " .
             "Da un cierre memorable en 3 líneas máximo: " .
             "1. Confirma con genuina emoción que todo está configurado y su Mia ya está lista. " .
-            "2. Diles que pueden ingresar a su panel en *mia.ainitravel.com* con el email {$email} y la contraseña " .
+            "2. Diles que pueden ingresar a su panel en *mia-whatsapp.com* con el email {$email} y la contraseña " .
             "   que les llegó al correo — desde ahí conectan su WhatsApp y ajustan lo que quieran. " .
             "3. Ofrece: 'Si tienen cualquier duda, pueden escribirme aquí y con gusto los ayudo.' " .
             "Cálido, breve, como un amigo que acaba de ayudarte a lanzar algo importante. SIN URLs largas."
@@ -677,13 +677,13 @@ class MiaSalesService
         return $this->aiReply($phone, $session, $message,
             "El cliente ya tiene cuenta activa y su Mia configurada. Responde con genuina utilidad — " .
             "como si fueras su asistente personal de onboarding. " .
-            "Si pregunta cómo conectar WhatsApp: dile que ingrese a su panel en mia.ainitravel.com → " .
+            "Si pregunta cómo conectar WhatsApp: dile que ingrese a su panel en mia-whatsapp.com → " .
             "Configuración → WhatsApp, escanee el código QR con su teléfono y listo (proceso de 2 minutos). " .
             "Si pregunta sobre configuración u opciones: dile que desde Configuración puede ajustar el nombre del bot, " .
             "horario, servicios, precios, y personalidad. " .
             "Si tiene una duda técnica compleja: dile que el equipo de AiniDesk lo apoya — " .
             "puede escribir aquí mismo o al soporte. " .
-            "Siempre: texto plano de WhatsApp, sin listas largas, sin URLs (solo 'mia.ainitravel.com' si es necesario)."
+            "Siempre: texto plano de WhatsApp, sin listas largas, sin URLs (solo 'mia-whatsapp.com' si es necesario)."
         );
     }
 
@@ -834,7 +834,7 @@ Groq, tú eres quien entiende el contexto. Nunca hay un regex que filtre antes q
 • *"¿Cuánto cuesta?" / "¿Cuál es el precio?" / "planes"* → Responde con los precios en 2-3 líneas, menciona los 7 días gratis, luego retoma el flujo con una pregunta.
 • *"¿Qué funciones tiene?" / "¿Qué incluye?"* → Explica las funcionalidades clave de forma conversacional (no lista interminable), luego retoma.
 • *"¿Qué es Mia?" / "¿Cómo funciona?"* → Explica en 2 frases qué hace Mia para su tipo de negocio, con un ejemplo concreto. Retoma.
-• *"Quiero hablar con una persona" / "hablar con alguien de soporte"* → SOLO cuando piden explícitamente un humano (no cuando piden el producto): diles que se contacten a *mia.ainitravel.com* y ofrece seguir ayudando aquí. NO hacer handoff si piden el producto/bot/IA.
+• *"Quiero hablar con una persona" / "hablar con alguien de soporte"* → SOLO cuando piden explícitamente un humano (no cuando piden el producto): diles que se contacten a *mia-whatsapp.com* y ofrece seguir ayudando aquí. NO hacer handoff si piden el producto/bot/IA.
 • *"No me interesa" / "no gracias" / "después"* → Respeta con elegancia, deja la puerta abierta, cierra bien. Sin presión.
 • *Cualquier otra cosa fuera del flujo* → Respóndela brevemente con calidez y devuelve la conversación al siguiente paso lógico.
 
@@ -847,7 +847,7 @@ Groq, tú eres quien entiende el contexto. Nunca hay un regex que filtre antes q
 • Termina con UNA sola pregunta o acción — nunca dos
 • NUNCA repitas lo que ya dijiste en el historial — avanza
 • NUNCA suenes a script corporativo. Cada mensaje fresco, como un humano real
-• Si no sabes algo, ofrece conectarlos con el equipo: *mia.ainitravel.com*
+• Si no sabes algo, ofrece conectarlos con el equipo: *mia-whatsapp.com*
 • Listas con viñetas: SOLO para mostrar planes/precios cuando el cliente lo pide{$langRule}{$goalBlock}
 PROMPT;
     }

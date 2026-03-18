@@ -281,7 +281,7 @@ HTML;
       Esto ocurre si el teléfono se desconectó de internet, WhatsApp fue cerrado, o se desvincló el dispositivo.
     </p>
   </div>
-  <div class="ft">Mia by AiniDesk &middot; mia.ainitravel.com</div>
+  <div class="ft">Mia &middot; mia-whatsapp.com</div>
 </div>
 </body>
 </html>
@@ -394,7 +394,7 @@ HTML;
       <a href="{$billingUrl}" class="btn">Ver opciones en mi cuenta →</a>
     </div>
   </div>
-  <div class="ft">Mia by AiniTravel &middot; mia.ainitravel.com</div>
+  <div class="ft">Mia &middot; mia-whatsapp.com</div>
 </div>
 </body>
 </html>
