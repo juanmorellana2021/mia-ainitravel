@@ -58,7 +58,8 @@ class App
     // Generate hash: php -r "echo password_hash('yourpassword', PASSWORD_DEFAULT);"
     public const SUPERADMIN_USER = 'juanmia';
     public const SUPERADMIN_HASH = '$2y$10$bT0KnFr.h19vF0TRWyw4w.uz.QtMuZ.29X9v1hhzh0PoLZUZ8jUT.';
-    public const SUPERADMIN_SESSION_TTL = 28800; // 8 hours
+    public const SUPERADMIN_SESSION_TTL = 28800;   // 8 hours
+    public const CLIENT_REMEMBER_TTL   = 2592000; // 30 days (persistent remember-me cookie)
 
     // ── CSRF helpers ─────────────────────────────────────────────────────
     public static function csrfToken(): string

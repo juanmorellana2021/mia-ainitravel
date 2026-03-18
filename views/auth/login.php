@@ -57,12 +57,24 @@ $base = App::basePath();
                 </div>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-3">
                 <label class="form-label fw-medium small">Contraseña</label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-lock"></i></span>
                     <input type="password" name="password" class="form-control" placeholder="••••••••" required>
                 </div>
+            </div>
+
+            <div class="mb-4 d-flex justify-content-between align-items-center">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" name="remember_me" id="remember_me" value="1">
+                    <label class="form-check-label small text-muted" for="remember_me">
+                        Mantenerme conectado por 30 días
+                    </label>
+                </div>
+                <a href="<?= $base ?>/forgot-password" class="small text-decoration-none" style="color:#6c757d">
+                    ¿Olvidaste tu contraseña?
+                </a>
             </div>
 
             <button type="submit" class="btn btn-mia w-100">
@@ -71,16 +83,11 @@ $base = App::basePath();
         </form>
 
         <hr class="my-3">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-center align-items-center">
             <p class="text-muted small mb-0">
                 ¿No tienes cuenta?
                 <a href="<?= $base ?>/register" class="text-decoration-none fw-medium" style="color:#25d366">
                     Prueba gratis 7 días
-                </a>
-            </p>
-            <p class="text-muted small mb-0">
-                <a href="<?= $base ?>/forgot-password" class="text-decoration-none" style="color:#6c757d">
-                    ¿Olvidaste tu contraseña?
                 </a>
             </p>
         </div>

@@ -87,8 +87,8 @@ require __DIR__ . '/_sidebar.php';
                         $ctypes = [
                             'lead'      => ['label' => 'Lead',      'icon' => 'bi-person-check-fill', 'bg' => '#0d6efd', 'txt' => '#fff'],
                             'friend'    => ['label' => 'Amigo/a',   'icon' => 'bi-emoji-smile-fill',  'bg' => '#198754', 'txt' => '#fff'],
-                            'staff'     => ['label' => 'Staff',     'icon' => 'bi-person-badge-fill', 'bg' => '#0dcaf0', 'txt' => '#000'],
                             'proveedor' => ['label' => 'Proveedor', 'icon' => 'bi-truck',             'bg' => '#ffc107', 'txt' => '#000'],
+                            'staff'     => ['label' => 'Ignorar',   'icon' => 'bi-slash-circle-fill', 'bg' => '#dc3545', 'txt' => '#fff'],
                         ];
                         $currentCt = $lead->contact_type ?? 'lead';
                         ?>
@@ -106,8 +106,8 @@ require __DIR__ . '/_sidebar.php';
                         <small class="text-muted d-block mt-1">
                             <b>Lead</b> = bot normal &middot;
                             <b>Amigo/a</b> = chat casual sin ventas &middot;
-                            <b>Staff</b> = Mia ignora &middot;
-                            <b>Proveedor</b> = asistente profesional
+                            <b>Proveedor</b> = asistente profesional &middot;
+                            <b>Ignorar</b> = Mia no responde a este número
                         </small>
                         <script>
                         document.querySelectorAll('#ctypeGroup .ctype-btn').forEach(function(lbl) {

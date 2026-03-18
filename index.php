@@ -74,6 +74,61 @@ require_once __DIR__ . '/controllers/AppointmentController.php';
 require_once __DIR__ . '/models/ClientAddon.php';
 require_once __DIR__ . '/services/AddonService.php';
 
+// ── Remember Me: restore client session from persistent cookie ────────────────
+// If there is no active client session but a 'mia_remember' cookie exists,
+// validate the hashed token in DB and re-hydrate the session automatically.
+if (empty($_SESSION['mia_client_id']) && !empty($_COOKIE['mia_remember'])) {
+    $rawToken = $_COOKIE['mia_remember'];
+    // Basic sanity: must be a 64-char hex string (bin2hex of 32 bytes)
+    if (strlen($rawToken) === 64 && ctype_xdigit($rawToken)) {
+        $tHash  = hash('sha256', $rawToken);
+        $rmDb   = Database::get();
+        $rmStmt = $rmDb->prepare(
+            'SELECT client_id FROM mia_remember_tokens
+              WHERE token_hash = ? AND expires_at > NOW() LIMIT 1'
+        );
+        $rmStmt->execute([$tHash]);
+        $rmRow = $rmStmt->fetch(PDO::FETCH_ASSOC);
+        if ($rmRow) {
+            $rmClient = (new ClientService())->findById((int)$rmRow['client_id']);
+            if ($rmClient) {
+                session_regenerate_id(true);
+                $_SESSION['mia_client_id'] = $rmClient->id;
+                $_SESSION['mia_client']    = (new BillingService())->clientToSession($rmClient);
+                // Rotate the token on every use (prevents replay attacks)
+                $rmDb->prepare('DELETE FROM mia_remember_tokens WHERE token_hash = ?')
+                     ->execute([$tHash]);
+                $newRmToken = bin2hex(random_bytes(32));
+                $newRmHash  = hash('sha256', $newRmToken);
+                $newRmTtl   = App::CLIENT_REMEMBER_TTL;
+                $rmDb->prepare(
+                    'INSERT INTO mia_remember_tokens (client_id, token_hash, expires_at)
+                     VALUES (?,?,?)'
+                )->execute([
+                    $rmClient->id,
+                    $newRmHash,
+                    date('Y-m-d H:i:s', time() + $newRmTtl),
+                ]);
+                setcookie('mia_remember', $newRmToken, [
+                    'expires'  => time() + $newRmTtl,
+                    'path'     => App::basePath() ?: '/',
+                    'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+                    'httponly' => true,
+                    'samesite' => 'Lax',
+                ]);
+            }
+        } else {
+            // Token expired or invalid — clear the stale cookie
+            setcookie('mia_remember', '', [
+                'expires'  => 1,
+                'path'     => App::basePath() ?: '/',
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
+    }
+}
+
 // ── Route resolution ─────────────────────────────────────────────────────────
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 

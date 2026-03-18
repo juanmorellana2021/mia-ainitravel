@@ -48,6 +48,23 @@ class AuthController
         $_SESSION['mia_client_id'] = $client->id;
         $_SESSION['mia_client']    = (new BillingService())->clientToSession($client);
 
+        // Remember Me — write a hashed token in DB + send a 30-day cookie
+        if (!empty($_POST['remember_me'])) {
+            $rmToken   = bin2hex(random_bytes(32));
+            $rmHash    = hash('sha256', $rmToken);
+            $rmTtl     = App::CLIENT_REMEMBER_TTL;
+            Database::get()->prepare(
+                'INSERT INTO mia_remember_tokens (client_id, token_hash, expires_at) VALUES (?,?,?)'
+            )->execute([$client->id, $rmHash, date('Y-m-d H:i:s', time() + $rmTtl)]);
+            setcookie('mia_remember', $rmToken, [
+                'expires'  => time() + $rmTtl,
+                'path'     => App::basePath() ?: '/',
+                'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
+
         // First-time users go to the setup wizard; returning users go to dashboard
         $dest = $client->onboarding_done === 0
             ? App::basePath() . '/dashboard/settings?onboarding=1'
@@ -120,6 +137,18 @@ class AuthController
 
     public function logout(): void
     {
+        // Revoke persistent remember-me token if one exists
+        if (!empty($_COOKIE['mia_remember'])) {
+            $rmHash = hash('sha256', $_COOKIE['mia_remember']);
+            Database::get()->prepare('DELETE FROM mia_remember_tokens WHERE token_hash = ?')
+                          ->execute([$rmHash]);
+            setcookie('mia_remember', '', [
+                'expires'  => 1,
+                'path'     => App::basePath() ?: '/',
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
         unset($_SESSION['mia_client_id'], $_SESSION['mia_client']);
         header('Location: ' . App::basePath() . '/login');
         exit;
