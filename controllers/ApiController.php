@@ -173,6 +173,60 @@ class ApiController
     }
 
     // ── Public page-event tracking pixel ─────────────────────────────────────
+
+    // ── LID resolution helpers (called by bot worker on startup) ─────────────
+
+    /** Returns all LID-format phone numbers stored for this client */
+    public function resolveLids(): void
+    {
+        if (!$this->guardBotRequest()) return;
+        $raw  = file_get_contents('php://input');
+        $data = json_decode($raw ?: '', true);
+        $clientId = (int)($data['client_id'] ?? 0);
+        if (!$clientId) { echo json_encode(['success' => false, 'error' => 'Missing client_id']); return; }
+
+        $pdo = Database::get();
+        // LID-format numbers are exactly 15 digits (real phones are 10-13)
+        $stmt = $pdo->prepare(
+            "SELECT DISTINCT phone FROM mia_client_leads
+             WHERE client_id = ? AND phone REGEXP '^[0-9]{14,16}$'
+             UNION
+             SELECT DISTINCT phone FROM mia_client_messages
+             WHERE client_id = ? AND phone REGEXP '^[0-9]{14,16}$'"
+        );
+        $stmt->execute([$clientId, $clientId]);
+        $lids = array_column($stmt->fetchAll(), 'phone');
+        echo json_encode(['success' => true, 'lids' => $lids], JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Applies resolved LID→phone mappings, updating leads and messages */
+    public function applyLidResolutions(): void
+    {
+        if (!$this->guardBotRequest()) return;
+        $raw  = file_get_contents('php://input');
+        $data = json_decode($raw ?: '', true);
+        $clientId = (int)($data['client_id'] ?? 0);
+        $resolved = $data['resolved'] ?? [];
+        if (!$clientId || !is_array($resolved)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid payload']); return;
+        }
+
+        $pdo = Database::get();
+        $updated = 0;
+        foreach ($resolved as $r) {
+            $lid   = preg_replace('/[^0-9]/', '', (string)($r['lid']   ?? ''));
+            $phone = preg_replace('/[^0-9]/', '', (string)($r['phone'] ?? ''));
+            if (!$lid || !$phone || $lid === $phone) continue;
+
+            $pdo->prepare("UPDATE mia_client_leads    SET phone=? WHERE client_id=? AND phone=?")->execute([$phone, $clientId, $lid]);
+            $pdo->prepare("UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?")->execute([$phone, $clientId, $lid]);
+            error_log("[LIDmigration] client={$clientId} {$lid} → {$phone}");
+            $updated++;
+        }
+        echo json_encode(['success' => true, 'updated' => $updated], JSON_UNESCAPED_UNICODE);
+    }
+
+
     // GET/POST /api/track
     // Params (query-string or JSON body):
     //   event      string  pageview | pageleave | cta_click

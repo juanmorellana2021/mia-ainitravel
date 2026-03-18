@@ -166,6 +166,12 @@ match (true) {
     $uri === 'api/client-chat' && $method === 'POST'
         => (new ApiController())->clientChat(),
 
+    // LID → real phone resolution (called by bot worker on startup)
+    $uri === 'api/resolve-lids' && $method === 'POST'
+        => (new ApiController())->resolveLids(),
+    $uri === 'api/apply-lid-resolutions' && $method === 'POST'
+        => (new ApiController())->applyLidResolutions(),
+
     // WhatsApp status callback from bot server (connected / disconnected)
     $uri === 'api/client-status' && $method === 'POST'
         => (new ApiController())->clientStatus(),

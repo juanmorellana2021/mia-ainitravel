@@ -78,11 +78,20 @@ function startSession() {
         process.send({ type: 'qr', clientId, qrData, status: 'qr_pending' });
     });
 
-    ww.on('ready', () => {
+    ww.on('ready', async () => {
         sessionReadyAt = Math.floor(Date.now() / 1000);
         const phone = ww.info?.wid?.user ? '+' + ww.info.wid.user : null;
         console.log(`[worker:${clientId}] ✅ Connected! Phone: ${phone}`);
         process.send({ type: 'status', clientId, status: 'connected', phone });
+
+        // ── One-time LID → real phone migration ───────────────────────────────
+        // Resolve any stored LID-format numbers (15-digit internal WA IDs) to
+        // real phone numbers by asking WhatsApp directly on startup.
+        try {
+            await resolveLidPhones();
+        } catch (e) {
+            console.error(`[worker:${clientId}] LID migration error: ${e.message}`);
+        }
     });
 
     ww.on('disconnected', (reason) => {
@@ -158,8 +167,7 @@ function startSession() {
                 media_data: mediaData,
                 media_mime: mediaMime,
                 media_type: mediaType,
-            });
-            if (reply) {
+            });            const reply = resp && resp.reply;            if (reply) {
                 await ww.sendMessage(from, reply);
                 console.log(`[worker:${clientId}] REPLY to ${from}: ${reply.substring(0, 60)}`);
             }
@@ -172,6 +180,36 @@ function startSession() {
     });
 
     ww.initialize();
+}
+
+// ── LID → real phone resolver ─────────────────────────────────────────────────
+// Runs once on startup. Finds all leads/messages with LID-format phone numbers
+// (15-digit internal WA IDs) and resolves them to real phone numbers via WA.
+async function resolveLidPhones() {
+    const resp = await callApi('/api/resolve-lids', { client_id: parseInt(clientId, 10) });
+    if (!resp || !Array.isArray(resp.lids) || resp.lids.length === 0) {
+        console.log(`[worker:${clientId}] LID migration: nothing to resolve`);
+        return;
+    }
+    console.log(`[worker:${clientId}] LID migration: resolving ${resp.lids.length} numbers...`);
+    const resolved = [];
+    for (const lid of resp.lids) {
+        try {
+            // lid is the raw stored value e.g. "132002179223582"
+            // WhatsApp needs it as "132002179223582@lid"
+            const contact = await ww.getContactById(lid + '@lid');
+            if (contact && contact.number) {
+                resolved.push({ lid, phone: contact.number });
+                console.log(`[worker:${clientId}] LID ${lid} → ${contact.number}`);
+            }
+        } catch (_) {}
+        // Small delay to avoid hammering WA
+        await new Promise(r => setTimeout(r, 300));
+    }
+    if (resolved.length > 0) {
+        await callApi('/api/apply-lid-resolutions', { client_id: parseInt(clientId, 10), resolved });
+        console.log(`[worker:${clientId}] LID migration: updated ${resolved.length} records`);
+    }
 }
 
 // ── HTTPS API caller ──────────────────────────────────────────────────────────
@@ -196,8 +234,8 @@ function callApi(apiPath, payload) {
             res.on('end', () => {
                 try {
                     const json = JSON.parse(data);
-                    if (json.success && json.reply) resolve(json.reply);
-                    else reject(new Error(json.error || 'No reply from API'));
+                    if (!json.success) reject(new Error(json.error || 'API error'));
+                    else resolve(json);   // return full JSON so callers can read any field
                 } catch (e) {
                     reject(new Error('Invalid JSON: ' + data.substring(0, 100)));
                 }
