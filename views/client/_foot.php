@@ -30,10 +30,11 @@ $_showMiaHelp = !empty($_SESSION['mia_client_id'])
 <?php if ($_showMiaHelp): ?>
 <!-- ── Mia onboarding help chat widget ──────────────────────────────────────── -->
 <style>
-#mia-help-btn{position:fixed;bottom:24px;right:24px;z-index:1060;width:56px;height:56px;border-radius:50%;background:#25d366;border:none;box-shadow:0 4px 16px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+#mia-help-btn{position:fixed;bottom:20px;left:92px;z-index:1060;width:48px;height:48px;border-radius:50%;background:#25d366;border:none;box-shadow:0 4px 16px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s}
 #mia-help-btn:hover{transform:scale(1.08)}
 #mia-help-btn .mia-notif{position:absolute;top:2px;right:2px;width:14px;height:14px;background:#ff4b4b;border-radius:50%;border:2px solid #fff;display:none}
-#mia-help-panel{position:fixed;bottom:90px;right:24px;z-index:1059;width:320px;max-height:480px;border-radius:16px;background:#fff;box-shadow:0 8px 40px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden}
+#mia-help-panel{position:fixed;bottom:80px;left:92px;z-index:1059;width:300px;max-height:460px;border-radius:16px;background:#fff;box-shadow:0 8px 40px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden}
+@media(max-width:768px){#mia-help-btn{left:16px}#mia-help-panel{left:16px;width:calc(100vw - 32px)}}
 #mia-help-panel.open{display:flex}
 #mia-help-header{background:#25d366;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 #mia-help-header .mia-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center}
