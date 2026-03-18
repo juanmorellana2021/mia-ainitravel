@@ -143,19 +143,25 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
     // ── Highlight a page element by CSS selector ──────────────────────────────
     function doHighlight(selector) {
         try {
-            var el = document.querySelector(selector);
+            // Try to find a visible element; prefer first visible match
+            var el = null;
+            var all = document.querySelectorAll(selector);
+            for (var i = 0; i < all.length; i++) {
+                var rect = all[i].getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) { el = all[i]; break; }
+            }
             if (!el) return;
             // scroll it into view
-            el.scrollIntoView({behavior:'smooth', block:'nearest'});
+            el.scrollIntoView({behavior:'smooth', block:'center'});
             // inject glow animation once
             if (!document.getElementById('mia-highlight-style')) {
                 var s = document.createElement('style');
                 s.id = 'mia-highlight-style';
-                s.textContent = '@keyframes miaGlow{0%,100%{box-shadow:0 0 0 0 rgba(37,211,102,0)}40%{box-shadow:0 0 0 6px rgba(37,211,102,.55)}}.mia-highlight{animation:miaGlow 1.6s ease 3;border-radius:8px;outline:2px solid #25d366 !important}';
+                s.textContent = '@keyframes miaGlow{0%,100%{box-shadow:0 0 0 0 rgba(37,211,102,0);outline-color:transparent}40%{box-shadow:0 0 0 6px rgba(37,211,102,.6);}}.mia-highlight{animation:miaGlow 1.4s ease 4 !important;outline:2px solid #25d366 !important;border-radius:6px !important}';
                 document.head.appendChild(s);
             }
             el.classList.add('mia-highlight');
-            setTimeout(function(){ el.classList.remove('mia-highlight'); }, 5000);
+            setTimeout(function(){ el.classList.remove('mia-highlight'); }, 6000);
         } catch(e){}
     }
 

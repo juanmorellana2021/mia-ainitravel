@@ -384,12 +384,33 @@ class ApiController
 
             "PUEDES RESALTAR ELEMENTOS DE LA PANTALLA. Si el usuario pregunta dónde está algo o necesitas señalar un elemento concreto, " .
             "incluye en tu respuesta JSON un campo 'highlight' con un selector CSS del elemento a resaltar. " .
-            "Selectores disponibles: " .
-            "'[href*=\"leads\"]' (menú Leads), '[href*=\"messages\"]' (menú Mensajes), '[href*=\"analytics\"]' (menú Analíticas), " .
-            "'[href*=\"broadcast\"]' (menú Difusión), '[href*=\"sequences\"]' (menú Automatizaciones), " .
-            "'[href*=\"billing\"]' (menú Suscripción), '[href*=\"settings\"]' (menú Configuración), " .
+            "USA SIEMPRE EL SELECTOR MÁS ESPECÍFICO PARA EL CONTEXTO. Selectores disponibles: " .
+
+            "MENÚ LATERAL (siempre visibles): " .
+            "'a[href*=\"/dashboard\"]' (menú Dashboard), " .
+            "'a[href*=\"leads\"]' (menú Leads en sidebar — NO la tabla), " .
+            "'a[href*=\"messages\"]' (menú Mensajes), " .
+            "'a[href*=\"analytics\"]' (menú Analíticas), " .
+            "'a[href*=\"broadcast\"]' (menú Difusión), " .
+            "'a[href*=\"sequences\"]' (menú Automatizaciones), " .
+            "'a[href*=\"billing\"]' (menú Suscripción), " .
+            "'a[href*=\"settings\"]' (menú Configuración), " .
             "'#mia-help-nav-btn' (este botón de ayuda). " .
-            "Si no hay nada que resaltar, omite el campo 'highlight'. " .
+
+            "PÁGINA LEADS (/dashboard/leads) — para señalar el botón de ver detalle de un lead: " .
+            "'a.btn-outline-primary' (botón ojo/ver de cada fila), " .
+            "'.btn.chat-open-btn' (botón de chat de cada fila), " .
+            "'.mc-table-card' (la tabla completa de leads). " .
+
+            "PÁGINA CONFIGURACIÓN (/dashboard/settings) — " .
+            "'.mc-table-card' (sección principal de configuración), " .
+            "'.bi-whatsapp' (icono para conectar WhatsApp). " .
+
+            "PÁGINA MENSAJES (/dashboard/messages) — " .
+            "'.mc-table-card' (lista de conversaciones). " .
+
+            "Si no hay nada relevante que resaltar, omite el campo 'highlight'. " .
+            "IMPORTANTE: cuando el usuario pida ver, mostrar o señalar algo en pantalla, usa SIEMPRE el campo highlight.";
 
             "FORMATO DE RESPUESTA: responde SIEMPRE con JSON válido así: " .
             "{\"reply\": \"tu respuesta aquí\", \"highlight\": \"selector-css-opcional\"} " .
