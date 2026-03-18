@@ -1,9 +1,61 @@
 # Mia by AiniTravel — Site Update Log
-**Last updated:** March 16, 2026
+**Last updated:** March 18, 2026
 
 ---
 
-## Summary of Deployed Features (as of March 16, 2026)
+## Latest Changes (March 17–18, 2026)
+
+### Feature 8 — Contact Type per Lead (friend / proveedor / ignorar)
+**Commit:** `5ec8667`
+**Date:** March 17, 2026
+**Files changed (6):**
+| File | Change |
+|------|--------|
+| `migrations/008_contact_type.sql` | New: adds `contact_type ENUM('lead','friend','staff','proveedor')` to `mia_client_leads` |
+| `models/ClientLead.php` | Added `$contact_type = 'lead'` property + `contactTypeLabel()` + `contactTypeBadgeClass()` |
+| `services/ClientLeadService.php` | Added `ensureContactTypeColumn()` (auto-applies on boot) + `updateContactType()` |
+| `controllers/DashboardController.php` | `leadUpdate()` now calls `updateContactType()` from `$_POST['contact_type']` |
+| `views/client/lead_detail.php` | 4-pill toggle selector (Lead / Amigo / Proveedor / Ignorar) in the lead info form |
+| `services/ClientBotService.php` | `process()` branches on `contact_type` before any AI/sales logic |
+
+**Bot routing behavior:**
+| Type | Mia behavior |
+|------|-------------|
+| `lead` | Normal full sales bot (default) |
+| `friend` | Casual friendly replies — no sales, no lead capture, max 3 sentences |
+| `proveedor` | Professional admin-assistant mode — helps with orders/payments/logistics |
+| `staff` (shown as "Ignorar") | Silent drop — no reply, no log |
+
+---
+
+### Feature 9 — Remember Me (Keep Me Logged In 30 days)
+**Commit:** `c3a4d1a`
+**Date:** March 18, 2026
+**Files changed (6):**
+| File | Change |
+|------|--------|
+| `migrations/009_remember_tokens.sql` | New: creates `mia_remember_tokens` table |
+| `config/App.php` | Added `CLIENT_REMEMBER_TTL = 2592000` (30 days) constant |
+| `index.php` | Added remember-me session restore block (runs before every route) |
+| `controllers/AuthController.php` | `loginSubmit()` writes token if checkbox checked; `logout()` deletes token + clears cookie |
+| `views/auth/login.php` | "Mantenerme conectado por 30 días" checkbox between password and submit |
+
+**How it works:**
+- On login with checkbox: writes SHA-256 hashed token to `mia_remember_tokens` + sets 30-day `httponly` cookie
+- On every page load: if no session but `mia_remember` cookie exists → validates token, rotates it (replay-safe), re-hydrates session
+- On logout: deletes DB token + clears cookie immediately
+- Raw token is never stored — only SHA-256 hash in DB
+
+---
+
+### Fix — "Ignorar" label clarity (same commit as Feature 9: `c3a4d1a`)
+- Renamed "Staff" pill → **Ignorar** with red color + slash-circle icon
+- Help text updated: "Ignorar = Mia no responde a este número"
+- DB value remains `staff` — only the UI label changed, no data migration needed
+
+---
+
+## Summary of All Deployed Features (as of March 18, 2026)
 
 ---
 
@@ -124,8 +176,10 @@
 | `mia_clients` | `onboarding_done TINYINT(1)` | Added by `ensureOnboardingColumn()` or `007_onboarding.sql` |
 | `mia_clients` | `bot_wa_status VARCHAR(20)` | `'connected'` \| `'disconnected'` |
 | `mia_clients` | `business_hours JSON` | Per-day open/close schedule |
+| `mia_client_leads` | `contact_type ENUM` | `'lead'`\|`'friend'`\|`'staff'`\|`'proveedor'` — controls bot behavior |
 | `mia_page_events` | `page`, `event`, `client_id`, `created_at` | Landing page analytics pixel |
 | `mia_client_addons` | `client_id`, `type`, `credits`, `created_at` | Purchased broadcast credits |
+| `mia_remember_tokens` | `client_id`, `token_hash CHAR(64)`, `expires_at` | SHA-256 hashed remember-me tokens (30-day) |
 | `mia_sequences` | full sequence header | FK to `mia_clients` |
 | `mia_sequence_steps` | `sequence_id`, `step_order`, `delay_hours`, `message` | Steps per sequence |
 | `mia_lead_sequences` | `lead_id`, `sequence_id`, `current_step`, `next_run_at` | Active enrollments |
@@ -153,19 +207,23 @@
 
 ## Commit History (key milestones)
 
-| Commit | Description |
-|--------|-------------|
-| `45c427c` | fix: session path + 8h TTL to stop superadmin 1h logout |
-| `8262892` | fix: PLAN_CAPS missing leads key + copy updates |
-| `3688c5c` | feat: appointments calendar + DB audit fixes (page_events + track method) |
-| `081e5a5` | fix: calendar grid cell backgrounds |
-| `0c61ac5` | feat: client onboarding wizard + Mia help chat widget |
+| Commit | Date | Description |
+|--------|------|-------------|
+| `45c427c` | 2026-03 | fix: session path + 8h TTL to stop superadmin 1h logout |
+| `8262892` | 2026-03 | fix: PLAN_CAPS missing leads key + copy updates |
+| `3688c5c` | 2026-03 | feat: appointments calendar + DB audit fixes (page_events + track method) |
+| `081e5a5` | 2026-03 | fix: calendar grid cell backgrounds |
+| `0c61ac5` | 2026-03-16 | feat: client onboarding wizard + Mia help chat widget |
+| `d77fab5` | 2026-03-16 | docs: SITE_UPDATE_LOG initial creation |
+| `5ec8667` | 2026-03-17 | feat: contact type per lead — friend/staff/proveedor bot routing |
+| `c3a4d1a` | 2026-03-18 | feat: remember-me 30-day login + rename Staff→Ignorar contact type |
 
 ---
 
 ## Next Steps / Known TODOs
 
-- Run `migrations/007_onboarding.sql` manually on VPS if `ClientService::ensureOnboardingColumn()` does not fire on first request (it fires on every `ClientService` instantiation, so it should auto-apply)
-- Consider adding email notification when a new lead books an appointment
 - Analytics dashboard currently shows placeholder data — hook up real queries from `mia_page_events` and lead activity tables
 - Superadmin `mia_brain.php` view is static — consider wiring it to live Groq system-prompt editing
+- Consider adding email notification when a new lead books an appointment
+- Lead #32 in DB has phone `0` (bad test data) — can be deleted manually: `DELETE FROM mia_client_leads WHERE phone='0' AND client_id=X`
+- Add a "bulk mark as Ignorar" option on the leads list for mass-managing test/spam numbers
