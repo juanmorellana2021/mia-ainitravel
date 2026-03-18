@@ -107,8 +107,9 @@ $initials      = strtoupper(substr($clientName, 0, 2));
 
     <div class="mc-sidebar-footer">
         <div class="mc-nav-divider"></div>
-        <button id="mia-help-nav-btn" class="mc-nav-item" style="border:none;background:none;width:100%;text-align:left;cursor:pointer" onclick="typeof miaHelpOpen==='function'?miaHelpOpen():void 0">
-            <i class="bi bi-robot"></i> Ayuda · Mia
+        <button id="mia-help-nav-btn" onclick="typeof miaHelpOpen==='function'?miaHelpOpen():void 0" style="display:flex;align-items:center;gap:10px;width:calc(100% - 20px);margin:6px 10px 4px;padding:9px 14px;border:none;border-radius:10px;background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;font-size:.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(37,211,102,.35);transition:filter .15s" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">
+            <i class="bi bi-robot" style="font-size:1rem"></i> Ayuda · Mia
+            <span style="margin-left:auto;font-size:.65rem;background:rgba(255,255,255,.22);border-radius:6px;padding:2px 6px;letter-spacing:.03em">IA</span>
         </button>
         <a href="<?= $base ?>/" class="mc-nav-item" target="_blank">
             <i class="bi bi-globe"></i> Ver sitio
