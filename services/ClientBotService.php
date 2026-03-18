@@ -79,7 +79,7 @@ class ClientBotService
      * Process an incoming WhatsApp message from a guest.
      * Returns ['reply' => string].
      */
-    public function process(string $guestPhone, string $message): array
+    public function process(string $guestPhone, string $message, string $fromLid = ''): array
     {
         $guestPhone = $this->normalizePhone($guestPhone);
         $msg        = trim($message);
@@ -96,6 +96,28 @@ class ClientBotService
         );
         $stmt->execute([$this->client->id, $guestPhone]);
         $leadRow = $stmt->fetch();
+
+        // ── LID migration: if not found by real phone, check old LID-derived number ──
+        if (!$leadRow && $fromLid !== '') {
+            $lidPhone = $this->normalizePhone($fromLid);
+            if ($lidPhone !== $guestPhone) {
+                $stmtLid = $this->pdo->prepare(
+                    "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
+                );
+                $stmtLid->execute([$this->client->id, $lidPhone]);
+                $leadRow = $stmtLid->fetch();
+                if ($leadRow) {
+                    // Update to real phone so future lookups find it correctly
+                    $this->pdo->prepare(
+                        "UPDATE mia_client_leads SET phone=? WHERE id=?"
+                    )->execute([$guestPhone, $leadRow['id']]);
+                    $this->pdo->prepare(
+                        "UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?"
+                    )->execute([$guestPhone, $this->client->id, $lidPhone]);
+                    error_log("[ClientBot:{$this->client->id}] Migrated phone {$lidPhone} → {$guestPhone} for lead {$leadRow['id']}");
+                }
+            }
+        }
 
         if ($leadRow) {
             $leadId = (int)$leadRow['id'];

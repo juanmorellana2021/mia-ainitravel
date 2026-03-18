@@ -152,7 +152,9 @@ class ApiController
 
         try {
             $service = new ClientBotService($client);
-            $result  = $service->process($phone, $message);
+            // Pass the raw LID 'from' so the service can migrate old LID-stored leads
+            $fromLid = trim((string) $data['from']);
+            $result  = $service->process($phone, $message, $fromLid);
 
             echo json_encode([
                 'success' => true,
