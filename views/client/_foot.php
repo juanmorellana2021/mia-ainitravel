@@ -119,20 +119,31 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
             body:    JSON.stringify({message: text, history: history.slice(-12)})
         })
         .then(function(r){ return r.json(); })
-        .then(function(d){
             var reply = d.reply || '¿En qué más puedo ayudarte?';
             // Safety net: if reply is still raw JSON string, parse it
             if (reply.trimStart().startsWith('{')) {
                 try {
                     var inner = JSON.parse(reply);
-                    if (inner.reply) { reply = inner.reply; if (inner.highlight && !d.highlight) d.highlight = inner.highlight; }
+                    if (inner.reply) { reply = inner.reply; if (inner.highlight && !d.highlight) d.highlight = inner.highlight; if (inner.navigate && !d.navigate) d.navigate = inner.navigate; }
                 } catch(e){}
             }
             typing.textContent = reply;
             history.push({role:'assistant', content: reply});
             saveHistory(history);
+            // Append a navigate button if Mia wants to send user to another page
+            if (d.navigate) {
+                var btn = document.createElement('a');
+                btn.href = d.navigate;
+                btn.textContent = 'Ir ahora →';
+                btn.style.cssText = 'display:inline-block;margin-top:6px;padding:5px 12px;background:#25d366;color:#fff;border-radius:16px;font-size:.78rem;font-weight:600;text-decoration:none';
+                typing.appendChild(document.createElement('br'));
+                typing.appendChild(btn);
+                // Also highlight the sidebar link for that section
+                doHighlight('a[href*="' + d.navigate.split('/').pop() + '"]');
+            } else if (d.highlight) {
+                doHighlight(d.highlight);
+            }
             scrollBottom();
-            if (d.highlight) doHighlight(d.highlight);
         })
         .catch(function(){
             typing.textContent = 'Tuve un problema. Intenta de nuevo. 🙏';

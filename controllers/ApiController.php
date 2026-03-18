@@ -382,41 +382,26 @@ class ApiController
             "SUSCRIPCIÓN (/dashboard/billing) – manejo del plan, facturas, upgrades. " .
             "CONFIGURACIÓN (/dashboard/settings) – personalidad del bot, idioma, horarios de atención, mensaje de bienvenida, conectar WhatsApp (escanear QR con WhatsApp Business → Dispositivos vinculados → Vincular dispositivo). " .
 
-            "PUEDES RESALTAR ELEMENTOS DE LA PANTALLA. Si el usuario pregunta dónde está algo o necesitas señalar un elemento concreto, " .
-            "incluye en tu respuesta JSON un campo 'highlight' con un selector CSS del elemento a resaltar. " .
-            "USA SIEMPRE EL SELECTOR MÁS ESPECÍFICO PARA EL CONTEXTO. Selectores disponibles: " .
+            "PUEDES RESALTAR ELEMENTOS Y NAVEGAR A OTRA PÁGINA. " .
+            "Si la respuesta está en otra página, incluye 'navigate' con la URL (ej: /dashboard/settings). " .
+            "Si el elemento está en la página ACTUAL, usa 'highlight'. Puedes usar ambos. " .
+            "NUNCA menciones nombres de selectores CSS en el texto de 'reply' — son internos. " .
+            "En el reply habla natural (ej: 'Ve a Configuración y conecta WhatsApp' — no '.bi-whatsapp'). " .
 
-            "MENÚ LATERAL (siempre visibles): " .
-            "'a[href*=\"/dashboard\"]' (menú Dashboard), " .
-            "'a[href*=\"leads\"]' (menú Leads en sidebar — NO la tabla), " .
-            "'a[href*=\"messages\"]' (menú Mensajes), " .
-            "'a[href*=\"analytics\"]' (menú Analíticas), " .
-            "'a[href*=\"broadcast\"]' (menú Difusión), " .
-            "'a[href*=\"sequences\"]' (menú Automatizaciones), " .
-            "'a[href*=\"billing\"]' (menú Suscripción), " .
-            "'a[href*=\"settings\"]' (menú Configuración), " .
-            "'#mia-help-nav-btn' (este botón de ayuda). " .
+            "SELECTORES para el campo highlight (NUNCA en el reply): " .
+            "Menú lateral (siempre visibles): 'a[href*=\"settings\"]', 'a[href*=\"leads\"]', 'a[href*=\"messages\"]', " .
+            "'a[href*=\"analytics\"]', 'a[href*=\"broadcast\"]', 'a[href*=\"sequences\"]', 'a[href*=\"billing\"]'. " .
+            "En /dashboard/leads: 'a.btn-outline-primary' (botón ver), '.mc-table-card' (tabla). " .
+            "En /dashboard/settings: '.mc-table-card' (sección config). " .
 
-            "PÁGINA LEADS (/dashboard/leads) — para señalar el botón de ver detalle de un lead: " .
-            "'a.btn-outline-primary' (botón ojo/ver de cada fila), " .
-            "'.btn.chat-open-btn' (botón de chat de cada fila), " .
-            "'.mc-table-card' (la tabla completa de leads). " .
-
-            "PÁGINA CONFIGURACIÓN (/dashboard/settings) — " .
-            "'.mc-table-card' (sección principal de configuración), " .
-            "'.bi-whatsapp' (icono para conectar WhatsApp). " .
-
-            "PÁGINA MENSAJES (/dashboard/messages) — " .
-            "'.mc-table-card' (lista de conversaciones). " .
-
-            "Si no hay nada relevante que resaltar, omite el campo 'highlight'. " .
-            "IMPORTANTE: cuando el usuario pida ver, mostrar o señalar algo en pantalla, usa SIEMPRE el campo highlight. " .
+            "REGLA CLAVE: si el elemento a destacar está en OTRA página, pon 'navigate' a esa página " .
+            "Y en 'highlight' pon el ítem del menú lateral que lleva a ella. " .
 
             "FORMATO DE RESPUESTA: responde SIEMPRE con JSON válido así: " .
-            "{\"reply\": \"tu respuesta aquí\", \"highlight\": \"selector-css-opcional\"} " .
+            "{\"reply\": \"texto natural\", \"highlight\": \"selector-opcional\", \"navigate\": \"/dashboard/ruta-opcional\"} " .
             "REGLAS ESTRICTAS: (1) El JSON empieza con { y termina con } — nada más. " .
-            "(2) NUNCA pongas texto, emojis ni caracteres FUERA del objeto JSON. " .
-            "(3) Los emojis van únicamente DENTRO del valor de 'reply'. Solo JSON puro.";
+            "(2) NUNCA texto, emojis ni selectores CSS fuera del JSON. " .
+            "(3) Emojis solo dentro de 'reply'. Solo JSON puro.";
 
         $messages   = [['role' => 'system', 'content' => $systemPrompt]];
         foreach ($history as $h) {
@@ -477,6 +462,7 @@ class ApiController
 
         $reply     = trim((string)($parsed['reply'] ?? ''));
         $highlight = trim((string)($parsed['highlight'] ?? ''));
+        $navigate  = trim((string)($parsed['navigate'] ?? ''));
         // Strip any trailing {...} JSON artifact from the reply text itself
         $reply = trim(preg_replace('/\s*\{[^{}]+\}\s*$/', '', $reply));
         if ($reply === '') {
@@ -487,9 +473,15 @@ class ApiController
         if ($highlight !== '' && preg_match('/^[\w\s\[\]#.*=":\'>,\-\/]+$/', $highlight)) {
             $allowedHighlight = $highlight;
         }
+        // Whitelist navigate to internal dashboard paths only
+        $allowedNavigate = '';
+        if ($navigate !== '' && preg_match('/^\/dashboard([\\/\w-]*)$/', $navigate)) {
+            $allowedNavigate = $navigate;
+        }
 
         $out = ['reply' => $reply];
         if ($allowedHighlight !== '') $out['highlight'] = $allowedHighlight;
+        if ($allowedNavigate  !== '') $out['navigate']  = $allowedNavigate;
         echo json_encode($out, JSON_UNESCAPED_UNICODE);
     }
 }
