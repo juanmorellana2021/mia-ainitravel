@@ -410,7 +410,7 @@ class ApiController
             "'.mc-table-card' (lista de conversaciones). " .
 
             "Si no hay nada relevante que resaltar, omite el campo 'highlight'. " .
-            "IMPORTANTE: cuando el usuario pida ver, mostrar o señalar algo en pantalla, usa SIEMPRE el campo highlight.";
+            "IMPORTANTE: cuando el usuario pida ver, mostrar o señalar algo en pantalla, usa SIEMPRE el campo highlight. " .
 
             "FORMATO DE RESPUESTA: responde SIEMPRE con JSON válido así: " .
             "{\"reply\": \"tu respuesta aquí\", \"highlight\": \"selector-css-opcional\"} " .
@@ -426,10 +426,11 @@ class ApiController
 
         $apiKey  = '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';
         $payload = json_encode([
-            'model'       => 'llama-3.3-70b-versatile',
-            'messages'    => $messages,
-            'temperature' => 0.5,
-            'max_tokens'  => 180,
+            'model'           => 'llama-3.3-70b-versatile',
+            'messages'        => $messages,
+            'temperature'     => 0.5,
+            'max_tokens'      => 200,
+            'response_format' => ['type' => 'json_object'],  // force valid JSON output
         ]);
 
         $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
@@ -455,20 +456,30 @@ class ApiController
         $result  = json_decode($response, true);
         $raw     = trim($result['choices'][0]['message']['content'] ?? '');
 
-        // Model should return pure JSON. Extract the {} block robustly in case
-        // it adds trailing emojis or text outside the JSON object.
+        // response_format=json_object ensures valid JSON, but extract robustly anyway.
         $parsed = json_decode($raw, true);
         if (!is_array($parsed)) {
-            // Find the first complete { ... } block in the output
-            if (preg_match('/\{.*\}/s', $raw, $m)) {
-                $parsed = json_decode($m[0], true);
+            // Model may have put text before/after the JSON block — find and extract it.
+            if (preg_match('/\{[^{}]*\}/s', $raw, $m, PREG_OFFSET_CAPTURE)) {
+                $jsonBlock  = $m[0][0];
+                $jsonOffset = $m[0][1];
+                $parsedBlock = json_decode($jsonBlock, true);
+                if (is_array($parsedBlock)) {
+                    $parsed = $parsedBlock;
+                    // Use text before the { as reply if model didn't put it inside
+                    if (empty($parsed['reply'])) {
+                        $textBefore = trim(substr($raw, 0, $jsonOffset));
+                        if ($textBefore !== '') $parsed['reply'] = $textBefore;
+                    }
+                }
             }
         }
 
-        $reply     = trim((string)($parsed['reply'] ?? $raw));
+        $reply     = trim((string)($parsed['reply'] ?? ''));
         $highlight = trim((string)($parsed['highlight'] ?? ''));
-        // If reply still looks like raw JSON (total parse failure), return fallback
-        if ($reply === '' || (str_starts_with($reply, '{') && str_contains($reply, '"reply"'))) {
+        // Strip any trailing {...} JSON artifact from the reply text itself
+        $reply = trim(preg_replace('/\s*\{[^{}]+\}\s*$/', '', $reply));
+        if ($reply === '') {
             $reply = '¿En qué parte necesitas ayuda? 😊';
         }
         // Whitelist highlight selectors to prevent injection
