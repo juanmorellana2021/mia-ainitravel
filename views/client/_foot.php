@@ -62,7 +62,7 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
 <script>
 (function(){
     var BASE      = '<?= App::basePath() ?>';
-    var STORE_KEY = 'mia_chat_<?= (int)$_SESSION['mia_client_id'] ?>';
+    var STORE_KEY = 'mia_chat_<?= (int)($_SESSION['mia_client_id'] ?? 0) ?>';
     var open      = false;
 
     // ── Persistent history (localStorage survives page nav + browser reopen) ──
@@ -128,6 +128,7 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
             body:    JSON.stringify({message: text, history: history.slice(-12)})
         })
         .then(function(r){ return r.json(); })
+        .then(function(d){
             var reply = d.reply || '¿En qué más puedo ayudarte?';
             // Safety net: if reply is still raw JSON string, parse it
             if (reply.trimStart().startsWith('{')) {
