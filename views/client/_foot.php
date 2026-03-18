@@ -121,6 +121,13 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
         .then(function(r){ return r.json(); })
         .then(function(d){
             var reply = d.reply || '¿En qué más puedo ayudarte?';
+            // Safety net: if reply is still raw JSON string, parse it
+            if (reply.trimStart().startsWith('{')) {
+                try {
+                    var inner = JSON.parse(reply);
+                    if (inner.reply) { reply = inner.reply; if (inner.highlight && !d.highlight) d.highlight = inner.highlight; }
+                } catch(e){}
+            }
             typing.textContent = reply;
             history.push({role:'assistant', content: reply});
             saveHistory(history);

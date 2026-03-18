@@ -393,7 +393,9 @@ class ApiController
 
             "FORMATO DE RESPUESTA: responde SIEMPRE con JSON válido así: " .
             "{\"reply\": \"tu respuesta aquí\", \"highlight\": \"selector-css-opcional\"} " .
-            "Nunca escribas texto fuera del JSON. Solo JSON.";
+            "REGLAS ESTRICTAS: (1) El JSON empieza con { y termina con } — nada más. " .
+            "(2) NUNCA pongas texto, emojis ni caracteres FUERA del objeto JSON. " .
+            "(3) Los emojis van únicamente DENTRO del valor de 'reply'. Solo JSON puro.";
 
         $messages   = [['role' => 'system', 'content' => $systemPrompt]];
         foreach ($history as $h) {
@@ -432,11 +434,20 @@ class ApiController
         $result  = json_decode($response, true);
         $raw     = trim($result['choices'][0]['message']['content'] ?? '');
 
-        // Model should return JSON; parse it, fall back gracefully
-        $parsed    = json_decode($raw, true);
+        // Model should return pure JSON. Extract the {} block robustly in case
+        // it adds trailing emojis or text outside the JSON object.
+        $parsed = json_decode($raw, true);
+        if (!is_array($parsed)) {
+            // Find the first complete { ... } block in the output
+            if (preg_match('/\{.*\}/s', $raw, $m)) {
+                $parsed = json_decode($m[0], true);
+            }
+        }
+
         $reply     = trim((string)($parsed['reply'] ?? $raw));
         $highlight = trim((string)($parsed['highlight'] ?? ''));
-        if ($reply === '') {
+        // If reply still looks like raw JSON (total parse failure), return fallback
+        if ($reply === '' || (str_starts_with($reply, '{') && str_contains($reply, '"reply"'))) {
             $reply = '¿En qué parte necesitas ayuda? 😊';
         }
         // Whitelist highlight selectors to prevent injection
