@@ -366,7 +366,7 @@ require __DIR__ . '/_sidebar.php';
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form method="POST" action="<?= $base ?>/dashboard/leads/add">
-                <?= App::csrfField() ?>
+                <input type="hidden" name="_csrf" value="<?= htmlspecialchars(App::csrfToken()) ?>">
                 <div class="modal-header">
                     <h5 class="modal-title" id="addContactModalLabel">
                         <i class="bi bi-person-plus-fill text-success me-2"></i>Agregar Contacto
