@@ -139,11 +139,20 @@ function startSession() {
         if (!messageText) messageText = `[${mediaType || 'media'}]`;
 
         const from = msg.from;
-        console.log(`[worker:${clientId}] MSG from ${from}: ${messageText.substring(0, 80)}`);
+
+        // Resolve real phone number — LID format (@lid) is an internal WA ID, not dialable
+        let realPhone = from;
+        try {
+            const contact = await msg.getContact();
+            if (contact && contact.number) realPhone = contact.number;
+        } catch (_) {}
+
+        console.log(`[worker:${clientId}] MSG from ${from} (phone:${realPhone}): ${messageText.substring(0, 80)}`);
 
         try {
             const reply = await callApi('/api/client-chat', {
                 from,
+                phone:      realPhone,
                 message:    messageText,
                 client_id:  parseInt(clientId, 10),
                 media_data: mediaData,

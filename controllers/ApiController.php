@@ -108,7 +108,9 @@ class ApiController
             return;
         }
 
-        $phone     = trim((string) $data['from']);
+        // Prefer real phone number over LID/internal WA ID if worker resolved it
+        $phone     = trim((string) ($data['phone'] ?? $data['from']));
+        if (empty($phone)) $phone = trim((string) $data['from']);
         $message   = trim((string) ($data['message'] ?? ''));
         $clientId  = (int) $data['client_id'];
 
