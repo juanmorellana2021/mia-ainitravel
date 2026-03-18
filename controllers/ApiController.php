@@ -336,10 +336,10 @@ class ApiController
             return;
         }
 
-        // Rate-limit: max 40 messages per PHP session to prevent API abuse
+        // Rate-limit: max 100 messages per PHP session to prevent API abuse
         $_SESSION['ob_help_count'] = ($_SESSION['ob_help_count'] ?? 0) + 1;
-        if ($_SESSION['ob_help_count'] > 40) {
-            echo json_encode(['reply' => 'Has alcanzado el límite de mensajes por sesión. ¡Ya casi terminas la configuración! 😊']);
+        if ($_SESSION['ob_help_count'] > 100) {
+            echo json_encode(['reply' => 'Has alcanzado el límite de mensajes por sesión. Recarga la página para continuar. 😊']);
             return;
         }
 
@@ -363,21 +363,37 @@ class ApiController
             }
         }
 
-        $bizName = htmlspecialchars(
-            $_SESSION['mia_client']['business_name'] ?? 'tu negocio',
-            ENT_QUOTES
-        );
+        $bizName    = htmlspecialchars($_SESSION['mia_client']['business_name'] ?? 'tu negocio', ENT_QUOTES);
+        $currentPage = htmlspecialchars(trim(parse_url($_SERVER['HTTP_REFERER'] ?? '', PHP_URL_PATH), '/'), ENT_QUOTES);
 
         $systemPrompt =
-            "Eres Mia, la asistente de configuración de 'Mia by AiniTravel'. " .
-            "Estás ayudando a {$bizName} a configurar su bot de WhatsApp en su panel de Mia. " .
-            "Responde SIEMPRE en español. Sé muy breve (máximo 3 oraciones). " .
-            "Solo responde preguntas sobre: configurar el perfil del negocio, conectar WhatsApp " .
-            "(escanear QR con WhatsApp Business → Dispositivos vinculados), planes y precios de Mia, " .
-            "características del bot (captura de leads, respuesta automática, personalidad del bot), " .
-            "y el proceso de bienvenida. " .
-            "Si preguntan algo fuera de tema, redirige amablemente a la configuración. " .
-            "Usa máximo 1 emoji por respuesta. Sé directa y amigable.";
+            "Eres Mia, la asistente inteligente integrada en el panel de 'Mia by AiniTravel'. " .
+            "Estás ayudando a {$bizName}. La página actual del cliente es: '{$currentPage}'. " .
+            "Responde SIEMPRE en español. Sé concisa (máx 3 oraciones de respuesta). Usa máximo 1 emoji. Sé directa y amigable. " .
+
+            "CONOCES TODO EL PANEL. Secciones disponibles: " .
+            "DASHBOARD (/dashboard) – resumen de métricas, leads nuevos, mensajes recientes. " .
+            "LEADS (/dashboard/leads) – lista de contactos capturados por el bot; cada lead tiene estado (Nuevo, Interesado, Ganado, Perdido) y estimado de valor; puedes hacer clic en un lead para ver su conversación completa. " .
+            "MENSAJES (/dashboard/messages) – historial de conversaciones de WhatsApp con todos los contactos. " .
+            "ANALÍTICAS (/dashboard/analytics) – gráficas de rendimiento del bot, tasa de respuesta, leads por día. " .
+            "DIFUSIÓN (/dashboard/broadcast) – envío masivo de mensajes a listas de contactos. Requiere plan Pro+. " .
+            "AUTOMATIZACIONES (/dashboard/sequences) – secuencias de mensajes programados (follow-ups automáticos). Requiere plan Pro+. " .
+            "CITAS (/dashboard/appointments) – sistema para que el bot agende citas. Requiere plan Pro+. " .
+            "SUSCRIPCIÓN (/dashboard/billing) – manejo del plan, facturas, upgrades. " .
+            "CONFIGURACIÓN (/dashboard/settings) – personalidad del bot, idioma, horarios de atención, mensaje de bienvenida, conectar WhatsApp (escanear QR con WhatsApp Business → Dispositivos vinculados → Vincular dispositivo). " .
+
+            "PUEDES RESALTAR ELEMENTOS DE LA PANTALLA. Si el usuario pregunta dónde está algo o necesitas señalar un elemento concreto, " .
+            "incluye en tu respuesta JSON un campo 'highlight' con un selector CSS del elemento a resaltar. " .
+            "Selectores disponibles: " .
+            "'[href*=\"leads\"]' (menú Leads), '[href*=\"messages\"]' (menú Mensajes), '[href*=\"analytics\"]' (menú Analíticas), " .
+            "'[href*=\"broadcast\"]' (menú Difusión), '[href*=\"sequences\"]' (menú Automatizaciones), " .
+            "'[href*=\"billing\"]' (menú Suscripción), '[href*=\"settings\"]' (menú Configuración), " .
+            "'#mia-help-nav-btn' (este botón de ayuda). " .
+            "Si no hay nada que resaltar, omite el campo 'highlight'. " .
+
+            "FORMATO DE RESPUESTA: responde SIEMPRE con JSON válido así: " .
+            "{\"reply\": \"tu respuesta aquí\", \"highlight\": \"selector-css-opcional\"} " .
+            "Nunca escribas texto fuera del JSON. Solo JSON.";
 
         $messages   = [['role' => 'system', 'content' => $systemPrompt]];
         foreach ($history as $h) {
@@ -413,12 +429,24 @@ class ApiController
             return;
         }
 
-        $result = json_decode($response, true);
-        $reply  = trim($result['choices'][0]['message']['content'] ?? '');
+        $result  = json_decode($response, true);
+        $raw     = trim($result['choices'][0]['message']['content'] ?? '');
+
+        // Model should return JSON; parse it, fall back gracefully
+        $parsed    = json_decode($raw, true);
+        $reply     = trim((string)($parsed['reply'] ?? $raw));
+        $highlight = trim((string)($parsed['highlight'] ?? ''));
         if ($reply === '') {
-            $reply = '¿En qué parte de la configuración necesitas ayuda? 😊';
+            $reply = '¿En qué parte necesitas ayuda? 😊';
+        }
+        // Whitelist highlight selectors to prevent injection
+        $allowedHighlight = '';
+        if ($highlight !== '' && preg_match('/^[\w\s\[\]#.*=":\'>,\-\/]+$/', $highlight)) {
+            $allowedHighlight = $highlight;
         }
 
-        echo json_encode(['reply' => $reply], JSON_UNESCAPED_UNICODE);
+        $out = ['reply' => $reply];
+        if ($allowedHighlight !== '') $out['highlight'] = $allowedHighlight;
+        echo json_encode($out, JSON_UNESCAPED_UNICODE);
     }
 }

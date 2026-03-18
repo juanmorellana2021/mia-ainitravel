@@ -46,7 +46,7 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
         <div class="mia-avatar"><i class="bi bi-robot" style="font-size:1rem"></i></div>
         <div>
             <div style="font-weight:700;font-size:.9rem">Mia te ayuda</div>
-            <div style="font-size:.72rem;opacity:.85">Asistente de configuración</div>
+            <div style="font-size:.72rem;opacity:.85">Tu asistente del panel</div>
         </div>
         <button onclick="miaHelpClose()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:1.1rem;line-height:1;cursor:pointer">&times;</button>
     </div>
@@ -61,15 +61,33 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
 
 <script>
 (function(){
-    var BASE     = '<?= App::basePath() ?>';
-    var history  = JSON.parse(sessionStorage.getItem('mia_ob_history') || '[]');
-    var open     = false;
+    var BASE      = '<?= App::basePath() ?>';
+    var STORE_KEY = 'mia_chat_<?= (int)$_SESSION['mia_client_id'] ?>';
+    var open      = false;
 
+    // ── Persistent history (localStorage survives page nav + browser reopen) ──
+    function loadHistory() {
+        try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch(e){ return []; }
+    }
+    function saveHistory(h) {
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(h.slice(-40))); } catch(e){}
+    }
+
+    var history = loadHistory();
+
+    // ── Restore previous messages into DOM on every page load ─────────────────
+    var msgs = document.getElementById('mia-help-messages');
+    if (history.length) {
+        msgs.innerHTML = ''; // clear default greeting if we have history
+        history.forEach(function(t){ buildMsgEl(t.content, t.role === 'assistant' ? 'bot' : 'user'); });
+    }
+
+    // ── Open / close ──────────────────────────────────────────────────────────
     window.miaHelpOpen = function(){
         open = true;
         document.getElementById('mia-help-panel').classList.add('open');
         scrollBottom();
-        document.getElementById('mia-help-input').focus();
+        setTimeout(function(){ document.getElementById('mia-help-input').focus(); }, 80);
     };
     window.miaHelpClose = function(){
         open = false;
@@ -80,51 +98,72 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
         if (e.key === 'Enter') miaHelpSend();
     });
 
+    // ── Send ──────────────────────────────────────────────────────────────────
     window.miaHelpSend = function(){
         var inp  = document.getElementById('mia-help-input');
         var send = document.getElementById('mia-help-send');
         var text = inp.value.trim();
         if (!text) return;
 
-        addMsg(text, 'user');
+        buildMsgEl(text, 'user');
         history.push({role:'user', content:text});
+        saveHistory(history);
         inp.value = '';
         send.disabled = true;
 
-        var typing = addMsg('...', 'bot');
+        var typing = buildMsgEl('...', 'bot');
 
         fetch(BASE + '/api/onboarding-help', {
             method:  'POST',
             headers: {'Content-Type':'application/json'},
-            body:    JSON.stringify({message: text, history: history.slice(-6)})
+            body:    JSON.stringify({message: text, history: history.slice(-12)})
         })
         .then(function(r){ return r.json(); })
         .then(function(d){
-            typing.textContent = d.reply || '¿En qué más puedo ayudarte?';
-            history.push({role:'assistant', content: typing.textContent});
-            history = history.slice(-14); // keep last 7 turns
-            sessionStorage.setItem('mia_ob_history', JSON.stringify(history));
+            var reply = d.reply || '¿En qué más puedo ayudarte?';
+            typing.textContent = reply;
+            history.push({role:'assistant', content: reply});
+            saveHistory(history);
             scrollBottom();
+            if (d.highlight) doHighlight(d.highlight);
         })
         .catch(function(){
-            typing.textContent = 'Tuve un problema. Intenta de nuevo.';
+            typing.textContent = 'Tuve un problema. Intenta de nuevo. 🙏';
         })
         .finally(function(){ send.disabled = false; });
     };
 
-    function addMsg(text, role){
-        var msgs = document.getElementById('mia-help-messages');
-        var div  = document.createElement('div');
+    // ── Highlight a page element by CSS selector ──────────────────────────────
+    function doHighlight(selector) {
+        try {
+            var el = document.querySelector(selector);
+            if (!el) return;
+            // scroll it into view
+            el.scrollIntoView({behavior:'smooth', block:'nearest'});
+            // inject glow animation once
+            if (!document.getElementById('mia-highlight-style')) {
+                var s = document.createElement('style');
+                s.id = 'mia-highlight-style';
+                s.textContent = '@keyframes miaGlow{0%,100%{box-shadow:0 0 0 0 rgba(37,211,102,0)}40%{box-shadow:0 0 0 6px rgba(37,211,102,.55)}}.mia-highlight{animation:miaGlow 1.6s ease 3;border-radius:8px;outline:2px solid #25d366 !important}';
+                document.head.appendChild(s);
+            }
+            el.classList.add('mia-highlight');
+            setTimeout(function(){ el.classList.remove('mia-highlight'); }, 5000);
+        } catch(e){}
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function buildMsgEl(text, role) {
+        var div = document.createElement('div');
         div.className = 'mia-msg ' + role;
         div.textContent = text;
-        msgs.appendChild(div);
+        document.getElementById('mia-help-messages').appendChild(div);
         scrollBottom();
         return div;
     }
-
     function scrollBottom(){
-        var msgs = document.getElementById('mia-help-messages');
-        msgs.scrollTop = msgs.scrollHeight;
+        var m = document.getElementById('mia-help-messages');
+        m.scrollTop = m.scrollHeight;
     }
 })();
 </script>
