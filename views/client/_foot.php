@@ -22,19 +22,11 @@ document.querySelectorAll('#mcSidebar .mc-nav-item').forEach(function(link) {
 });
 </script>
 
-<?php
-// Show Mia help chat widget only while the client hasn't finished onboarding
-$_showMiaHelp = !empty($_SESSION['mia_client_id'])
-             && empty($_SESSION['mia_client']['onboarding_done']);
-?>
-<?php if ($_showMiaHelp): ?>
-<!-- ── Mia onboarding help chat widget ──────────────────────────────────────── -->
+<?php if (!empty($_SESSION['mia_client_id'])): ?>
+<!-- ── Mia help chat widget ──────────────────────────────────────────────────── -->
 <style>
-#mia-help-btn{position:fixed;bottom:20px;left:92px;z-index:1060;width:48px;height:48px;border-radius:50%;background:#25d366;border:none;box-shadow:0 4px 16px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s}
-#mia-help-btn:hover{transform:scale(1.08)}
-#mia-help-btn .mia-notif{position:absolute;top:2px;right:2px;width:14px;height:14px;background:#ff4b4b;border-radius:50%;border:2px solid #fff;display:none}
-#mia-help-panel{position:fixed;bottom:80px;left:92px;z-index:1059;width:300px;max-height:460px;border-radius:16px;background:#fff;box-shadow:0 8px 40px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden}
-@media(max-width:768px){#mia-help-btn{left:16px}#mia-help-panel{left:16px;width:calc(100vw - 32px)}}
+#mia-help-panel{position:fixed;bottom:60px;left:248px;z-index:1059;width:320px;max-height:460px;border-radius:16px;background:#fff;box-shadow:0 8px 40px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden}
+@media(max-width:768px){#mia-help-panel{left:16px;bottom:16px;width:calc(100vw - 32px)}}
 #mia-help-panel.open{display:flex}
 #mia-help-header{background:#25d366;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 #mia-help-header .mia-avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center}
@@ -48,11 +40,6 @@ $_showMiaHelp = !empty($_SESSION['mia_client_id'])
 #mia-help-send{width:36px;height:36px;border-radius:50%;background:#25d366;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 #mia-help-send:disabled{opacity:.5;cursor:default}
 </style>
-
-<button id="mia-help-btn" title="Pregúntale a Mia">
-    <i class="bi bi-whatsapp" style="color:#fff;font-size:1.4rem"></i>
-    <span class="mia-notif" id="mia-notif-dot"></span>
-</button>
 
 <div id="mia-help-panel">
     <div id="mia-help-header">
@@ -77,24 +64,10 @@ $_showMiaHelp = !empty($_SESSION['mia_client_id'])
     var BASE     = '<?= App::basePath() ?>';
     var history  = JSON.parse(sessionStorage.getItem('mia_ob_history') || '[]');
     var open     = false;
-    var notifShown = false;
-
-    // Show notification dot after 8s if panel hasn't been opened
-    setTimeout(function(){
-        if (!open && !notifShown) {
-            document.getElementById('mia-notif-dot').style.display = 'block';
-            notifShown = true;
-        }
-    }, 8000);
-
-    document.getElementById('mia-help-btn').addEventListener('click', function(){
-        open ? miaHelpClose() : miaHelpOpen();
-    });
 
     window.miaHelpOpen = function(){
         open = true;
         document.getElementById('mia-help-panel').classList.add('open');
-        document.getElementById('mia-notif-dot').style.display = 'none';
         scrollBottom();
         document.getElementById('mia-help-input').focus();
     };

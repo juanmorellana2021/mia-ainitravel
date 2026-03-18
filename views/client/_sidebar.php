@@ -107,6 +107,9 @@ $initials      = strtoupper(substr($clientName, 0, 2));
 
     <div class="mc-sidebar-footer">
         <div class="mc-nav-divider"></div>
+        <button id="mia-help-nav-btn" class="mc-nav-item" style="border:none;background:none;width:100%;text-align:left;cursor:pointer" onclick="typeof miaHelpOpen==='function'?miaHelpOpen():void 0">
+            <i class="bi bi-robot"></i> Ayuda · Mia
+        </button>
         <a href="<?= $base ?>/" class="mc-nav-item" target="_blank">
             <i class="bi bi-globe"></i> Ver sitio
         </a>
