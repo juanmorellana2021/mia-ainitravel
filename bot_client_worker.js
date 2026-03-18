@@ -87,11 +87,14 @@ function startSession() {
         // ── One-time LID → real phone migration ───────────────────────────────
         // Resolve any stored LID-format numbers (15-digit internal WA IDs) to
         // real phone numbers by asking WhatsApp directly on startup.
-        try {
-            await resolveLidPhones();
-        } catch (e) {
-            console.error(`[worker:${clientId}] LID migration error: ${e.message}`);
-        }
+        // Wait a few seconds for WA to fully load the contact list
+        setTimeout(async () => {
+            try {
+                await resolveLidPhones();
+            } catch (e) {
+                console.error(`[worker:${clientId}] LID migration error: ${e.message}`);
+            }
+        }, 8000);
     });
 
     ww.on('disconnected', (reason) => {
@@ -186,7 +189,14 @@ function startSession() {
 // Runs once on startup. Finds all leads/messages with LID-format phone numbers
 // (15-digit internal WA IDs) and resolves them to real phone numbers via WA.
 async function resolveLidPhones() {
-    const resp = await callApi('/api/resolve-lids', { client_id: parseInt(clientId, 10) });
+    console.log(`[worker:${clientId}] LID migration: querying stored LIDs...`);
+    let resp;
+    try {
+        resp = await callApi('/api/resolve-lids', { client_id: parseInt(clientId, 10) });
+    } catch (e) {
+        console.error(`[worker:${clientId}] LID migration: resolve-lids API failed: ${e.message}`);
+        return;
+    }
     if (!resp || !Array.isArray(resp.lids) || resp.lids.length === 0) {
         console.log(`[worker:${clientId}] LID migration: nothing to resolve`);
         return;
