@@ -75,6 +75,16 @@ class ClientLeadService
         return $row ? ClientLead::fromRow($row) : null;
     }
 
+    public function findByPhoneForClient(string $phone, int $clientId): ?ClientLead
+    {
+        $stmt = $this->db->prepare(
+            'SELECT * FROM mia_client_leads WHERE phone = ? AND client_id = ? LIMIT 1'
+        );
+        $stmt->execute([$phone, $clientId]);
+        $row = $stmt->fetch();
+        return $row ? ClientLead::fromRow($row) : null;
+    }
+
     public function create(int $clientId, array $data): ClientLead
     {
         $stmt = $this->db->prepare(

@@ -66,15 +66,28 @@ require __DIR__ . '/_sidebar.php';
 <div class="mc-table-card">
     <div class="card-header-bar flex-wrap gap-2">
         <span><i class="bi bi-people me-2 text-muted"></i>Leads (<?= count($leads) ?>)</span>
-        <div class="d-flex gap-1 flex-wrap">
+        <div class="d-flex gap-1 flex-wrap align-items-center">
             <?php foreach ($allStatuses as $val => $label): ?>
                 <a href="?status=<?= $val ?>"
                    class="btn btn-sm <?= $filter === $val ? 'btn-dark' : 'btn-outline-secondary' ?>">
                     <?= htmlspecialchars($label) ?>
                 </a>
             <?php endforeach; ?>
+            <button type="button" class="btn btn-sm btn-success ms-2"
+                    data-bs-toggle="modal" data-bs-target="#addContactModal"
+                    style="gap:4px;display:inline-flex;align-items:center">
+                <i class="bi bi-person-plus-fill me-1"></i> Agregar Contacto
+            </button>
         </div>
     </div>
+
+    <?php if (!empty($_SESSION['lead_add_error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show m-3 mb-0" role="alert">
+            <?= htmlspecialchars($_SESSION['lead_add_error']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php unset($_SESSION['lead_add_error']); ?>
+    <?php endif; ?>
 
     <?php if (empty($leads)): ?>
         <div class="text-center py-5 text-muted">
@@ -346,6 +359,62 @@ require __DIR__ . '/_sidebar.php';
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 })();
+</script>
+
+<!-- ── Add Contact Modal ───────────────────────────────────────────────────── -->
+<div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="<?= $base ?>/dashboard/leads/add">
+                <?= App::csrfField() ?>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addContactModalLabel">
+                        <i class="bi bi-person-plus-fill text-success me-2"></i>Agregar Contacto
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Número de WhatsApp <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-whatsapp text-success"></i></span>
+                            <input type="tel" name="phone" class="form-control"
+                                   placeholder="Ej: 5491155667788 (con código de país)"
+                                   required autocomplete="off">
+                        </div>
+                        <div class="form-text">Incluye el código de país sin el +. Ejemplo: <strong>5491155667788</strong> para Argentina.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nombre del contacto</label>
+                        <input type="text" name="contact_name" class="form-control"
+                               placeholder="Nombre (opcional)" maxlength="120" autocomplete="off">
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold">Mensaje inicial <span class="text-muted fw-normal">(opcional)</span></label>
+                        <textarea name="initial_message" class="form-control" rows="3"
+                                  placeholder="Escribe el mensaje que Mia enviará al contacto al agregarlo…"
+                                  maxlength="1000"></textarea>
+                        <div class="form-text">Si lo dejas vacío el contacto se agrega sin mensaje.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-person-check-fill me-1"></i>Agregar<?php if(true): ?> y Enviar<?php endif; ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+// Re-open modal with errors if session flag set on redirect back
+<?php if (!empty($_SESSION['lead_add_error'])): ?>
+document.addEventListener('DOMContentLoaded', function(){
+    var m = document.getElementById('addContactModal');
+    if (m) new bootstrap.Modal(m).show();
+});
+<?php endif; ?>
 </script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

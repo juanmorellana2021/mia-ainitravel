@@ -15,6 +15,14 @@ require __DIR__ . '/_sidebar.php';
 <div class="alert alert-success small py-2 mb-3 border-0" style="background:rgba(37,211,102,0.1);color:#155724">
     <i class="bi bi-check-circle me-1"></i>Lead actualizado correctamente.
 </div>
+<?php elseif (!empty($_GET['added'])): ?>
+<div class="alert alert-success small py-2 mb-3 border-0" style="background:rgba(37,211,102,0.1);color:#155724">
+    <i class="bi bi-person-check-fill me-1"></i>Contacto agregado correctamente<?= !empty($_GET['msg_sent']) ? ' y mensaje enviado.' : '.' ?>
+</div>
+<?php elseif (!empty($_GET['already'])): ?>
+<div class="alert alert-info small py-2 mb-3 border-0">
+    <i class="bi bi-info-circle me-1"></i>Este número ya existe en tu lista de contactos.
+</div>
 <?php elseif (!empty($_GET['enrolled'])): ?>
 <div class="alert small py-2 mb-3 border-0" style="background:rgba(37,211,102,0.1);color:#155724">
     <i class="bi bi-send-check me-1"></i>Lead inscrito en la secuencia. Los mensajes se enviarán automáticamente.

@@ -81,6 +81,51 @@ class DashboardController
         require __DIR__ . '/../views/client/lead_detail.php';
     }
 
+    // ── Lead add (manual contact) ─────────────────────────────────────────────
+
+    public function leadAdd(): void
+    {
+        App::csrfVerify();
+        $client      = $this->requireClient();
+        $leadService = new ClientLeadService();
+
+        // Sanitise phone: keep digits only, must be 7-15 digits
+        $rawPhone = trim($_POST['phone'] ?? '');
+        $phone    = preg_replace('/\D/', '', $rawPhone);
+        if (strlen($phone) < 7 || strlen($phone) > 15) {
+            $_SESSION['lead_add_error'] = 'Número de teléfono inválido. Ingresa solo dígitos (7–15), incluyendo código de país.';
+            header('Location: ' . App::basePath() . '/dashboard/leads');
+            exit;
+        }
+
+        $contactName    = trim($_POST['contact_name'] ?? '');
+        $initialMessage = trim($_POST['initial_message'] ?? '');
+
+        // If lead already exists for this client redirect to it
+        $existing = $leadService->findByPhoneForClient($phone, $client->id);
+        if ($existing) {
+            header('Location: ' . App::basePath() . '/dashboard/leads/' . $existing->id . '?already=1');
+            exit;
+        }
+
+        $lead = $leadService->create($client->id, [
+            'contact_name'   => $contactName ?: 'Sin nombre',
+            'phone'          => $phone,
+            'source'         => 'manual',
+            'status'         => 'new',
+            'value_estimate' => 0,
+            'notes'          => '',
+        ]);
+
+        if ($initialMessage !== '') {
+            $leadService->saveMessage($client->id, $lead->id, $phone, $initialMessage, 'outbound', 'human');
+            $this->sendViaBot($client->id, $phone, $initialMessage);
+        }
+
+        header('Location: ' . App::basePath() . '/dashboard/leads/' . $lead->id . '?added=1');
+        exit;
+    }
+
     // ── Lead update ───────────────────────────────────────────────────────────
 
     public function leadUpdate(int $id): void
