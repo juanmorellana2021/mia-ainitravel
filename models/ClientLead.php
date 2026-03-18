@@ -15,6 +15,7 @@ class ClientLead
     public string $phone          = '';
     public string $source         = 'whatsapp';  // facebook, whatsapp, instagram, website
     public string $status         = 'new';       // new, interested, demo, closed_won, closed_lost
+    public string $contact_type   = 'lead';      // lead | friend | staff | proveedor
     public float  $value_estimate = 0.0;
     public ?string $notes         = null;
     public string $created_at     = '';
@@ -34,6 +35,26 @@ class ClientLead
             }
         }
         return $l;
+    }
+
+    public function contactTypeLabel(): string
+    {
+        return match ($this->contact_type) {
+            'friend'    => 'Amigo/a',
+            'staff'     => 'Staff',
+            'proveedor' => 'Proveedor',
+            default     => 'Lead',
+        };
+    }
+
+    public function contactTypeBadgeClass(): string
+    {
+        return match ($this->contact_type) {
+            'friend'    => 'success',
+            'staff'     => 'info',
+            'proveedor' => 'warning',
+            default     => 'primary',
+        };
     }
 
     public function statusLabel(): string

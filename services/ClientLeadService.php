@@ -15,6 +15,27 @@ class ClientLeadService
     public function __construct()
     {
         $this->db = Database::get();
+        $this->ensureContactTypeColumn();
+    }
+
+    private function ensureContactTypeColumn(): void
+    {
+        try {
+            $this->db->exec(
+                "ALTER TABLE mia_client_leads ADD COLUMN contact_type ENUM('lead','friend','staff','proveedor') NOT NULL DEFAULT 'lead'"
+            );
+        } catch (\Throwable $e) {
+            // Column already exists — ignore
+        }
+    }
+
+    public function updateContactType(int $id, int $clientId, string $type): void
+    {
+        $allowed = ['lead', 'friend', 'staff', 'proveedor'];
+        if (!in_array($type, $allowed, true)) return;
+        $this->db->prepare(
+            'UPDATE mia_client_leads SET contact_type = ?, updated_at = NOW() WHERE id = ? AND client_id = ?'
+        )->execute([$type, $id, $clientId]);
     }
 
     // ── Leads ─────────────────────────────────────────────────────────────────

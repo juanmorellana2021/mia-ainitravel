@@ -102,6 +102,10 @@ class DashboardController
             'value_estimate' => $_POST['value_estimate'] ?? $lead->value_estimate,
         ]);
 
+        if (isset($_POST['contact_type'])) {
+            $leadService->updateContactType($id, $client->id, $_POST['contact_type']);
+        }
+
         header('Location: ' . App::basePath() . '/dashboard/leads/' . $id . '?saved=1');
         exit;
     }

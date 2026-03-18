@@ -80,6 +80,51 @@ require __DIR__ . '/_sidebar.php';
                         <textarea name="notes" class="form-control form-control-sm" rows="4"><?= htmlspecialchars($lead->notes ?? '') ?></textarea>
                     </div>
 
+                    <!-- ── Tipo de contacto ──────────────────────────────── -->
+                    <div class="mb-3">
+                        <label class="form-label fw-medium small">Tipo de contacto</label>
+                        <?php
+                        $ctypes = [
+                            'lead'      => ['label' => 'Lead',      'icon' => 'bi-person-check-fill', 'bg' => '#0d6efd', 'txt' => '#fff'],
+                            'friend'    => ['label' => 'Amigo/a',   'icon' => 'bi-emoji-smile-fill',  'bg' => '#198754', 'txt' => '#fff'],
+                            'staff'     => ['label' => 'Staff',     'icon' => 'bi-person-badge-fill', 'bg' => '#0dcaf0', 'txt' => '#000'],
+                            'proveedor' => ['label' => 'Proveedor', 'icon' => 'bi-truck',             'bg' => '#ffc107', 'txt' => '#000'],
+                        ];
+                        $currentCt = $lead->contact_type ?? 'lead';
+                        ?>
+                        <div class="d-flex flex-wrap gap-2" id="ctypeGroup">
+                        <?php foreach ($ctypes as $val => $ct): ?>
+                            <?php $isActive = ($currentCt === $val); ?>
+                            <label class="ctype-btn d-flex align-items-center gap-1 px-3 py-1 rounded-pill small fw-medium"
+                                   style="cursor:pointer;border:2px solid <?= $ct['bg'] ?>;background:<?= $isActive ? $ct['bg'] : '#fff' ?>;color:<?= $isActive ? $ct['txt'] : $ct['bg'] ?>;transition:all .15s"
+                                   data-bg="<?= $ct['bg'] ?>" data-txt="<?= $ct['txt'] ?>">
+                                <input type="radio" name="contact_type" value="<?= $val ?>" <?= $isActive ? 'checked' : '' ?> hidden>
+                                <i class="bi <?= $ct['icon'] ?>"></i><?= $ct['label'] ?>
+                            </label>
+                        <?php endforeach; ?>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            <b>Lead</b> = bot normal &middot;
+                            <b>Amigo/a</b> = chat casual sin ventas &middot;
+                            <b>Staff</b> = Mia ignora &middot;
+                            <b>Proveedor</b> = asistente profesional
+                        </small>
+                        <script>
+                        document.querySelectorAll('#ctypeGroup .ctype-btn').forEach(function(lbl) {
+                            lbl.addEventListener('click', function() {
+                                document.querySelectorAll('#ctypeGroup .ctype-btn').forEach(function(l) {
+                                    l.style.background = '#fff';
+                                    l.style.color = l.dataset.bg;
+                                });
+                                this.style.background = this.dataset.bg;
+                                this.style.color = this.dataset.txt;
+                                this.querySelector('input[type=radio]').checked = true;
+                            });
+                        });
+                        </script>
+                    </div>
+                    <!-- ─────────────────────────────────────────────────── -->
+
                     <button type="submit" class="btn btn-sm w-100 fw-medium" style="background:#25d366;color:#fff">
                         <i class="bi bi-save me-1"></i>Guardar cambios
                     </button>

@@ -92,7 +92,7 @@ class ClientBotService
         // Every phone that messages the bot becomes a lead automatically.
         $leadService = new ClientLeadService();
         $stmt = $this->pdo->prepare(
-            "SELECT id FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
+            "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
         );
         $stmt->execute([$this->client->id, $guestPhone]);
         $leadRow = $stmt->fetch();
@@ -109,6 +109,34 @@ class ClientBotService
             ]);
             $leadId = $lead->id;
         }
+
+        // ── Contact type routing ──────────────────────────────────────────────
+        $contactType = $leadRow ? ($leadRow['contact_type'] ?? 'lead') : 'lead';
+
+        if ($contactType === 'staff') {
+            // Silent drop — staff messages are not answered and not logged
+            return ['reply' => ''];
+        }
+
+        if ($contactType === 'friend' || $contactType === 'proveedor') {
+            // Save inbound but skip sales flow entirely
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg, 'inbound', 'bot');
+            $history  = $this->loadHistory($guestPhone);
+            $sysPrompt = $contactType === 'proveedor'
+                ? $this->buildProveedorPrompt()
+                : $this->buildFriendlyPrompt();
+            $chatMsgs = array_merge(
+                [['role' => 'system', 'content' => $sysPrompt]],
+                $history,
+                [['role' => 'user', 'content' => $msg]]
+            );
+            $reply = $this->callGroq($chatMsgs);
+            $this->log($guestPhone, 'user', $msg);
+            $this->log($guestPhone, 'assistant', $reply);
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
+            return ['reply' => $reply];
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         // ── Monthly conversation limit check ─────────────────────────────────
         $limit = self::CONV_LIMITS[$this->client->plan] ?? 0;
@@ -194,6 +222,26 @@ class ClientBotService
         $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
 
         return ['reply' => $reply];
+    }
+
+    // ── Alternative prompts (non-lead contact types) ─────────────────────────
+
+    private function buildFriendlyPrompt(): string
+    {
+        $bizName = $this->client->business_name;
+        return "Eres el asistente personal de {$bizName}. Esta persona es amigo/a o familiar del dueño del negocio. "
+             . "Sé casual, amigable y natural — como un asistente de confianza. "
+             . "NO hagas ventas, NO captures datos de lead, NO pidas nombre ni teléfono con fines comerciales. "
+             . "Simplemente responde lo que pregunten de forma cálida y directa. Máximo 3 oraciones.";
+    }
+
+    private function buildProveedorPrompt(): string
+    {
+        $bizName = $this->client->business_name;
+        return "Eres el asistente administrativo de {$bizName}. Esta persona es un proveedor del negocio. "
+             . "Sé formal, profesional y eficiente. Ayuda con consultas sobre pedidos, pagos, entregas o coordinación logística. "
+             . "NO hagas ventas ni trates de capturar datos de cliente. "
+             . "Si no tienes la información exacta, indica que transmitirás la consulta al equipo responsable. Máximo 4 oraciones.";
     }
 
     // ── System prompt ─────────────────────────────────────────────────────────
