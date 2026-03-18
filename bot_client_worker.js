@@ -94,7 +94,7 @@ function startSession() {
             } catch (e) {
                 console.error(`[worker:${clientId}] LID migration error: ${e.message}`);
             }
-        }, 8000);
+        }, 2000);
     });
 
     ww.on('disconnected', (reason) => {
@@ -162,7 +162,7 @@ function startSession() {
         console.log(`[worker:${clientId}] MSG from ${from} (phone:${realPhone}): ${messageText.substring(0, 80)}`);
 
         try {
-            const reply = await callApi('/api/client-chat', {
+            const resp = await callApi('/api/client-chat', {
                 from,
                 phone:      realPhone,
                 message:    messageText,
@@ -170,7 +170,9 @@ function startSession() {
                 media_data: mediaData,
                 media_mime: mediaMime,
                 media_type: mediaType,
-            });            const reply = resp && resp.reply;            if (reply) {
+            });
+            const reply = resp && resp.reply;
+            if (reply) {
                 await ww.sendMessage(from, reply);
                 console.log(`[worker:${clientId}] REPLY to ${from}: ${reply.substring(0, 60)}`);
             }
