@@ -293,7 +293,7 @@ require __DIR__ . '/_sidebar.php';
             const bg     = isOut ? (isHuman ? '#25d366' : '#e9ecef') : '#fff';
             const color  = isOut && isHuman ? '#fff' : '#212529';
             const align  = isOut ? 'flex-end' : 'flex-start';
-            const time   = m.created_at ? m.created_at.slice(11, 16) : '';
+            const time   = m.created_at ? (function(s){ var d = new Date(s.replace(' ','T')+'Z'); return d.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Lima'}); })(m.created_at) : '';
             const label  = isOut && isHuman ? '👤 tú' : (isOut ? '🤖 Mia' : '');
             return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:88%;">
                 ${label ? `<span style="font-size:0.68rem;color:#adb5bd;margin-bottom:2px;${isOut?'text-align:right':''}">${label}</span>` : ''}
