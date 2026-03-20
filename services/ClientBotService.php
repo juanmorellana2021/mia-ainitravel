@@ -483,10 +483,13 @@ PROMPT;
             return 'Un momento, estoy teniendo un pequeño problema técnico. Intenta de nuevo en un instante 🙏';
         }
 
-        // Keep first paragraph only
-        $break = strpos($text, "\n\n");
-        if ($break !== false) {
-            $text = trim(substr($text, 0, $break));
+        // Keep first paragraph only — but preserve [FOTO:url] markers that may be on a separate line
+        $hasPhotos = str_contains($text, '[FOTO:');
+        if (!$hasPhotos) {
+            $break = strpos($text, "\n\n");
+            if ($break !== false) {
+                $text = trim(substr($text, 0, $break));
+            }
         }
         return $text;
     }

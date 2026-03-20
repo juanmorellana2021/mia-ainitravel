@@ -45,7 +45,7 @@ process.on('message', (msg) => {
 
     if (msg.type === 'send' && ww) {
         const chatId = msg.to.includes('@') ? msg.to : msg.to.replace('+', '') + '@c.us';
-        ww.sendMessage(chatId, msg.message)
+        sendReplyWithPhotos(chatId, msg.message, null)
             .then(() => console.log(`[worker:${clientId}] OUTBOUND to ${chatId}`))
             .catch((e) => console.error(`[worker:${clientId}] OUTBOUND error: ${e.message}`));
         return;
@@ -173,7 +173,7 @@ function startSession() {
             });
             const reply = resp && resp.reply;
             if (reply) {
-                await sendReplyWithPhotos(from, reply);
+                await sendReplyWithPhotos(from, reply, msg);
                 console.log(`[worker:${clientId}] REPLY to ${from}: ${reply.substring(0, 60)}`);
             }
         } catch (e) {
@@ -187,10 +187,32 @@ function startSession() {
     ww.initialize();
 }
 
+// ── Download image as base64 (more reliable than MessageMedia.fromUrl) ────────
+function downloadImageAsBase64(url) {
+    return new Promise((resolve, reject) => {
+        const proto = url.startsWith('https') ? https : require('http');
+        proto.get(url, { rejectUnauthorized: false }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                // Follow redirect
+                return downloadImageAsBase64(res.headers.location).then(resolve).catch(reject);
+            }
+            if (res.statusCode !== 200) {
+                return reject(new Error(`HTTP ${res.statusCode}`));
+            }
+            const mime = res.headers['content-type'] || 'image/jpeg';
+            const chunks = [];
+            res.on('data', (c) => chunks.push(c));
+            res.on('end', () => resolve({ data: Buffer.concat(chunks).toString('base64'), mimetype: mime }));
+            res.on('error', reject);
+        }).on('error', reject);
+    });
+}
+
 // ── Reply sender: handles text + optional [FOTO:url] markers ─────────────────
 // The AI can include [FOTO:https://...] anywhere in its reply.
 // We extract those, send the text portion first (if any), then each image.
-async function sendReplyWithPhotos(to, reply) {
+// @lid contacts MUST use chat.sendMessage() via Chat object — ww.sendMessage(@lid) silently fails for media.
+async function sendReplyWithPhotos(to, reply, originalMsg) {
     const photoRegex = /\[FOTO:(https?:\/\/[^\]]+)\]/gi;
     const photoUrls = [];
     let match;
@@ -198,19 +220,53 @@ async function sendReplyWithPhotos(to, reply) {
         photoUrls.push(match[1]);
     }
 
+    const isLid = to.includes('@lid');
+    console.log(`[worker:${clientId}] PHOTO: ${photoUrls.length} photos, isLid=${isLid}`);
+
     // Text with [FOTO:...] markers removed and trimmed
     const textPart = reply.replace(photoRegex, '').replace(/\s{2,}/g, ' ').trim();
 
-    if (textPart) {
-        await ww.sendMessage(to, textPart);
+    // For @lid contacts, get the Chat object — ww.sendMessage(@lid) silently fails for media
+    let chat = null;
+    if (isLid) {
+        try {
+            chat = await ww.getChatById(to);
+        } catch (e) {
+            console.error(`[worker:${clientId}] PHOTO: getChatById failed: ${e.message}`);
+        }
     }
 
+    // Helper: send to the right place
+    const sendMsg = async (content) => {
+        if (chat) {
+            await chat.sendMessage(content);
+        } else if (originalMsg && isLid) {
+            await originalMsg.reply(content);
+        } else {
+            await ww.sendMessage(to, content);
+        }
+    };
+
+    // Send text portion
+    if (textPart) {
+        await sendMsg(textPart);
+    }
+
+    // Send each photo as media attachment
     for (const url of photoUrls) {
         try {
-            const media = await MessageMedia.fromUrl(url, { unsafeMime: true });
-            await ww.sendMessage(to, media);
+            console.log(`[worker:${clientId}] PHOTO: downloading ${url}`);
+            const { data, mimetype } = await downloadImageAsBase64(url);
+
+            const media = new MessageMedia(mimetype, data, url.split('/').pop());
+            await sendMsg(media);
+            console.log(`[worker:${clientId}] PHOTO: sent OK`);
         } catch (e) {
-            console.error(`[worker:${clientId}] Failed to send photo ${url}: ${e.message}`);
+            console.error(`[worker:${clientId}] PHOTO FAIL ${url}: ${e.message}`);
+            // Fallback: send URL as clickable link so user can at least see the photo
+            try {
+                await sendMsg(`📷 Ver foto: ${url}`);
+            } catch (_) {}
         }
     }
 }
