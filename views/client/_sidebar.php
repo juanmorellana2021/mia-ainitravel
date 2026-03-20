@@ -49,6 +49,22 @@ $initials      = strtoupper(substr($clientName, 0, 2));
            class="mc-nav-item <?= $activeNav === 'messages' ? 'active' : '' ?>">
             <i class="bi bi-chat-dots"></i> Mensajes
         </a>
+        <?php
+        $_salesPlans    = ['trial', 'basic', 'pro', 'enterprise', 'enterprise_duo', 'enterprise_chain', 'enterprise_corp'];
+        $_hasSalesConfig = in_array($plan, $_salesPlans);
+        ?>
+        <?php if ($_hasSalesConfig): ?>
+        <a href="<?= $base ?>/dashboard/sales-config"
+           class="mc-nav-item <?= $activeNav === 'sales_config' ? 'active' : '' ?>">
+            <i class="bi bi-graph-up-arrow"></i> Ventas
+        </a>
+        <?php else: ?>
+        <a href="<?= $base ?>/dashboard/billing?upgrade=sales"
+           class="mc-nav-item" style="opacity:.5" title="Disponible desde el plan Basic">
+            <i class="bi bi-graph-up-arrow"></i> Ventas
+            <span class="badge bg-warning text-dark ms-auto" style="font-size:.6rem;padding:2px 5px">Basic</span>
+        </a>
+        <?php endif; ?>
         <a href="<?= $base ?>/dashboard/analytics"
            class="mc-nav-item <?= $activeNav === 'analytics' ? 'active' : '' ?>">
             <i class="bi bi-bar-chart"></i> Analíticas

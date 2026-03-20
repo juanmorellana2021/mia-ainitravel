@@ -406,6 +406,51 @@ class ClientBotService
             // Non-fatal — bot works without photos
         }
 
+        // Sales config injection
+        $salesBlock = '';
+        $salesCfg = $this->cfg['sales'] ?? [];
+        if (!empty(array_filter($salesCfg))) {
+            $parts = [];
+
+            $approach = $salesCfg['approach'] ?? 'friendly';
+            if ($approach === 'direct') {
+                $parts[] = 'ENFOQUE DE VENTAS: Directo y decidido. Guía activamente al cliente hacia la compra o reserva. Haz preguntas de cierre, propón opciones concretas y cierra en esta misma conversación.';
+            } elseif ($approach === 'urgency') {
+                $parts[] = 'ENFOQUE DE VENTAS: Urgencia y escasez. Cuando sea apropiado, menciona disponibilidad limitada, plazos o ventajas de decidir hoy.';
+            } else {
+                $parts[] = 'ENFOQUE DE VENTAS: Consultivo y amigable. Ayuda al cliente a encontrar lo que necesita sin presionar. Escucha, sugiere y acompaña.';
+            }
+
+            if (!empty($salesCfg['cta_text'])) {
+                $ctaLine = 'LLAMADA A LA ACCIÓN: ' . $salesCfg['cta_text'];
+                if (!empty($salesCfg['cta_link'])) $ctaLine .= ' — ' . $salesCfg['cta_link'];
+                if (!empty($salesCfg['deposit_text'])) $ctaLine .= ' (' . $salesCfg['deposit_text'] . ')';
+                $parts[] = $ctaLine;
+            }
+            if (!empty($salesCfg['qualifier_questions'])) {
+                $parts[] = 'PREGUNTAS QUE DEBES HACER (de forma natural, no como formulario):' . "\n" . $salesCfg['qualifier_questions'];
+            }
+            if (!empty($salesCfg['qualifier_info'])) {
+                $parts[] = 'INFORMACIÓN MÍNIMA A RECOPILAR ANTES DE CERRAR: ' . $salesCfg['qualifier_info'];
+            }
+            if (!empty($salesCfg['handoff_triggers'])) {
+                $parts[] = 'ACTIVA TRASPASO HUMANO si el cliente menciona: ' . $salesCfg['handoff_triggers'];
+            }
+            if (!empty($salesCfg['handoff_message'])) {
+                $parts[] = 'MENSAJE DE TRASPASO: "' . $salesCfg['handoff_message'] . '"';
+            }
+            if (!empty($salesCfg['special_offer'])) {
+                $parts[] = 'OFERTA ESPECIAL ACTIVA (menciónala cuando sea el momento adecuado): ' . $salesCfg['special_offer'];
+            }
+            if (!empty($salesCfg['followup_template'])) {
+                $parts[] = 'Si detectas que el cliente lleva un buen rato sin avanzar, puedes retomar con: "' . $salesCfg['followup_template'] . '"';
+            }
+
+            if (!empty($parts)) {
+                $salesBlock = "\nCONFIGURACIÓN DE VENTAS PERSONALIZADA:\n" . implode("\n", $parts);
+            }
+        }
+
         return <<<PROMPT
 Eres el asistente virtual de WhatsApp de *{$bizName}*, un negocio de tipo {$bizType}.
 
@@ -425,6 +470,8 @@ IDIOMA: {$languageRule}
 {$hoursBlock}
 
 {$faqsBlock}
+
+{$salesBlock}
 
 {$photosBlock}
 

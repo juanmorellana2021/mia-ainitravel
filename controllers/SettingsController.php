@@ -294,4 +294,64 @@ class SettingsController
         $ok = (new ClientPhotoService())->delete($photoId, $client->id);
         echo json_encode(['ok' => $ok]);
     }
+
+    // ── Sales config ─────────────────────────────────────────────────────────
+
+    /** GET /dashboard/sales-config */
+    public function salesConfig(): void
+    {
+        $client  = $this->requireClient();
+        $saved   = isset($_GET['saved']);
+
+        // Only plans with leads/sales capability
+        $_salesPlans = ['trial', 'basic', 'pro', 'enterprise', 'enterprise_duo', 'enterprise_chain', 'enterprise_corp'];
+        if (!in_array($client->plan, $_salesPlans)) {
+            header('Location: ' . App::basePath() . '/dashboard/billing?upgrade=sales');
+            exit;
+        }
+
+        require __DIR__ . '/../views/client/sales_config.php';
+    }
+
+    /** POST /dashboard/sales-config/save */
+    public function saveSalesConfig(): void
+    {
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        $_salesPlans = ['trial', 'basic', 'pro', 'enterprise', 'enterprise_duo', 'enterprise_chain', 'enterprise_corp'];
+        if (!in_array($client->plan, $_salesPlans)) {
+            http_response_code(403);
+            exit;
+        }
+
+        // Validate sales_approach against allowed values
+        $allowedApproaches = ['friendly', 'direct', 'urgency'];
+        $approach = in_array($_POST['sales_approach'] ?? '', $allowedApproaches)
+            ? $_POST['sales_approach']
+            : 'friendly';
+
+        // Filter cta_link to only allow http/https URLs or empty string
+        $ctaLink = trim($_POST['cta_link'] ?? '');
+        if ($ctaLink !== '' && !preg_match('#^https?://#i', $ctaLink)) {
+            $ctaLink = '';
+        }
+
+        (new ClientService())->updateSalesConfig($client->id, [
+            'sales_approach'       => $approach,
+            'cta_text'             => $_POST['cta_text']             ?? '',
+            'cta_link'             => $ctaLink,
+            'deposit_text'         => $_POST['deposit_text']         ?? '',
+            'qualifier_questions'  => $_POST['qualifier_questions']  ?? '',
+            'qualifier_info'       => $_POST['qualifier_info']       ?? '',
+            'handoff_triggers'     => $_POST['handoff_triggers']     ?? '',
+            'handoff_message'      => $_POST['handoff_message']      ?? '',
+            'handoff_phone'        => $_POST['handoff_phone']        ?? '',
+            'followup_template'    => $_POST['followup_template']    ?? '',
+            'special_offer'        => $_POST['special_offer']        ?? '',
+        ]);
+
+        header('Location: ' . App::basePath() . '/dashboard/sales-config?saved=1');
+        exit;
+    }
 }

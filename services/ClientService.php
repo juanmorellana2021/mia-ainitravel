@@ -178,4 +178,33 @@ class ClientService
             $stmt->execute([$status, $clientId]);
         }
     }
+
+    /**
+     * Merge sales-config fields into bot_config['sales'] without overwriting other fields.
+     */
+    public function updateSalesConfig(int $clientId, array $data): void
+    {
+        $stmt = $this->db->prepare('SELECT bot_config FROM mia_clients WHERE id = ? LIMIT 1');
+        $stmt->execute([$clientId]);
+        $row = $stmt->fetch();
+        $cfg = json_decode($row['bot_config'] ?? '{}', true) ?: [];
+
+        $cfg['sales'] = [
+            'approach'            => $data['sales_approach']        ?? 'friendly',
+            'cta_text'            => substr(trim($data['cta_text']            ?? ''), 0, 200),
+            'cta_link'            => substr(trim($data['cta_link']            ?? ''), 0, 500),
+            'deposit_text'        => substr(trim($data['deposit_text']        ?? ''), 0, 200),
+            'qualifier_questions' => substr(trim($data['qualifier_questions'] ?? ''), 0, 1000),
+            'qualifier_info'      => substr(trim($data['qualifier_info']      ?? ''), 0, 300),
+            'handoff_triggers'    => substr(trim($data['handoff_triggers']    ?? ''), 0, 300),
+            'handoff_message'     => substr(trim($data['handoff_message']     ?? ''), 0, 400),
+            'handoff_phone'       => substr(trim($data['handoff_phone']       ?? ''), 0, 30),
+            'followup_template'   => substr(trim($data['followup_template']   ?? ''), 0, 500),
+            'special_offer'       => substr(trim($data['special_offer']       ?? ''), 0, 300),
+        ];
+
+        $this->db->prepare(
+            'UPDATE mia_clients SET bot_config = ?, updated_at = NOW() WHERE id = ?'
+        )->execute([json_encode($cfg, JSON_UNESCAPED_UNICODE), $clientId]);
+    }
 }
