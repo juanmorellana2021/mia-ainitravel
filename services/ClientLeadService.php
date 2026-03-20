@@ -44,14 +44,22 @@ class ClientLeadService
     {
         if ($status) {
             $stmt = $this->db->prepare(
-                'SELECT * FROM mia_client_leads WHERE client_id = ? AND status = ? ORDER BY created_at DESC'
+                'SELECT l.* FROM mia_client_leads l
+                 LEFT JOIN (SELECT phone, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY phone) m
+                   ON m.phone = l.phone
+                 WHERE l.client_id = ? AND l.status = ?
+                 ORDER BY COALESCE(m.last_msg, l.created_at) DESC'
             );
-            $stmt->execute([$clientId, $status]);
+            $stmt->execute([$clientId, $clientId, $status]);
         } else {
             $stmt = $this->db->prepare(
-                'SELECT * FROM mia_client_leads WHERE client_id = ? ORDER BY created_at DESC'
+                'SELECT l.* FROM mia_client_leads l
+                 LEFT JOIN (SELECT phone, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY phone) m
+                   ON m.phone = l.phone
+                 WHERE l.client_id = ?
+                 ORDER BY COALESCE(m.last_msg, l.created_at) DESC'
             );
-            $stmt->execute([$clientId]);
+            $stmt->execute([$clientId, $clientId]);
         }
         return array_map([ClientLead::class, 'fromRow'], $stmt->fetchAll());
     }
@@ -59,9 +67,13 @@ class ClientLeadService
     public function recent(int $clientId, int $limit = 10): array
     {
         $stmt = $this->db->prepare(
-            'SELECT * FROM mia_client_leads WHERE client_id = ? ORDER BY created_at DESC LIMIT ?'
+            'SELECT l.* FROM mia_client_leads l
+             LEFT JOIN (SELECT phone, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY phone) m
+               ON m.phone = l.phone
+             WHERE l.client_id = ?
+             ORDER BY COALESCE(m.last_msg, l.created_at) DESC LIMIT ?'
         );
-        $stmt->execute([$clientId, $limit]);
+        $stmt->execute([$clientId, $clientId, $limit]);
         return array_map([ClientLead::class, 'fromRow'], $stmt->fetchAll());
     }
 

@@ -92,17 +92,35 @@ class ClientBotService
         // Every phone that messages the bot becomes a lead automatically.
         $leadService = new ClientLeadService();
         $stmt = $this->pdo->prepare(
-            "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
+            "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? ORDER BY id DESC LIMIT 1"
         );
         $stmt->execute([$this->client->id, $guestPhone]);
         $leadRow = $stmt->fetch();
+
+        // ── Fallback: phone without country-code prefix ───────────────────────
+        // WA sometimes sends just local digits (e.g. 930293197) while the DB stored
+        // the full E.164 number (e.g. 51930293197). Try stripping a 2-digit prefix.
+        if (!$leadRow && strlen($guestPhone) > 9) {
+            $shortPhone = substr($guestPhone, 2); // strip 2-digit country code
+            $stmtShort  = $this->pdo->prepare(
+                "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? ORDER BY id DESC LIMIT 1"
+            );
+            $stmtShort->execute([$this->client->id, $shortPhone]);
+            $leadRow = $stmtShort->fetch();
+            if ($leadRow) {
+                // Canonicalize to full number going forward
+                $this->pdo->prepare("UPDATE mia_client_leads SET phone=? WHERE id=?")->execute([$guestPhone, $leadRow['id']]);
+                $this->pdo->prepare("UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?")->execute([$guestPhone, $this->client->id, $shortPhone]);
+                error_log("[ClientBot:{$this->client->id}] Canonical phone {$shortPhone} → {$guestPhone} for lead {$leadRow['id']}");
+            }
+        }
 
         // ── LID migration: if not found by real phone, check old LID-derived number ──
         if (!$leadRow && $fromLid !== '') {
             $lidPhone = $this->normalizePhone($fromLid);
             if ($lidPhone !== $guestPhone) {
                 $stmtLid = $this->pdo->prepare(
-                    "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? LIMIT 1"
+                    "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? ORDER BY id DESC LIMIT 1"
                 );
                 $stmtLid->execute([$this->client->id, $lidPhone]);
                 $leadRow = $stmtLid->fetch();
@@ -136,7 +154,9 @@ class ClientBotService
         $contactType = $leadRow ? ($leadRow['contact_type'] ?? 'lead') : 'lead';
 
         if ($contactType === 'staff') {
-            // Silent drop — staff messages are not answered and not logged
+            // Ignorar: save message so owner can see it in the dashboard, but send no reply
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg, 'inbound', 'bot');
+            error_log("[ClientBot:{$this->client->id}] Ignored msg from {$guestPhone} (contact_type=staff)");
             return ['reply' => ''];
         }
 
@@ -365,7 +385,7 @@ INTENCIONES — TÚ LAS DETECTAS, NO UN IF/ELSE:
 REGLAS DE COMPORTAMIENTO:
 - Responde SOLO sobre este negocio. No inventes información que no esté aquí.
 - Si no sabes la respuesta, di que consultarás con el equipo y lo confirmarás.
-- Mensajes cortos y concretos — máximo 3 líneas para respuestas simples.
+- LONGITUD: máximo 2 oraciones cortas por respuesta. Si hay más info, da lo más importante y espera que el cliente pregunte más. Nunca escribas párrafos largos.
 - No uses listas largas. Solo si el cliente pide ver todos los servicios/precios.
 - 1 emoji máximo por mensaje, solo si suma.
 - NUNCA digas que eres una IA a menos que te pregunten directamente.{$skillsBlock}
@@ -380,7 +400,7 @@ PROMPT;
             'model'       => self::GROQ_MODEL,
             'messages'    => $messages,
             'temperature' => 0.6,
-            'max_tokens'  => 150,
+            'max_tokens'  => 80,
             'top_p'       => 0.9,
         ]);
 
