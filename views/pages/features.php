@@ -328,8 +328,58 @@ ob_start();
 </section>
 
 <!-- ═════════════════════════════════════════════
-     SECTION 6 — Text LEFT · Visual RIGHT     "Sin setup técnico"
-     ═══════════════════════════════════════════ -->
+     SECTION 6 — Visual LEFT · Text RIGHT
+     "Memoria persistente"
+     ═════════════════════════════════════════════ -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row align-items-center g-5 flex-lg-row-reverse">
+            <!-- Text -->
+            <div class="col-lg-6">
+                <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold px-3 py-2 mb-3 d-inline-block">Memoria inteligente</span>
+                <h2 class="fw-bold mb-3">Mia recuerda.<br>Como tu mejor vendedor.</h2>
+                <p class="text-muted mb-4">
+                    Mia aprende de cada conversación. Si un cliente dijo que viaja con niños,
+                    prefiere habitaciones con vista al mar, o tiene alergia al gluten — Mia lo
+                    recuerda automáticamente para la próxima vez. Sin que tú hagas nada.
+                </p>
+                <ul class="list-unstyled">
+                    <li class="d-flex align-items-start gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary mt-1"></i><span>Aprende preferencias, nombres, fechas y datos clave</span></li>
+                    <li class="d-flex align-items-start gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary mt-1"></i><span>Recuerda entre conversaciones — el cliente se siente valorado</span></li>
+                    <li class="d-flex align-items-start gap-2 mb-2"><i class="bi bi-check-circle-fill text-primary mt-1"></i><span>Personaliza cada respuesta con contexto real</span></li>
+                    <li class="d-flex align-items-start gap-2"><i class="bi bi-check-circle-fill text-primary mt-1"></i><span>Disponible en planes Pro y Business</span></li>
+                </ul>
+            </div>
+            <!-- Visual: memory mockup -->
+            <div class="col-lg-6 d-flex justify-content-center">
+                <div class="mia-feat-visual">
+                    <div class="mia-minichat">
+                        <div class="mia-minichat-header">
+                            <div class="mia-minichat-dot bg-danger me-1"></div>
+                            <div class="mia-minichat-dot bg-warning me-1"></div>
+                            <div class="mia-minichat-dot bg-success"></div>
+                            <span class="ms-2 text-muted" style="font-size:.7rem">WhatsApp · Mia</span>
+                        </div>
+                        <div class="mia-minichat-body">
+                            <div class="mia-msg mia-msg--in">Hola, quiero reservar de nuevo<span class="mia-time">10:20</span></div>
+                            <div class="mia-msg mia-msg--out">¡Hola Carlos! La última vez reservaste la Suite Doble con vista al mar para 2 adultos y 1 niño. ¿Quieres lo mismo? 😊<span class="mia-time mia-time--out">10:20 <i class="bi bi-check2-all" style="color:#53bdeb"></i></span></div>
+                            <div class="mia-msg mia-msg--in">¡Sí, exacto! Pero esta vez 4 noches<span class="mia-time">10:21</span></div>
+                            <div class="mia-msg mia-msg--out">¡Perfecto! Suite Doble, vista al mar, 4 noches. Te preparo la cotización 😉<span class="mia-time mia-time--out">10:21 <i class="bi bi-check2-all" style="color:#53bdeb"></i></span></div>
+                        </div>
+                        <div class="mia-feat-badge-green mt-2 mx-2 mb-2">
+                            <i class="bi bi-brain me-1"></i>Mia recordó todo del cliente
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═════════════════════════════════════════════
+     SECTION 7 — Text LEFT · Visual RIGHT
+     "Sin setup técnico"
+     ═════════════════════════════════════════════ -->
 <section class="py-5">
     <div class="container">
         <div class="row align-items-center g-5">
