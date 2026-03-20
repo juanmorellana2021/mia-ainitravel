@@ -55,6 +55,7 @@ require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/DashboardController.php';
 require_once __DIR__ . '/controllers/BillingController.php';
 require_once __DIR__ . '/controllers/SettingsController.php';
+require_once __DIR__ . '/services/ClientPhotoService.php';
 require_once __DIR__ . '/controllers/BroadcastController.php';
 require_once __DIR__ . '/services/BroadcastService.php';
 require_once __DIR__ . '/services/NotificationService.php';
@@ -330,6 +331,15 @@ match (true) {
 
     $uri === 'dashboard/settings/search-business' && $method === 'POST'
         => (new SettingsController())->searchBusiness(),
+
+    $uri === 'dashboard/settings/photos' && $method === 'GET'
+        => (new SettingsController())->listPhotos(),
+
+    $uri === 'dashboard/settings/photos/upload' && $method === 'POST'
+        => (new SettingsController())->uploadPhoto(),
+
+    preg_match('#^dashboard/settings/photos/(\d+)/delete$#', $uri, $m) && $method === 'POST'
+        => (new SettingsController())->deletePhoto((int)$m[1]),
 
     // ── Superadmin ─────────────────────────────────────────────────────────
     $uri === 'superadmin' || ($uri === 'superadmin/' )

@@ -250,4 +250,48 @@ class SettingsController
         }
         echo json_encode(['ok' => true, 'fields' => $safe]);
     }
+
+    // ── Business photo gallery ────────────────────────────────────────────────
+
+    /** GET /dashboard/settings/photos — returns JSON array of photos */
+    public function listPhotos(): void
+    {
+        header('Content-Type: application/json');
+        $client = $this->requireClient();
+        $svc    = new ClientPhotoService();
+        echo json_encode($svc->listWithUrls($client->id));
+    }
+
+    /** POST /dashboard/settings/photos/upload — multipart upload */
+    public function uploadPhoto(): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        if (empty($_FILES['photo'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'No se recibió ningún archivo.']);
+            return;
+        }
+
+        $caption = trim($_POST['caption'] ?? '');
+        $result  = (new ClientPhotoService())->upload($client->id, $_FILES['photo'], $caption);
+
+        if (!empty($result['error'])) {
+            http_response_code(422);
+        }
+        echo json_encode($result);
+    }
+
+    /** POST /dashboard/settings/photos/{id}/delete */
+    public function deletePhoto(int $photoId): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        $ok = (new ClientPhotoService())->delete($photoId, $client->id);
+        echo json_encode(['ok' => $ok]);
+    }
 }
