@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /superadmin/
+Disallow: /api/
+Disallow: /tmp/
+
+Sitemap: https://mia-whatsapp.com/sitemap.xml

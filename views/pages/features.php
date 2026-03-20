@@ -5,6 +5,7 @@
 
 $base = App::basePath();
 $pageTitle = 'Funciones — Mia by AiniTravel';
+$pageDescription = 'Respuesta automática en WhatsApp, calificación de leads, cierre de ventas, 50+ idiomas, seguimiento inteligente y más. Descubre todo lo que Mia hace por tu negocio de viajes.';
 $waLink = 'https://wa.me/' . preg_replace('/[^0-9]/', '', App::WHATSAPP) . '?text=Hola%20Mia!';
 
 ob_start();

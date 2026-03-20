@@ -14,7 +14,24 @@ $base = App::basePath();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle ?? 'Mia by AiniTravel') ?></title>
-    <meta name="description" content="<?= htmlspecialchars(App::TAGLINE) ?>">
+    <meta name="description" content="<?= htmlspecialchars($pageDescription ?? App::TAGLINE) ?>">
+    <link rel="canonical" href="<?= htmlspecialchars($pageCanonical ?? (App::URL . ($_SERVER['REQUEST_URI'] === '/' ? '/' : rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/')))) ?>">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="<?= htmlspecialchars(App::NAME) ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($pageTitle ?? 'Mia by AiniTravel') ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($pageDescription ?? App::TAGLINE) ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($pageCanonical ?? (App::URL . ($_SERVER['REQUEST_URI'] === '/' ? '/' : rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/')))) ?>">
+    <meta property="og:image" content="<?= htmlspecialchars($pageOgImage ?? App::URL . App::asset('img/og-cover.png')) ?>">
+    <meta property="og:locale" content="es_PE">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?= htmlspecialchars($pageTitle ?? 'Mia by AiniTravel') ?>">
+    <meta name="twitter:description" content="<?= htmlspecialchars($pageDescription ?? App::TAGLINE) ?>">
+    <meta name="twitter:image" content="<?= htmlspecialchars($pageOgImage ?? App::URL . App::asset('img/og-cover.png')) ?>">
+
     <link rel="icon" type="image/svg+xml" href="<?= App::asset('img/favicon.svg') ?>">
     <link rel="shortcut icon" href="<?= App::asset('img/favicon.svg') ?>">
     <link rel="stylesheet" href="<?= App::asset('css/bootstrap.min.css') ?>">

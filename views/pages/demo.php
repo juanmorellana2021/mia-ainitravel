@@ -5,6 +5,7 @@
 
 $base = App::basePath();
 $pageTitle = 'Demo en Vivo — Mia by AiniTravel';
+$pageDescription = 'Mira cómo Mia responde, cotiza y cierra reservas por WhatsApp en tiempo real. Demo interactiva del asistente IA para negocios de turismo.';
 $waLink = 'https://wa.me/' . preg_replace('/[^0-9]/', '', App::WHATSAPP) . '?text=Hola%20Mia!%20Quiero%20ver%20la%20demo';
 
 ob_start();

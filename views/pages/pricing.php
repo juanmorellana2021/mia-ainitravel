@@ -5,6 +5,7 @@
 
 $base = App::basePath();
 $pageTitle = 'Precios — Mia by AiniTravel';
+$pageDescription = 'Planes desde S/59/mes. Asistente WhatsApp con IA para hoteles y agencias de viaje. 7 días gratis, sin tarjeta de crédito, configuración incluida.';
 $waLink = 'https://wa.me/' . preg_replace('/[^0-9]/', '', App::WHATSAPP) . '?text=Hola%20Mia!%20Me%20interesa%20el%20plan%20';
 
 ob_start();

@@ -5,10 +5,75 @@
 
 $base = App::basePath();
 $pageTitle = 'Mia — Responde todos tus leads de WhatsApp, automáticamente';
+$pageDescription = 'Asistente de WhatsApp con IA para hoteles, agencias de viaje y operadores turísticos. Responde leads al instante, califica clientes y cierra ventas 24/7. Prueba gratis 7 días.';
+$pageCanonical = App::URL . '/';
 $waLink = 'https://wa.me/' . preg_replace('/[^0-9]/', '', App::WHATSAPP) . '?text=Hola%20Mia!';
 
 ob_start();
 ?>
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Mia by AiniTravel",
+  "description": "<?= htmlspecialchars($pageDescription) ?>",
+  "url": "https://mia-whatsapp.com",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "AggregateOffer",
+    "priceCurrency": "PEN",
+    "lowPrice": "<?= App::PLAN_STARTER ?>",
+    "highPrice": "<?= App::PLAN_PRO ?>",
+    "offerCount": "3"
+  },
+  "provider": {
+    "@type": "Organization",
+    "name": "AiniTravel",
+    "url": "https://mia-whatsapp.com",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "<?= App::WHATSAPP ?>",
+      "contactType": "sales",
+      "availableLanguage": ["Spanish", "English"]
+    }
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "¿Cómo funciona Mia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "El cliente ve tu anuncio en Facebook y escribe a tu WhatsApp. Mia responde al instante, cotiza precios, califica al cliente y cierra la venta. Tú recibes al cliente listo para pagar."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Cuánto cuesta Mia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Planes desde S/59 al mes con 7 días de prueba gratis. Sin tarjeta de crédito. Configuración incluida en 48 horas."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿En qué idiomas funciona Mia?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Mia habla más de 50 idiomas. Detecta automáticamente el idioma del cliente y responde en ese mismo idioma."
+      }
+    }
+  ]
+}
+</script>
 
 <!-- Hero -->
 <section class="mia-hero text-white py-5">
