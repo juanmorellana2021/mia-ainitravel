@@ -77,12 +77,12 @@ $initials      = strtoupper(substr($clientName, 0, 2));
         <?php if ($_hasBroadcast): ?>
         <a href="<?= $base ?>/dashboard/broadcast"
            class="mc-nav-item <?= $activeNav === 'broadcast' ? 'active' : '' ?>">
-            <i class="bi bi-megaphone"></i> Difusión
+            <i class="bi bi-megaphone"></i> Seguimientos
         </a>
         <?php else: ?>
         <a href="<?= $base ?>/dashboard/billing?upgrade=broadcast"
            class="mc-nav-item" style="opacity:.5" title="Disponible desde el plan Business">
-            <i class="bi bi-megaphone"></i> Difusión
+            <i class="bi bi-megaphone"></i> Seguimientos
             <span class="badge bg-warning text-dark ms-auto" style="font-size:.6rem;padding:2px 5px">Pro</span>
         </a>
         <?php endif; ?>

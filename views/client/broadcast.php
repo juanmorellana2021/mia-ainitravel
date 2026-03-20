@@ -3,8 +3,8 @@
  * mia/views/client/broadcast.php — Send a message to all captured leads
  */
 $base         = App::basePath();
-$pageTitle    = 'Difusión — Mia';
-$pageTopTitle = 'Difusión a leads';
+$pageTitle    = 'Seguimientos — Mia';
+$pageTopTitle = 'Seguimientos a leads';
 $activeNav    = 'broadcast';
 
 require __DIR__ . '/_head.php';
