@@ -250,13 +250,16 @@ class ClientBotService
         // (see INTENCIONES block in buildSystemPrompt)
 
         $history  = $this->loadHistory($guestPhone);
+        $systemPrompt = $this->buildSystemPrompt();
         $messages = array_merge(
-            [['role' => 'system', 'content' => $this->buildSystemPrompt()]],
+            [['role' => 'system', 'content' => $systemPrompt]],
             $history,
             [['role' => 'user',   'content' => $msg]]
         );
 
-        $reply = $this->callGroq($messages);
+        // Allow more tokens when photos are in the prompt so URLs aren't truncated
+        $maxTokens = str_contains($systemPrompt, '[FOTO:') || str_contains($systemPrompt, 'FOTOS DEL NEGOCIO') ? 250 : 80;
+        $reply = $this->callGroq($messages, $maxTokens);
         $this->log($guestPhone, 'user', $msg);
         $this->log($guestPhone, 'assistant', $reply);
 
@@ -359,6 +362,31 @@ class ClientBotService
         $websiteBlock  = $website  ? "SITIO WEB / REDES SOCIALES: {$website}" : '';
         $locationBlock = $location ? "UBICACIÓN / DIRECCIÓN: {$location}"    : '';
 
+        // Photos: fetch public URLs for this client
+        $photosBlock = '';
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT filename, caption FROM mia_client_photos WHERE client_id = ? ORDER BY sort_order ASC, id ASC LIMIT 30"
+            );
+            $stmt->execute([$this->client->id]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            if (!empty($rows)) {
+                $baseUrl = \App::URL;
+                $lines = [];
+                foreach ($rows as $row) {
+                    $url = $baseUrl . '/assets/uploads/photos/' . $this->client->id . '/' . $row['filename'];
+                    $label = $row['caption'] ? " ({$row['caption']})" : '';
+                    $lines[] = "- {$url}{$label}";
+                }
+                $photosBlock = "FOTOS DEL NEGOCIO (URLs públicas):\n" . implode("\n", $lines) . "\n"
+                    . "Cuando el cliente pida ver fotos, imágenes, el lugar, los productos, el local o cualquier elemento visual del negocio, "
+                    . "incluye en tu respuesta una o más URLs usando este formato exacto: [FOTO:url] — "
+                    . "una por línea. Puedes combinar texto y fotos. Ejemplo: '¡Claro! Te muestro: [FOTO:https://...]'";
+            }
+        } catch (\Throwable $e) {
+            // Non-fatal — bot works without photos
+        }
+
         return <<<PROMPT
 Eres el asistente virtual de WhatsApp de *{$bizName}*, un negocio de tipo {$bizType}.
 
@@ -379,6 +407,8 @@ IDIOMA: {$languageRule}
 
 {$faqsBlock}
 
+{$photosBlock}
+
 INTENCIONES — TÚ LAS DETECTAS, NO UN IF/ELSE:
 {$handoffInstruction}
 {$leadBlock}
@@ -394,13 +424,13 @@ PROMPT;
 
     // ── Groq call ─────────────────────────────────────────────────────────────
 
-    private function callGroq(array $messages): string
+    private function callGroq(array $messages, int $maxTokens = 80): string
     {
         $payload = json_encode([
             'model'       => self::GROQ_MODEL,
             'messages'    => $messages,
             'temperature' => 0.6,
-            'max_tokens'  => 80,
+            'max_tokens'  => $maxTokens,
             'top_p'       => 0.9,
         ]);
 

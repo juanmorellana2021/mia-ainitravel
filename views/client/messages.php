@@ -43,19 +43,19 @@ require __DIR__ . '/_sidebar.php';
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th>Dirección</th>
+                        <th class="d-none d-md-table-cell">Dirección</th>
                         <th>Teléfono</th>
-                        <th>Contacto</th>
+                        <th class="d-none d-md-table-cell">Contacto</th>
                         <th>Mensaje</th>
                         <th>Respondido por</th>
-                        <th>Fecha</th>
+                        <th class="d-none d-md-table-cell">Fecha</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($messages as $msg): ?>
+                    <?php foreach ($messages as $idx => $msg): ?>
                     <tr>
-                        <td>
+                        <td class="d-none d-md-table-cell">
                             <?php if ($msg['direction'] === 'inbound'): ?>
                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
                                     <i class="bi bi-arrow-down me-1"></i>Entrada
@@ -69,7 +69,7 @@ require __DIR__ . '/_sidebar.php';
                         <td>
                             <i class="bi bi-whatsapp text-success me-1"></i><?= htmlspecialchars($msg['phone']) ?>
                         </td>
-                        <td class="text-muted small">
+                        <td class="text-muted small d-none d-md-table-cell">
                             <?= htmlspecialchars($msg['lead_name'] ?? '—') ?>
                         </td>
                         <td style="max-width:300px">
@@ -88,7 +88,7 @@ require __DIR__ . '/_sidebar.php';
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td class="text-muted small"><?= date('d/m/y H:i', strtotime($msg['created_at'])) ?></td>
+                        <td class="text-muted small d-none d-md-table-cell"><?= date('d/m/y H:i', strtotime($msg['created_at'])) ?></td>
                         <td>
                             <?php if ($msg['lead_id']): ?>
                             <button type="button"
@@ -102,6 +102,28 @@ require __DIR__ . '/_sidebar.php';
                             <?php else: ?>
                             <span class="text-muted small">—</span>
                             <?php endif; ?>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary d-md-none row-expand-btn ms-1"
+                                    style="font-size:0.78rem;padding:3px 8px"
+                                    data-target="msg-detail-<?= $idx ?>"
+                                    title="Ver más">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr id="msg-detail-<?= $idx ?>" style="display:none">
+                        <td colspan="7" class="py-2 px-3 bg-light border-top-0">
+                            <div class="d-flex flex-wrap gap-3 small">
+                                <?php if ($msg['direction'] === 'inbound'): ?>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25"><i class="bi bi-arrow-down me-1"></i>Entrada</span>
+                                <?php else: ?>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25"><i class="bi bi-arrow-up me-1"></i>Salida</span>
+                                <?php endif; ?>
+                                <?php if ($msg['lead_name'] ?? null): ?>
+                                    <span><i class="bi bi-person me-1 text-muted"></i><?= htmlspecialchars($msg['lead_name']) ?></span>
+                                <?php endif; ?>
+                                <span class="text-muted"><i class="bi bi-calendar3 me-1"></i><?= date('d/m/y H:i', strtotime($msg['created_at'])) ?></span>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -285,6 +307,24 @@ require __DIR__ . '/_sidebar.php';
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 })();
+</script>
+
+<script>
+// Expandable detail rows (mobile)
+document.querySelectorAll('.row-expand-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+        var row = document.getElementById(this.dataset.target);
+        var icon = this.querySelector('i');
+        if (!row) return;
+        if (row.style.display === 'none' || row.style.display === ''){
+            row.style.display = 'table-row';
+            icon.className = 'bi bi-chevron-up';
+        } else {
+            row.style.display = 'none';
+            icon.className = 'bi bi-chevron-down';
+        }
+    });
+});
 </script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

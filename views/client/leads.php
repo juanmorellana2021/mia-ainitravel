@@ -99,20 +99,20 @@ require __DIR__ . '/_sidebar.php';
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th class="d-none d-md-table-cell">#</th>
                         <th>Contacto</th>
                         <th>Teléfono</th>
-                        <th>Fuente</th>
+                        <th class="d-none d-md-table-cell">Fuente</th>
                         <th>Estado</th>
-                        <th>Valor estimado</th>
-                        <th>Fecha</th>
+                        <th class="d-none d-md-table-cell">Valor estimado</th>
+                        <th class="d-none d-md-table-cell">Fecha</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($leads as $lead): ?>
                     <tr>
-                        <td class="text-muted">#<?= $lead->id ?></td>
+                        <td class="text-muted d-none d-md-table-cell">#<?= $lead->id ?></td>
                         <td class="fw-medium"><?= htmlspecialchars($lead->contact_name ?: '—') ?></td>
                         <td>
                             <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $lead->phone) ?>"
@@ -120,7 +120,7 @@ require __DIR__ . '/_sidebar.php';
                                 <i class="bi bi-whatsapp text-success me-1"></i><?= htmlspecialchars($lead->phone) ?>
                             </a>
                         </td>
-                        <td>
+                        <td class="d-none d-md-table-cell">
                             <i class="bi <?= $lead->sourceIcon() ?> me-1"></i>
                             <?= ucfirst(htmlspecialchars($lead->source)) ?>
                         </td>
@@ -129,8 +129,8 @@ require __DIR__ . '/_sidebar.php';
                                 <?= $lead->statusLabel() ?>
                             </span>
                         </td>
-                        <td><?= $lead->value_estimate > 0 ? App::CURRENCY . ' ' . number_format($lead->value_estimate, 0) : '—' ?></td>
-                        <td class="text-muted"><?= date('d/m/y H:i', strtotime($lead->created_at)) ?></td>
+                        <td class="d-none d-md-table-cell"><?= $lead->value_estimate > 0 ? App::CURRENCY . ' ' . number_format($lead->value_estimate, 0) : '—' ?></td>
+                        <td class="text-muted d-none d-md-table-cell"><?= date('d/m/y H:i', strtotime($lead->created_at)) ?></td>
                         <td class="d-flex gap-1">
                             <a href="<?= $base ?>/dashboard/leads/<?= $lead->id ?>"
                                class="btn btn-sm btn-outline-primary" style="font-size:0.78rem;padding:3px 10px">
@@ -154,6 +154,23 @@ require __DIR__ . '/_sidebar.php';
                                 <i class="bi bi-telephone"></i>
                             </a>
                             <?php endif; ?>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary d-md-none row-expand-btn"
+                                    style="font-size:0.78rem;padding:3px 8px"
+                                    data-target="lead-detail-<?= $lead->id ?>"
+                                    title="Ver más">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr id="lead-detail-<?= $lead->id ?>" style="display:none">
+                        <td colspan="8" class="py-2 px-3 bg-light border-top-0">
+                            <div class="d-flex flex-wrap gap-3 small">
+                                <span class="text-muted"><strong class="text-dark">#<?= $lead->id ?></strong></span>
+                                <span><i class="bi <?= $lead->sourceIcon() ?> me-1 text-muted"></i><?= ucfirst(htmlspecialchars($lead->source)) ?></span>
+                                <span><strong>Valor:</strong> <?= $lead->value_estimate > 0 ? App::CURRENCY . ' ' . number_format($lead->value_estimate, 0) : '—' ?></span>
+                                <span class="text-muted"><i class="bi bi-calendar3 me-1"></i><?= date('d/m/y H:i', strtotime($lead->created_at)) ?></span>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -415,6 +432,21 @@ document.addEventListener('DOMContentLoaded', function(){
     if (m) new bootstrap.Modal(m).show();
 });
 <?php endif; ?>
+// Expandable detail rows (mobile)
+document.querySelectorAll('.row-expand-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+        var row = document.getElementById(this.dataset.target);
+        var icon = this.querySelector('i');
+        if (!row) return;
+        if (row.style.display === 'none' || row.style.display === ''){
+            row.style.display = 'table-row';
+            icon.className = 'bi bi-chevron-up';
+        } else {
+            row.style.display = 'none';
+            icon.className = 'bi bi-chevron-down';
+        }
+    });
+});
 </script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

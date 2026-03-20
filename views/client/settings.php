@@ -974,9 +974,6 @@ $_obStep      = $_hasWa ? 3 : ($_hasBotCfg ? 2 : 1);
 </script>
 <?php endif; ?>
 
-<?php if ($onboarding): ?>
-<!-- ── Onboarding: finish CTA ─────────────────────────────────────────────── -->
-
 <!-- ── Business photo gallery ────────────────────────────────────────────── -->
 <div class="mc-table-card mt-4 p-4" id="photoGalleryCard">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">

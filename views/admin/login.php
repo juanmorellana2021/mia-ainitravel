@@ -25,6 +25,7 @@ $base = App::basePath();
             <?php endif; ?>
 
             <form method="POST" action="<?= $base ?>/admin/login">
+                <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
                 <div class="mb-3">
                     <label class="form-label small">Usuario</label>
                     <input type="text" name="username" class="form-control" required autofocus>

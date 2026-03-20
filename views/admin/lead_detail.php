@@ -123,6 +123,7 @@ $methodLabels = [
                 <div class="card-header bg-white fw-bold">Actualizar estado</div>
                 <div class="card-body">
                     <form method="POST" action="<?= $base ?>/admin/leads/<?= $lead->id ?>">
+                        <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
                         <div class="mb-3">
                             <label class="form-label small">Nuevo estado</label>
                             <select name="status" class="form-select">

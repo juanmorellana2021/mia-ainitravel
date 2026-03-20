@@ -31,6 +31,8 @@ class LeadController
 
     public function loginSubmit(): void
     {
+        App::csrfVerify();
+
         $user = trim($_POST['username'] ?? '');
         $pass = $_POST['password'] ?? '';
 
@@ -86,6 +88,7 @@ class LeadController
     public function update(int $id): void
     {
         $this->requireAuth();
+        App::csrfVerify();
 
         $status = $_POST['status'] ?? '';
         $notes  = trim($_POST['notes'] ?? '');

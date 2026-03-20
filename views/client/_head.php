@@ -112,7 +112,7 @@
             top: 0;
             z-index: 50;
         }
-        .mc-topbar-title { font-weight: 700; color: #1a202c; font-size: 1rem; }
+        .mc-topbar-title { font-weight: 700; color: #1a202c; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100vw - 180px); }
         .mc-topbar-user {
             display: flex;
             align-items: center;

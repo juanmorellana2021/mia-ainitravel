@@ -18,7 +18,7 @@
 
 'use strict';
 
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcodeImage           = require('qrcode');
 const https                 = require('https');
 const path                  = require('path');
@@ -173,7 +173,7 @@ function startSession() {
             });
             const reply = resp && resp.reply;
             if (reply) {
-                await ww.sendMessage(from, reply);
+                await sendReplyWithPhotos(from, reply);
                 console.log(`[worker:${clientId}] REPLY to ${from}: ${reply.substring(0, 60)}`);
             }
         } catch (e) {
@@ -185,6 +185,34 @@ function startSession() {
     });
 
     ww.initialize();
+}
+
+// ── Reply sender: handles text + optional [FOTO:url] markers ─────────────────
+// The AI can include [FOTO:https://...] anywhere in its reply.
+// We extract those, send the text portion first (if any), then each image.
+async function sendReplyWithPhotos(to, reply) {
+    const photoRegex = /\[FOTO:(https?:\/\/[^\]]+)\]/gi;
+    const photoUrls = [];
+    let match;
+    while ((match = photoRegex.exec(reply)) !== null) {
+        photoUrls.push(match[1]);
+    }
+
+    // Text with [FOTO:...] markers removed and trimmed
+    const textPart = reply.replace(photoRegex, '').replace(/\s{2,}/g, ' ').trim();
+
+    if (textPart) {
+        await ww.sendMessage(to, textPart);
+    }
+
+    for (const url of photoUrls) {
+        try {
+            const media = await MessageMedia.fromUrl(url, { unsafeMime: true });
+            await ww.sendMessage(to, media);
+        } catch (e) {
+            console.error(`[worker:${clientId}] Failed to send photo ${url}: ${e.message}`);
+        }
+    }
 }
 
 // ── LID → real phone resolver ─────────────────────────────────────────────────
