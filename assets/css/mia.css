@@ -504,3 +504,31 @@ html { scroll-behavior: smooth; }
     .mia-hero .lead { font-size: 0.95rem; }
     .display-5 { font-size: 2rem; }
 }
+
+/* ── Product Showcase tabs ─────────────────────────────── */
+#showcaseTabs .nav-link {
+    color: #495057;
+    border: 1px solid #dee2e6;
+    border-radius: 50px;
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+#showcaseTabs .nav-link:hover {
+    background: #e9ecef;
+}
+#showcaseTabs .nav-link.active {
+    background: #198754;
+    border-color: #198754;
+    color: #fff;
+}
+#showcaseContent .tab-pane img {
+    border: 1px solid #dee2e6;
+}
+@media (max-width: 576px) {
+    #showcaseTabs .nav-link {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.75rem;
+    }
+}

@@ -272,6 +272,116 @@ ob_start();
     </div>
 </section>
 
+<!-- Product Showcase -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-2">Tu panel de control completo</h2>
+        <p class="text-center text-muted mb-4">Todo lo que necesitas para gestionar tus ventas por WhatsApp — en un solo lugar</p>
+
+        <!-- Tab navigation -->
+        <ul class="nav nav-pills justify-content-center flex-wrap gap-2 mb-4" id="showcaseTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-analytics" data-bs-toggle="pill" data-bs-target="#pane-analytics" type="button" role="tab">
+                    <i class="bi bi-bar-chart me-1"></i>Analíticas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-chat" data-bs-toggle="pill" data-bs-target="#pane-chat" type="button" role="tab">
+                    <i class="bi bi-chat-dots me-1"></i>Chat en vivo
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-leads" data-bs-toggle="pill" data-bs-target="#pane-leads" type="button" role="tab">
+                    <i class="bi bi-people me-1"></i>Leads
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-messages" data-bs-toggle="pill" data-bs-target="#pane-messages" type="button" role="tab">
+                    <i class="bi bi-envelope me-1"></i>Mensajes
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-calendar" data-bs-toggle="pill" data-bs-target="#pane-calendar" type="button" role="tab">
+                    <i class="bi bi-calendar-check me-1"></i>Citas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-sales" data-bs-toggle="pill" data-bs-target="#pane-sales" type="button" role="tab">
+                    <i class="bi bi-gear me-1"></i>Ventas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-automations" data-bs-toggle="pill" data-bs-target="#pane-automations" type="button" role="tab">
+                    <i class="bi bi-arrow-repeat me-1"></i>Automatizaciones
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-broadcast" data-bs-toggle="pill" data-bs-target="#pane-broadcast" type="button" role="tab">
+                    <i class="bi bi-megaphone me-1"></i>Seguimientos
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab content -->
+        <div class="tab-content" id="showcaseContent">
+            <div class="tab-pane fade show active" id="pane-analytics" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Mira en tiempo real cuántos leads llegan, tu tasa de conversión y mensajes por día.</p>
+                    <img src="<?= App::asset('img/screenshots/analytics.png') ?>" alt="Panel de analíticas de Mia — leads, conversiones y mensajes" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-chat" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Mia conversa con tus clientes por WhatsApp como si fuera parte de tu equipo.</p>
+                    <img src="<?= App::asset('img/screenshots/chat.png') ?>" alt="Chat de WhatsApp con Mia respondiendo automáticamente" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-leads" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Todos tus leads organizados con estado, fuente, valor estimado y acciones rápidas.</p>
+                    <img src="<?= App::asset('img/screenshots/leads.png') ?>" alt="CRM de leads de Mia — gestión de contactos de WhatsApp" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-messages" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Bandeja de mensajes completa — ve todas las conversaciones de entrada y salida con cada lead.</p>
+                    <img src="<?= App::asset('img/screenshots/messages.png') ?>" alt="Bandeja de mensajes de WhatsApp en Mia" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-calendar" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Mia agenda citas directamente desde WhatsApp. Tú solo ves tu calendario.</p>
+                    <img src="<?= App::asset('img/screenshots/calendar.png') ?>" alt="Calendario de citas agendadas por WhatsApp" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-sales" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Configura cómo Mia vende: modo consultivo, directo al cierre o urgencia. Tú decides.</p>
+                    <img src="<?= App::asset('img/screenshots/sales-config.png') ?>" alt="Configuración de ventas de Mia — modo de ventas y CTA" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-automations" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Crea secuencias de seguimiento automáticas. Mia envía mensajes en los tiempos que tú definas.</p>
+                    <img src="<?= App::asset('img/screenshots/automations.png') ?>" alt="Automatizaciones de seguimiento de leads en Mia" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-broadcast" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Envía mensajes masivos a tus leads seleccionados — perfecto para promos y recordatorios.</p>
+                    <img src="<?= App::asset('img/screenshots/broadcast.png') ?>" alt="Seguimientos y difusión masiva a leads de WhatsApp" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="<?= $base ?>/register" class="btn btn-success btn-lg px-4">
+                <i class="bi bi-rocket me-2"></i>Prueba todo esto gratis — 7 días
+            </a>
+        </div>
+    </div>
+</section>
+
 <!-- Why Mia? -->
 <section class="py-5">
     <div class="container">
