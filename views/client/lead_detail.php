@@ -244,7 +244,16 @@ require __DIR__ . '/_sidebar.php';
                     <?php foreach ($messages as $msg): ?>
                     <div class="d-flex flex-column <?= $msg->direction === 'outbound' ? 'align-items-end' : 'align-items-start' ?> mb-1">
                         <div class="msg-bubble <?= $msg->direction ?> <?= $msg->handled_by === 'human' ? 'human' : '' ?>">
-                            <?= nl2br(htmlspecialchars($msg->message)) ?>
+                            <?php
+                                $safe = nl2br(htmlspecialchars($msg->message));
+                                // Render [FOTO:url] markers as inline images
+                                $safe = preg_replace(
+                                    '/\[FOTO:(https?:\/\/[^\]]+)\]/i',
+                                    '<a href="$1" target="_blank"><img src="$1" class="chat-photo mt-1 rounded" style="max-width:200px;max-height:200px;display:block;" alt="foto"></a>',
+                                    $safe
+                                );
+                                echo $safe;
+                            ?>
                         </div>
                         <div class="msg-time">
                             <?= date('H:i', strtotime($msg->created_at)) ?>
