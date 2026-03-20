@@ -281,7 +281,12 @@ ob_start();
         <!-- Tab navigation -->
         <ul class="nav nav-pills justify-content-center flex-wrap gap-2 mb-4" id="showcaseTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tab-analytics" data-bs-toggle="pill" data-bs-target="#pane-analytics" type="button" role="tab">
+                <button class="nav-link active" id="tab-dashboard" data-bs-toggle="pill" data-bs-target="#pane-dashboard" type="button" role="tab">
+                    <i class="bi bi-grid me-1"></i>Dashboard
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-analytics" data-bs-toggle="pill" data-bs-target="#pane-analytics" type="button" role="tab">
                     <i class="bi bi-bar-chart me-1"></i>Analíticas
                 </button>
             </li>
@@ -324,7 +329,13 @@ ob_start();
 
         <!-- Tab content -->
         <div class="tab-content" id="showcaseContent">
-            <div class="tab-pane fade show active" id="pane-analytics" role="tabpanel">
+            <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel">
+                <div class="text-center">
+                    <p class="text-muted mb-3">Tu centro de control: leads, conversiones, plan activo y actividad reciente en un vistazo.</p>
+                    <img src="<?= App::asset('img/screenshots/dashboard.png') ?>" alt="Dashboard principal de Mia — resumen de leads y métricas" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pane-analytics" role="tabpanel">
                 <div class="text-center">
                     <p class="text-muted mb-3">Mira en tiempo real cuántos leads llegan, tu tasa de conversión y mensajes por día.</p>
                     <img src="<?= App::asset('img/screenshots/analytics.png') ?>" alt="Panel de analíticas de Mia — leads, conversiones y mensajes" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
