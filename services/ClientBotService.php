@@ -250,21 +250,30 @@ class ClientBotService
         // (see INTENCIONES block in buildSystemPrompt)
 
         $history  = $this->loadHistory($guestPhone);
-        $systemPrompt = $this->buildSystemPrompt();
+        $systemPrompt = $this->buildSystemPrompt($guestPhone);
         $messages = array_merge(
             [['role' => 'system', 'content' => $systemPrompt]],
             $history,
             [['role' => 'user',   'content' => $msg]]
         );
 
-        // Allow more tokens when photos are in the prompt so URLs aren't truncated
-        $maxTokens = str_contains($systemPrompt, '[FOTO:') || str_contains($systemPrompt, 'FOTOS DEL NEGOCIO') ? 250 : 80;
+        // Allow more tokens when photos or memories are in the prompt
+        $hasPhotos  = str_contains($systemPrompt, '[FOTO:') || str_contains($systemPrompt, 'FOTOS DEL NEGOCIO');
+        $hasMemory  = str_contains($systemPrompt, 'MEMORIA DEL CONTACTO');
+        $maxTokens  = $hasPhotos ? 250 : ($hasMemory ? 120 : 80);
         $reply = $this->callGroq($messages, $maxTokens);
         $this->log($guestPhone, 'user', $msg);
         $this->log($guestPhone, 'assistant', $reply);
 
         // Save outbound reply to CRM
         $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
+
+        // Extract and store new facts about this lead (async-safe, non-blocking)
+        try {
+            (new LeadMemoryService())->extractAndStore($this->client->id, $guestPhone, $msg, $reply);
+        } catch (\Throwable $e) {
+            error_log("[ClientBot:{$this->client->id}] Memory extraction failed: " . $e->getMessage());
+        }
 
         return ['reply' => $reply];
     }
@@ -291,7 +300,7 @@ class ClientBotService
 
     // ── System prompt ─────────────────────────────────────────────────────────
 
-    private function buildSystemPrompt(): string
+    private function buildSystemPrompt(string $phone = ''): string
     {
         $bizName    = $this->client->business_name;
         $rawType    = $this->cfg['business_type']  ?? $this->client->business_type ?? 'negocio';
@@ -362,6 +371,16 @@ class ClientBotService
         $websiteBlock  = $website  ? "SITIO WEB / REDES SOCIALES: {$website}" : '';
         $locationBlock = $location ? "UBICACIÓN / DIRECCIÓN: {$location}"    : '';
 
+        // Lead memory: load remembered facts about this contact
+        $memoryBlock = '';
+        if ($phone !== '') {
+            try {
+                $memoryBlock = (new LeadMemoryService())->getMemoryBlock($this->client->id, $phone);
+            } catch (\Throwable $e) {
+                error_log("[ClientBot:{$this->client->id}] Memory load failed: " . $e->getMessage());
+            }
+        }
+
         // Photos: fetch public URLs for this client
         $photosBlock = '';
         try {
@@ -408,6 +427,8 @@ IDIOMA: {$languageRule}
 {$faqsBlock}
 
 {$photosBlock}
+
+{$memoryBlock}
 
 INTENCIONES — TÚ LAS DETECTAS, NO UN IF/ELSE:
 {$handoffInstruction}

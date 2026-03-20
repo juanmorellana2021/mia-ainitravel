@@ -56,6 +56,8 @@ require_once __DIR__ . '/controllers/DashboardController.php';
 require_once __DIR__ . '/controllers/BillingController.php';
 require_once __DIR__ . '/controllers/SettingsController.php';
 require_once __DIR__ . '/services/ClientPhotoService.php';
+require_once __DIR__ . '/models/LeadMemory.php';
+require_once __DIR__ . '/services/LeadMemoryService.php';
 require_once __DIR__ . '/controllers/BroadcastController.php';
 require_once __DIR__ . '/services/BroadcastService.php';
 require_once __DIR__ . '/services/NotificationService.php';
