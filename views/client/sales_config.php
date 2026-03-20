@@ -22,6 +22,10 @@ $sc = array_merge([
     'handoff_phone'       => '',
     'followup_template'   => '',
     'special_offer'       => '',
+    'yape_phone'          => '',
+    'plin_phone'          => '',
+    'bank_info'           => '',
+    'payment_qr'          => '',
 ], $sc);
 
 // Plan check for followup-gated section
@@ -205,7 +209,60 @@ require __DIR__ . '/_sidebar.php';
             </div>
         </div>
 
-        <!-- ── 6. Seguimiento (Pro+) ─────────────────────────────────────────── -->
+        <!-- ── 6. Métodos de pago ─────────────────────────────────────────── -->
+        <div class="mc-table-card mb-4">
+            <div class="p-4">
+                <h5 class="fw-bold mb-1"><i class="bi bi-wallet2 me-2 text-success"></i>Métodos de pago</h5>
+                <p class="text-muted small mb-4">Configura tus métodos de pago para que Mia pueda indicarle al cliente cómo pagar.</p>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold"><i class="bi bi-phone me-1"></i>Número de Yape</label>
+                        <input type="text" class="form-control mc-form-control" name="yape_phone"
+                               placeholder="ej: 987 654 321"
+                               maxlength="30"
+                               value="<?= htmlspecialchars($sc['yape_phone']) ?>">
+                        <div class="form-text">Mia compartirá este número cuando el cliente quiera pagar con Yape.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold"><i class="bi bi-phone me-1"></i>Número de Plin</label>
+                        <input type="text" class="form-control mc-form-control" name="plin_phone"
+                               placeholder="ej: 987 654 321"
+                               maxlength="30"
+                               value="<?= htmlspecialchars($sc['plin_phone']) ?>">
+                        <div class="form-text">Mia compartirá este número cuando el cliente quiera pagar con Plin.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold"><i class="bi bi-bank me-1"></i>Datos de transferencia bancaria (opcional)</label>
+                        <textarea class="form-control mc-form-control" name="bank_info"
+                                  rows="2" maxlength="500"
+                                  placeholder="ej: BCP Cta. Ahorros 123-456789-0-12 — Razón social: Mi Empresa SAC"><?= htmlspecialchars($sc['bank_info']) ?></textarea>
+                        <div class="form-text">Si aceptas transferencias bancarias, Mia dará estos datos cuando el cliente lo pida.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold"><i class="bi bi-qr-code me-1"></i>Código QR de pago (Yape/Plin)</label>
+                        <div class="d-flex align-items-start gap-3">
+                            <?php if (!empty($sc['payment_qr'])): ?>
+                            <div id="qrPreview" class="position-relative" style="width:150px;flex-shrink:0">
+                                <img src="<?= htmlspecialchars($sc['payment_qr']) ?>" class="img-fluid rounded border" alt="QR de pago">
+                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" id="qrDeleteBtn" style="font-size:.7rem;padding:2px 6px" title="Eliminar QR">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <?php endif; ?>
+                            <div class="flex-grow-1">
+                                <input type="file" class="form-control mc-form-control" id="qrFileInput" accept="image/jpeg,image/png,image/webp">
+                                <div class="form-text">Sube una imagen de tu código QR de Yape o Plin. Mia la enviará cuando el cliente quiera pagar.</div>
+                                <div id="qrUploadStatus" class="small mt-1"></div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="payment_qr" id="paymentQrValue" value="<?= htmlspecialchars($sc['payment_qr']) ?>">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 7. Seguimiento (Pro+) ─────────────────────────────────────────── -->
         <div class="mc-table-card mb-4 <?= !$hasFollowup ? 'opacity-50' : '' ?>" style="position:relative">
             <?php if (!$hasFollowup): ?>
             <div style="position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;border-radius:inherit">
@@ -247,5 +304,61 @@ require __DIR__ . '/_sidebar.php';
 .approach-card:hover { border-color: rgba(37,211,102,.5) !important; }
 .approach-card.selected { border-color: #25d366 !important; background: rgba(37,211,102,.08) !important; }
 </style>
+
+<script>
+(function(){
+    const BASE = '<?= App::basePath() ?>';
+    const csrf = '<?= App::csrfToken() ?>';
+    const fileInput = document.getElementById('qrFileInput');
+    const hiddenVal = document.getElementById('paymentQrValue');
+    const statusEl  = document.getElementById('qrUploadStatus');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function(){
+            const file = this.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                statusEl.innerHTML = '<span class="text-danger">El archivo es muy grande (máx 2 MB)</span>';
+                return;
+            }
+            statusEl.innerHTML = '<span class="text-muted"><i class="bi bi-arrow-repeat spin"></i> Subiendo...</span>';
+            const fd = new FormData();
+            fd.append('qr_image', file);
+            fd.append('csrf_token', csrf);
+            fetch(BASE + '/dashboard/sales-config/upload-qr', { method:'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.url) {
+                        hiddenVal.value = data.url;
+                        statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> QR subido. Recuerda guardar la configuración.</span>';
+                        // Show preview
+                        let preview = document.getElementById('qrPreview');
+                        if (!preview) {
+                            preview = document.createElement('div');
+                            preview.id = 'qrPreview';
+                            preview.className = 'position-relative';
+                            preview.style.cssText = 'width:150px;flex-shrink:0';
+                            fileInput.closest('.d-flex').prepend(preview);
+                        }
+                        preview.innerHTML = '<img src="' + data.url + '" class="img-fluid rounded border" alt="QR de pago">';
+                    } else {
+                        statusEl.innerHTML = '<span class="text-danger">' + (data.error || 'Error al subir') + '</span>';
+                    }
+                })
+                .catch(() => { statusEl.innerHTML = '<span class="text-danger">Error de conexión</span>'; });
+        });
+    }
+
+    const delBtn = document.getElementById('qrDeleteBtn');
+    if (delBtn) {
+        delBtn.addEventListener('click', function(){
+            if (!confirm('¿Eliminar el código QR?')) return;
+            hiddenVal.value = '';
+            const preview = document.getElementById('qrPreview');
+            if (preview) preview.remove();
+        });
+    }
+})();
+</script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

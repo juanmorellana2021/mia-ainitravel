@@ -201,6 +201,10 @@ class ClientService
             'handoff_phone'       => substr(trim($data['handoff_phone']       ?? ''), 0, 30),
             'followup_template'   => substr(trim($data['followup_template']   ?? ''), 0, 500),
             'special_offer'       => substr(trim($data['special_offer']       ?? ''), 0, 300),
+            'yape_phone'          => substr(preg_replace('/[^0-9+ ]/', '', $data['yape_phone'] ?? ''), 0, 30),
+            'plin_phone'          => substr(preg_replace('/[^0-9+ ]/', '', $data['plin_phone'] ?? ''), 0, 30),
+            'bank_info'           => substr(trim($data['bank_info']           ?? ''), 0, 500),
+            'payment_qr'          => substr(trim($data['payment_qr']          ?? ''), 0, 500),
         ];
 
         $this->db->prepare(

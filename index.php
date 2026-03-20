@@ -326,6 +326,9 @@ match (true) {
     $uri === 'dashboard/sales-config/save' && $method === 'POST'
         => (new SettingsController())->saveSalesConfig(),
 
+    $uri === 'dashboard/sales-config/upload-qr' && $method === 'POST'
+        => (new SettingsController())->uploadPaymentQr(),
+
     // ── Settings ──────────────────────────────────────────────────────────────
     $uri === 'dashboard/settings' && $method === 'GET'
         => (new SettingsController())->index(),

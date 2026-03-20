@@ -451,6 +451,15 @@ class ClientBotService
                 $parts[] = 'Si detectas que el cliente lleva un buen rato sin avanzar, puedes retomar con: "' . $salesCfg['followup_template'] . '"';
             }
 
+            // Payment methods (Yape, Plin, bank)
+            $payMethods = [];
+            if (!empty($salesCfg['yape_phone'])) $payMethods[] = 'Yape al número ' . $salesCfg['yape_phone'];
+            if (!empty($salesCfg['plin_phone'])) $payMethods[] = 'Plin al número ' . $salesCfg['plin_phone'];
+            if (!empty($salesCfg['bank_info']))  $payMethods[] = 'Transferencia bancaria: ' . $salesCfg['bank_info'];
+            if (!empty($payMethods)) {
+                $parts[] = 'MÉTODOS DE PAGO DISPONIBLES: ' . implode(' | ', $payMethods) . '. Cuando el cliente pregunte cómo pagar, comparte estos datos. Si hay QR de pago disponible, menciona que puedes enviar el código QR de Yape/Plin.';
+            }
+
             if (!empty($parts)) {
                 $salesBlock = "\nCONFIGURACIÓN DE VENTAS PERSONALIZADA:\n" . implode("\n", $parts);
             }

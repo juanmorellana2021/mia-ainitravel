@@ -337,6 +337,12 @@ class SettingsController
             $ctaLink = '';
         }
 
+        // Validate payment_qr URL — only allow our own upload path or empty
+        $paymentQr = trim($_POST['payment_qr'] ?? '');
+        if ($paymentQr !== '' && !str_starts_with($paymentQr, App::basePath() . '/assets/uploads/qr/')) {
+            $paymentQr = '';
+        }
+
         (new ClientService())->updateSalesConfig($client->id, [
             'sales_approach'       => $approach,
             'cta_text'             => $_POST['cta_text']             ?? '',
@@ -349,10 +355,67 @@ class SettingsController
             'handoff_phone'        => $_POST['handoff_phone']        ?? '',
             'followup_template'    => $_POST['followup_template']    ?? '',
             'special_offer'        => $_POST['special_offer']        ?? '',
+            'yape_phone'           => $_POST['yape_phone']           ?? '',
+            'plin_phone'           => $_POST['plin_phone']           ?? '',
+            'bank_info'            => $_POST['bank_info']            ?? '',
+            'payment_qr'           => $paymentQr,
         ]);
 
         header('Location: ' . App::basePath() . '/dashboard/sales-config?saved=1');
         exit;
+    }
+
+    /** POST /dashboard/sales-config/upload-qr — upload QR code image */
+    public function uploadPaymentQr(): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        if (empty($_FILES['qr_image']) || $_FILES['qr_image']['error'] !== UPLOAD_ERR_OK) {
+            http_response_code(400);
+            echo json_encode(['error' => 'No se recibió ningún archivo.']);
+            return;
+        }
+
+        $file = $_FILES['qr_image'];
+        $maxBytes = 2 * 1024 * 1024; // 2 MB
+        if ($file['size'] > $maxBytes) {
+            http_response_code(422);
+            echo json_encode(['error' => 'El archivo es muy grande (máx 2 MB).']);
+            return;
+        }
+
+        $mime = mime_content_type($file['tmp_name']);
+        $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!isset($allowed[$mime])) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Solo se permiten imágenes JPG, PNG o WebP.']);
+            return;
+        }
+
+        $ext = $allowed[$mime];
+        $dir = __DIR__ . '/../assets/uploads/qr/' . $client->id;
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        // Remove previous QR if exists
+        foreach (glob($dir . '/payment_qr.*') as $old) {
+            @unlink($old);
+        }
+
+        $filename = 'payment_qr.' . $ext;
+        $dest = $dir . '/' . $filename;
+
+        if (!move_uploaded_file($file['tmp_name'], $dest)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error al guardar el archivo.']);
+            return;
+        }
+
+        $url = App::basePath() . '/assets/uploads/qr/' . $client->id . '/' . $filename;
+        echo json_encode(['ok' => true, 'url' => $url]);
     }
 
     // ── Gallery page ──────────────────────────────────────────────────────────
@@ -373,6 +436,12 @@ class SettingsController
         $client = $this->requireClient();
 
         $photoId = (int)($_POST['photo_id'] ?? 0);
+        error_log("[Gallery] updatePhoto called: photo_id={$photoId}, client={$client->id}, fields=" . json_encode([
+            'photo_name'  => $_POST['photo_name']  ?? '(missing)',
+            'description' => $_POST['description'] ?? '(missing)',
+            'price'       => $_POST['price']       ?? '(missing)',
+        ]));
+
         if ($photoId < 1) {
             http_response_code(400);
             echo json_encode(['error' => 'ID inválido']);
@@ -386,6 +455,7 @@ class SettingsController
             'caption'     => $_POST['caption']     ?? '',
         ]);
 
+        error_log("[Gallery] updatePhoto result: " . ($ok ? 'OK' : 'FAIL'));
         echo json_encode(['ok' => $ok]);
     }
 }
