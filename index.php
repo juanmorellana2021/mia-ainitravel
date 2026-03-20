@@ -312,6 +312,13 @@ match (true) {
     $uri === 'api/appointments/slots' && $method === 'GET'
         => (new AppointmentController())->slots(),
 
+    // ── Gallery ───────────────────────────────────────────────────────────────
+    $uri === 'dashboard/gallery' && $method === 'GET'
+        => (new SettingsController())->gallery(),
+
+    $uri === 'dashboard/gallery/update' && $method === 'POST'
+        => (new SettingsController())->updatePhoto(),
+
     // ── Sales config ─────────────────────────────────────────────────────────
     $uri === 'dashboard/sales-config' && $method === 'GET'
         => (new SettingsController())->salesConfig(),

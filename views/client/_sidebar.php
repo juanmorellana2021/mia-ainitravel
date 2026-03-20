@@ -69,6 +69,10 @@ $initials      = strtoupper(substr($clientName, 0, 2));
            class="mc-nav-item <?= $activeNav === 'analytics' ? 'active' : '' ?>">
             <i class="bi bi-bar-chart"></i> Analíticas
         </a>
+        <a href="<?= $base ?>/dashboard/gallery"
+           class="mc-nav-item <?= $activeNav === 'gallery' ? 'active' : '' ?>">
+            <i class="bi bi-images"></i> Galería
+        </a>
         <?php
         $_proPlans = ['trial', 'pro', 'enterprise', 'enterprise_duo', 'enterprise_chain', 'enterprise_corp'];
         $_hasBroadcast = in_array($plan, $_proPlans);

@@ -385,7 +385,7 @@ class ClientBotService
         $photosBlock = '';
         try {
             $stmt = $this->pdo->prepare(
-                "SELECT filename, caption FROM mia_client_photos WHERE client_id = ? ORDER BY sort_order ASC, id ASC LIMIT 30"
+                "SELECT filename, caption, photo_name, description, price FROM mia_client_photos WHERE client_id = ? ORDER BY sort_order ASC, id ASC LIMIT 30"
             );
             $stmt->execute([$this->client->id]);
             $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -394,7 +394,12 @@ class ClientBotService
                 $lines = [];
                 foreach ($rows as $row) {
                     $url = $baseUrl . '/assets/uploads/photos/' . $this->client->id . '/' . $row['filename'];
-                    $label = $row['caption'] ? " ({$row['caption']})" : '';
+                    $parts = [];
+                    if (!empty($row['photo_name']))  $parts[] = $row['photo_name'];
+                    if (!empty($row['description'])) $parts[] = $row['description'];
+                    if (!empty($row['price']))       $parts[] = '$' . $row['price'];
+                    if (!empty($row['caption']) && empty($row['photo_name'])) $parts[] = $row['caption'];
+                    $label = !empty($parts) ? ' (' . implode(' — ', $parts) . ')' : '';
                     $lines[] = "- {$url}{$label}";
                 }
                 $photosBlock = "FOTOS DEL NEGOCIO (URLs públicas):\n" . implode("\n", $lines) . "\n"

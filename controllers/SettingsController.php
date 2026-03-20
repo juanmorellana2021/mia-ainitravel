@@ -354,4 +354,38 @@ class SettingsController
         header('Location: ' . App::basePath() . '/dashboard/sales-config?saved=1');
         exit;
     }
+
+    // ── Gallery page ──────────────────────────────────────────────────────────
+
+    /** GET /dashboard/gallery */
+    public function gallery(): void
+    {
+        $client = $this->requireClient();
+        $saved  = isset($_GET['saved']);
+        require __DIR__ . '/../views/client/gallery.php';
+    }
+
+    /** POST /dashboard/gallery/update — update photo attributes */
+    public function updatePhoto(): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        $photoId = (int)($_POST['photo_id'] ?? 0);
+        if ($photoId < 1) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID inválido']);
+            return;
+        }
+
+        $ok = (new ClientPhotoService())->updatePhoto($photoId, $client->id, [
+            'photo_name'  => $_POST['photo_name']  ?? '',
+            'description' => $_POST['description'] ?? '',
+            'price'       => $_POST['price']       ?? '',
+            'caption'     => $_POST['caption']     ?? '',
+        ]);
+
+        echo json_encode(['ok' => $ok]);
+    }
 }

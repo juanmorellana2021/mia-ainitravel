@@ -34,7 +34,7 @@ class ClientPhotoService
     public function list(int $clientId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, filename, caption, sort_order, created_at
+            'SELECT id, filename, caption, photo_name, description, price, sort_order, created_at
              FROM mia_client_photos
              WHERE client_id = ?
              ORDER BY sort_order ASC, id ASC'
@@ -103,9 +103,9 @@ class ClientPhotoService
         // Persist record
         $caption = substr(trim($caption), 0, 200);
         $ins = $this->pdo->prepare(
-            'INSERT INTO mia_client_photos (client_id, filename, caption) VALUES (?, ?, ?)'
+            'INSERT INTO mia_client_photos (client_id, filename, caption, photo_name, description, price) VALUES (?, ?, ?, ?, ?, ?)'
         );
-        $ins->execute([$clientId, $filename, $caption]);
+        $ins->execute([$clientId, $filename, $caption, '', '', '']);
         $id = (int)$this->pdo->lastInsertId();
 
         return [
@@ -169,4 +169,25 @@ class ClientPhotoService
     }
 
     public function maxPhotos(): int { return self::MAX_PHOTOS; }
+
+    /**
+     * Update photo attributes (name, description, price).
+     * Returns true on success.
+     */
+    public function updatePhoto(int $photoId, int $clientId, array $data): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE mia_client_photos
+             SET photo_name = ?, description = ?, price = ?, caption = ?
+             WHERE id = ? AND client_id = ?'
+        );
+        return $stmt->execute([
+            substr(trim($data['photo_name']  ?? ''), 0, 150),
+            substr(trim($data['description'] ?? ''), 0, 500),
+            substr(trim($data['price']       ?? ''), 0, 50),
+            substr(trim($data['caption']     ?? ''), 0, 200),
+            $photoId,
+            $clientId,
+        ]);
+    }
 }
