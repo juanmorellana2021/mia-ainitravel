@@ -19,10 +19,14 @@ class Database
     public static function get(): PDO
     {
         if (self::$instance === null) {
+            $host = defined('DB_HOST') ? DB_HOST : 'localhost';
+            $name = defined('DB_NAME') ? DB_NAME : 'mia_db';
+            $user = defined('DB_USER') ? DB_USER : 'miauser';
+            $pass = defined('DB_PASS') ? DB_PASS : 'MiaPass2026!';
             self::$instance = new PDO(
-                'mysql:host=' . self::HOST . ';dbname=' . self::NAME . ';charset=utf8mb4',
-                self::USER,
-                self::PASS,
+                'mysql:host=' . $host . ';dbname=' . $name . ';charset=utf8mb4',
+                $user,
+                $pass,
                 [
                     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

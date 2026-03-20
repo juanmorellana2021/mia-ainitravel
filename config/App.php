@@ -7,6 +7,18 @@
 
 declare(strict_types=1);
 
+// Load environment-specific config (.env.php is never committed to git)
+$_envFile = __DIR__ . '/.env.php';
+if (file_exists($_envFile)) {
+    require_once $_envFile;
+}
+if (!defined('APP_URL'))      define('APP_URL',      'https://mia-whatsapp.com');
+if (!defined('APP_ENV'))      define('APP_ENV',      'production');
+if (!defined('DB_HOST'))      define('DB_HOST',      'localhost');
+if (!defined('DB_NAME'))      define('DB_NAME',      'mia_db');
+if (!defined('DB_USER'))      define('DB_USER',      'miauser');
+if (!defined('DB_PASS'))      define('DB_PASS',      'MiaPass2026!');
+
 date_default_timezone_set('America/Lima');
 
 class App
@@ -14,7 +26,7 @@ class App
     // ── Branding ─────────────────────────────────────────────────────────
     public const NAME       = 'Mia by AiniTravel';
     public const TAGLINE    = 'Responde todos tus leads de WhatsApp automáticamente. 24/7.';
-    public const URL        = 'https://mia-whatsapp.com';
+    public const URL        = APP_URL;           // set in .env.php
     public const WHATSAPP   = '+51920076034';  // Mia WhatsApp Business number
 
     // ── Pricing (PEN — Soles) ────────────────────────────────────────────
