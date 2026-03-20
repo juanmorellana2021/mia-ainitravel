@@ -159,7 +159,7 @@ require __DIR__ . '/_sidebar.php';
         var btn = e.target.closest('.photo-save-btn');
         if (!btn) return;
         var id   = btn.dataset.id;
-        var card = btn.closest('[data-id]');
+        var card = btn.closest('.gallery-card');
         var fd   = new FormData();
         fd.append('_csrf', CSRF);
         fd.append('photo_id', id);
@@ -170,18 +170,24 @@ require __DIR__ . '/_sidebar.php';
         btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>...';
         fetch(BASE + '/dashboard/gallery/update', {
             method: 'POST', credentials: 'same-origin', body: fd
-        }).then(function(r){ return r.json(); })
+        }).then(function(r){
+              if (!r.ok) throw new Error('HTTP ' + r.status);
+              return r.json();
+          })
           .then(function(d){
               btn.disabled = false;
               btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Guardar';
               if (d.ok){
                   var badge = document.getElementById('saved-' + id);
                   if (badge){ badge.classList.add('show'); setTimeout(function(){ badge.classList.remove('show'); }, 2000); }
+              } else {
+                  alert('Error al guardar: ' + (d.error || 'desconocido'));
               }
           })
-          .catch(function(){
+          .catch(function(err){
               btn.disabled = false;
               btn.innerHTML = '<i class="bi bi-check2 me-1"></i>Guardar';
+              alert('No se pudo guardar. Error: ' + err.message);
           });
     });
 
