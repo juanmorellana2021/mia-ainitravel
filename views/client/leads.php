@@ -315,11 +315,17 @@ require __DIR__ . '/_sidebar.php';
             return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:88%;">
                 ${label ? `<span style="font-size:0.68rem;color:#adb5bd;margin-bottom:2px;${isOut?'text-align:right':''}">${label}</span>` : ''}
                 <div style="background:${bg};color:${color};border-radius:${isOut?'16px 16px 4px 16px':'16px 16px 16px 4px'};padding:8px 12px;font-size:0.88rem;box-shadow:0 1px 3px rgba(0,0,0,0.07);word-break:break-word;">
-                    ${escHtml(m.message)}
+                    ${renderPhotos(escHtml(m.message))}
                 </div>
                 <span style="font-size:0.68rem;color:#adb5bd;margin-top:2px;">${time}</span>
             </div>`;
         }).join('');
+    }
+
+    function renderPhotos(html) {
+        return html.replace(/\[FOTO:(https?:\/\/[^\]]+)\]/gi, function(_, url) {
+            return '<a href="' + url + '" target="_blank" rel="noopener"><img src="' + url + '" style="max-width:200px;max-height:200px;display:block;border-radius:8px;margin:4px 0;" alt="foto"></a>';
+        });
     }
 
     // ── Send message ──────────────────────────────────────────────────────────
