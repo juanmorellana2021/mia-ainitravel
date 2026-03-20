@@ -273,8 +273,62 @@ ob_start();
 </section>
 
 <!-- ═══════════════════════════════════════════
-     SECTION 5 — Text LEFT · Visual RIGHT
-     "Sin setup técnico"
+     SECTION 5 — Text LEFT · Visual RIGHT     "Fotos reales en la conversación"
+     ═════════════════════════════════════════════ -->
+<section class="py-5">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <!-- Text -->
+            <div class="col-lg-6">
+                <span class="badge bg-success bg-opacity-10 text-success fw-semibold px-3 py-2 mb-3 d-inline-block">Galería de fotos</span>
+                <h2 class="fw-bold mb-3">Muestra, no cuentes.<br>Fotos reales por WhatsApp.</h2>
+                <p class="text-muted mb-4">
+                    Cuando un cliente pregunta "cómo se ve la habitación" o "tienen fotos del plato",
+                    Mia no solo describe — envía la foto real directamente en el chat de WhatsApp.
+                    Una imagen vale más que mil palabras, y cierra más ventas que cualquier descripción.
+                </p>
+                <ul class="list-unstyled">
+                    <li class="d-flex align-items-start gap-2 mb-2"><i class="bi bi-check-circle-fill text-success mt-1"></i><span>Sube tus fotos desde el panel — fácil y rápido</span></li>
+                    <li class="d-flex align-items-start gap-2 mb-2"><i class="bi bi-check-circle-fill text-success mt-1"></i><span>Mia elige la foto correcta según la conversación</span></li>
+                    <li class="d-flex align-items-start gap-2 mb-2"><i class="bi bi-check-circle-fill text-success mt-1"></i><span>Se envía como imagen real en WhatsApp, no como link</span></li>
+                    <li class="d-flex align-items-start gap-2"><i class="bi bi-check-circle-fill text-success mt-1"></i><span>Disponible en planes Pro y Business</span></li>
+                </ul>
+            </div>
+            <!-- Visual: photo gallery mockup -->
+            <div class="col-lg-6 d-flex justify-content-center">
+                <div class="mia-feat-visual">
+                    <div class="mia-minichat">
+                        <div class="mia-minichat-header">
+                            <div class="mia-minichat-dot bg-danger me-1"></div>
+                            <div class="mia-minichat-dot bg-warning me-1"></div>
+                            <div class="mia-minichat-dot bg-success"></div>
+                            <span class="ms-2 text-muted" style="font-size:.7rem">WhatsApp · Mia</span>
+                        </div>
+                        <div class="mia-minichat-body">
+                            <div class="mia-msg mia-msg--in">¿Tienen fotos de la habitación doble?<span class="mia-time">3:15</span></div>
+                            <div class="mia-msg mia-msg--out">¡Claro! Aquí te muestro la Suite Doble: 😍<span class="mia-time mia-time--out">3:15 <i class="bi bi-check2-all" style="color:#53bdeb"></i></span></div>
+                            <div class="mia-msg mia-msg--out" style="padding:4px;">
+                                <div style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border-radius:8px;padding:20px;text-align:center;">
+                                    <i class="bi bi-image" style="font-size:2.5rem;color:#25d366;"></i>
+                                    <div class="fw-bold mt-1" style="font-size:.8rem;color:#2e7d32;">Suite Doble Deluxe</div>
+                                    <div class="text-muted" style="font-size:.7rem;">Foto enviada automáticamente</div>
+                                </div>
+                                <span class="mia-time mia-time--out">3:15 <i class="bi bi-check2-all" style="color:#53bdeb"></i></span>
+                            </div>
+                            <div class="mia-msg mia-msg--in">¡Qué linda! ¿Cuánto cuesta por noche?<span class="mia-time">3:16</span></div>
+                        </div>
+                        <div class="mia-feat-badge-green mt-2 mx-2 mb-2">
+                            <i class="bi bi-image me-1"></i>Foto real enviada en 1 segundo
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═════════════════════════════════════════════
+     SECTION 6 — Text LEFT · Visual RIGHT     "Sin setup técnico"
      ═══════════════════════════════════════════ -->
 <section class="py-5">
     <div class="container">

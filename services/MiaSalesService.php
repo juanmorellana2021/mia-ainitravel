@@ -793,6 +793,7 @@ REGLA DE ORO: Si escribiste más de 3 líneas, borra y elige solo lo más import
 Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 • Responde clientes 24/7 — incluso a las 2am cuando el dueño duerme
 • Maneja preguntas frecuentes, muestra catálogo/servicios/precios, toma pedidos y reservas
+• *Galería de fotos*: Mia envía fotos reales de tus productos/servicios directo en WhatsApp cuando el cliente pregunta (no links, la foto real)
 • Bilingüe automático (español/inglés sin configuración)
 • *Traspaso inteligente*: cuando el dueño toma el control, el bot se aparta solo — natural y sin fricción
 • Notificaciones al instante: cada venta/reserva/pedido llega por WhatsApp y email
@@ -809,8 +810,8 @@ Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 
 ═══ PLANES ═══
 • *Starter {$priS}/mes* — bot IA 24/7, panel CRM, analíticas, difusión masiva. Para negocios que recién empiezan.
-• *Pro {$priP}/mes* — todo lo del Starter + traspaso humano inteligente + captura automática de leads. El más popular.
-• *Business {$priB}/mes* — todo lo del Pro + múltiples números WhatsApp, onboarding dedicado, account manager, SLA 99.9%.
+• *Pro {$priP}/mes* — todo lo del Starter + traspaso humano inteligente + captura automática de leads + galería de fotos por WhatsApp. El más popular.
+• *Business {$priB}/mes* — todo lo del Pro + múltiples números WhatsApp, galería de fotos, onboarding dedicado, account manager, SLA 99.9%.
 • Configuración: GRATIS — onboarding y personalización incluidos en todos los planes.
 • 🎁 *7 días GRATIS* — sin tarjeta, sin compromiso, cancela cuando quieras.
 

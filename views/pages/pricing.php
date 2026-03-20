@@ -88,6 +88,7 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Agenda de citas</strong> <small class="text-muted">(Mia agenda, confirma y envía recordatorios automáticos)</small></li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Galería de fotos por WhatsApp</strong> <small class="text-muted">(Mia envía fotos reales de tus productos/servicios en la conversación)</small></li>
                         </ul>
                     </div>
                     <div class="card-footer bg-white text-center py-3">
@@ -122,6 +123,7 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Agenda de citas</strong> <small class="text-muted">(Mia agenda, confirma y envía recordatorios automáticos)</small></li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Galería de fotos por WhatsApp</strong> <small class="text-muted">(Mia envía fotos reales de tus productos/servicios en la conversación)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Onboarding dedicado en 48h</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>SLA 99.9% uptime garantizado</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Account manager dedicado</li>
