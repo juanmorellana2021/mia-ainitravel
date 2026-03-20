@@ -66,9 +66,17 @@ class AuthController
         }
 
         // First-time users go to the setup wizard; returning users go to dashboard
-        $dest = $client->onboarding_done === 0
-            ? App::basePath() . '/dashboard/settings?onboarding=1'
-            : App::basePath() . '/dashboard';
+        if ($client->onboarding_done === 0) {
+            // If bot_config was pre-filled from the sales chat, skip wizard → QR-only popup
+            $bc = json_decode($client->bot_config ?? '{}', true) ?: [];
+            if (!empty($bc['services']) || !empty($bc['description'])) {
+                $dest = App::basePath() . '/dashboard?qr_setup=1';
+            } else {
+                $dest = App::basePath() . '/dashboard/settings?onboarding=1';
+            }
+        } else {
+            $dest = App::basePath() . '/dashboard';
+        }
         header('Location: ' . $dest);
         exit;
     }

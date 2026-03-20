@@ -387,4 +387,117 @@ $_planLabel = $_planLabels[$client->plan] ?? ucfirst($client->plan);
 </div>
 <?php endif; ?>
 
+<?php if (!empty($qrSetup) && $client->bot_wa_status !== 'connected'): ?>
+<!-- ── QR Setup Modal (first login from chat onboarding) ──────────────── -->
+<div class="modal fade" id="qrSetupModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px;overflow:hidden;">
+            <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:28px 28px 18px;">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i>¡Tu Mia ya está configurada!</h5>
+                    <p class="mb-0 opacity-75" style="font-size:0.88rem">Solo falta conectar tu WhatsApp — toma 1 minuto.</p>
+                </div>
+            </div>
+            <div class="modal-body text-center px-4 py-4">
+                <div id="qrStep1">
+                    <div class="mb-3">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width:64px;height:64px;background:rgba(37,211,102,0.12);">
+                            <i class="bi bi-whatsapp" style="font-size:2rem;color:#25d366;"></i>
+                        </div>
+                        <p class="text-muted mb-3" style="font-size:0.9rem">
+                            Conecta el WhatsApp de tu negocio para que Mia empiece a atender clientes automáticamente.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-lg px-5" id="qrConnectBtn"
+                            style="background:#25d366;border-color:#25d366;color:#fff;border-radius:12px;">
+                        <i class="bi bi-qr-code-scan me-2"></i>Conectar WhatsApp
+                    </button>
+                    <div class="mt-3">
+                        <a href="<?= $base ?>/dashboard" class="text-muted small text-decoration-none">
+                            Hacer esto después →
+                        </a>
+                    </div>
+                </div>
+                <div id="qrStep2" class="d-none">
+                    <div class="text-center p-3 border rounded-3 bg-light mb-3" id="qrBox">
+                        <div class="spinner-border spinner-border-sm text-success mb-2" role="status"></div>
+                        <div class="text-muted small">Generando código QR...</div>
+                    </div>
+                    <div class="text-start bg-light rounded-3 p-3" style="font-size:0.85rem;">
+                        <div class="fw-semibold mb-2"><i class="bi bi-phone me-1"></i>En tu teléfono:</div>
+                        <ol class="mb-0 ps-3">
+                            <li>Abre <strong>WhatsApp</strong></li>
+                            <li>Ve a <strong>Dispositivos vinculados</strong></li>
+                            <li>Toca <strong>Vincular dispositivo</strong></li>
+                            <li>Escanea el código QR de arriba</li>
+                        </ol>
+                    </div>
+                </div>
+                <div id="qrStep3" class="d-none">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width:64px;height:64px;background:rgba(37,211,102,0.12);">
+                        <i class="bi bi-check-lg" style="font-size:2.5rem;color:#25d366;"></i>
+                    </div>
+                    <h5 class="fw-bold text-success">¡WhatsApp conectado!</h5>
+                    <p class="text-muted">Mia ya está atendiendo a tus clientes 24/7.</p>
+                    <button type="button" class="btn btn-success px-4" onclick="location.href='<?= $base ?>/dashboard'">
+                        <i class="bi bi-rocket me-1"></i>Ir al Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    const BASE = <?= json_encode($base) ?>;
+    const modal = new bootstrap.Modal(document.getElementById('qrSetupModal'));
+    modal.show();
+
+    const step1 = document.getElementById('qrStep1');
+    const step2 = document.getElementById('qrStep2');
+    const step3 = document.getElementById('qrStep3');
+    const qrBox = document.getElementById('qrBox');
+    let pollTimer = null;
+
+    document.getElementById('qrConnectBtn').addEventListener('click', function(){
+        step1.classList.add('d-none');
+        step2.classList.remove('d-none');
+        fetch(BASE + '/dashboard/settings/wa-connect', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            body: '_csrf=' + encodeURIComponent(<?= json_encode(App::csrfToken()) ?>)
+        }).then(r => r.json()).then(data => {
+            if (data.ok) pollQR();
+            else qrBox.innerHTML = '<div class="text-danger small">Error al conectar. Intenta desde Configuración.</div>';
+        }).catch(() => {
+            qrBox.innerHTML = '<div class="text-danger small">Error de conexión.</div>';
+        });
+    });
+
+    function pollQR(){
+        pollTimer = setInterval(()=>{
+            fetch(BASE + '/dashboard/settings/wa-qr', {credentials:'same-origin'})
+            .then(r=>r.json())
+            .then(d=>{
+                if(d.status==='connected'){
+                    clearInterval(pollTimer);
+                    step2.classList.add('d-none');
+                    step3.classList.remove('d-none');
+                    // Mark onboarding done
+                    fetch(BASE + '/dashboard/settings/finish-onboarding', {
+                        method:'POST', credentials:'same-origin',
+                        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                        body:'_csrf=' + encodeURIComponent(<?= json_encode(App::csrfToken()) ?>)
+                    });
+                } else if(d.qr_image){
+                    qrBox.innerHTML = '<img src="'+d.qr_image+'" style="width:260px;height:260px;" alt="QR">';
+                }
+            }).catch(()=>{});
+        }, 2500);
+    }
+})();
+</script>
+<?php endif; ?>
+
 <?php require __DIR__ . '/_foot.php'; ?>

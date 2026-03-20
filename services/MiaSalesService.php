@@ -103,6 +103,9 @@ class MiaSalesService
             'onboarding_biz_phone'     => $this->handleOnboardingBizPhone($phone, $session, $message),
             'onboarding_website'       => $this->handleOnboardingWebsite($phone, $session, $message),
             'onboarding_services'      => $this->handleOnboardingServices($phone, $session, $message),
+            'onboarding_pricing'       => $this->handleOnboardingPricing($phone, $session, $message),
+            'onboarding_location'      => $this->handleOnboardingLocation($phone, $session, $message),
+            'onboarding_faqs'          => $this->handleOnboardingFaqs($phone, $session, $message),
             'onboarding_hours'         => $this->handleOnboardingHours($phone, $session, $message),
             'captured'                 => $this->handleCaptured($phone, $session, $message),
             default                    => $this->handleNew($phone, $session, $message),
@@ -618,6 +621,7 @@ class MiaSalesService
             $website = trim($wm[0]);
             $this->updateSession($phone, ['state' => 'onboarding_services', 'website' => $website]);
             $session = array_merge($session, ['state' => 'onboarding_services', 'website' => $website]);
+            $this->updateClientSettings($phone, ['website' => $website]);
         } else {
             $this->updateSession($phone, ['state' => 'onboarding_services']);
             $session['state'] = 'onboarding_services';
@@ -637,12 +641,73 @@ class MiaSalesService
     {
         $services = trim($message);
         $this->updateClientSettings($phone, ['services' => $services, 'description' => $services]);
+        $this->updateSession($phone, ['state' => 'onboarding_pricing']);
+        $session['state'] = 'onboarding_pricing';
+
+        return $this->aiReply($phone, $session, $message,
+            "Guardaste la descripción de servicios. " .
+            "Ahora pregunta por los precios principales — tarifas, paquetes, lo que el cliente suele preguntar. " .
+            "Explica que Mia usará estos precios para responder consultas de tarifas automáticamente. " .
+            "Si no tienen precios fijos pueden decir 'consultar' o 'cotización'. UNA pregunta corta."
+        );
+    }
+
+    private function handleOnboardingPricing(string $phone, array $session, string $message): array
+    {
+        $msg  = trim($message);
+        $skip = preg_match('/\b(no\s+tengo|no\s+hay|skip|omitir|después|luego|cotizaci[oó]n|consultar|depende)\b/i', $msg);
+
+        if (!$skip && strlen($msg) >= 3) {
+            $this->updateClientSettings($phone, ['pricing' => $msg]);
+        }
+
+        $this->updateSession($phone, ['state' => 'onboarding_location']);
+        $session['state'] = 'onboarding_location';
+
+        return $this->aiReply($phone, $session, $message,
+            "Precios registrados (o saltados). " .
+            "Ahora pregunta por la ubicación del negocio — la dirección o zona donde se encuentran. " .
+            "Explica que los clientes siempre preguntan 'dónde quedan' y Mia podrá responder al instante. " .
+            "Si es solo online pueden decir 'online'. UNA pregunta corta."
+        );
+    }
+
+    private function handleOnboardingLocation(string $phone, array $session, string $message): array
+    {
+        $msg  = trim($message);
+        $skip = preg_match('/\b(no\s+tengo|skip|omitir|después|luego|online|virtual)\b/i', $msg);
+
+        if (!$skip && strlen($msg) >= 3) {
+            $this->updateClientSettings($phone, ['location' => $msg]);
+        }
+
+        $this->updateSession($phone, ['state' => 'onboarding_faqs']);
+        $session['state'] = 'onboarding_faqs';
+
+        return $this->aiReply($phone, $session, $message,
+            "Ubicación registrada (o saltada). " .
+            "Última pregunta de configuración: ¿cuáles son las preguntas que más hacen sus clientes? " .
+            "Ej: '¿aceptan mascotas?', '¿tienen estacionamiento?', '¿aceptan tarjeta?' — " .
+            "lo que sea que pregunten seguido. Mia responderá estas automáticamente. " .
+            "Si no se les ocurre ninguna pueden decir 'no tengo' y lo dejamos vacío. UNA pregunta."
+        );
+    }
+
+    private function handleOnboardingFaqs(string $phone, array $session, string $message): array
+    {
+        $msg  = trim($message);
+        $skip = preg_match('/\b(no\s+tengo|no\s+s[eé]|skip|omitir|después|luego|ninguna|nada)\b/i', $msg);
+
+        if (!$skip && strlen($msg) >= 5) {
+            $this->updateClientSettings($phone, ['faqs' => $msg]);
+        }
+
         $this->updateSession($phone, ['state' => 'onboarding_hours']);
         $session['state'] = 'onboarding_hours';
 
         return $this->aiReply($phone, $session, $message,
-            "Guardaste la descripción de servicios. Una pregunta más — el horario de atención: " .
-            "¿cuándo atienden normalmente? (días y horas). " .
+            "FAQs guardadas (o saltadas). Ya casi terminamos — una más: el horario de atención. " .
+            "¿Cuándo atienden normalmente? (días y horas). " .
             "Explica brevemente que con eso Mia puede decirles a los clientes cuándo habrá alguien disponible " .
             "para preguntas que ella no pueda resolver. Solo el horario, una pregunta."
         );
@@ -1004,7 +1069,7 @@ PROMPT;
         $botConfig = json_decode($client['bot_config'] ?? '{}', true) ?: [];
 
         // Fields that live inside bot_config JSON
-        $botFields = ['description', 'services', 'pricing', 'hours', 'faqs', 'language', 'tone', 'business_type'];
+        $botFields = ['description', 'services', 'pricing', 'hours', 'faqs', 'website', 'location', 'language', 'tone', 'business_type'];
         foreach ($botFields as $f) {
             if (isset($updates[$f])) $botConfig[$f] = $updates[$f];
         }

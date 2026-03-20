@@ -41,6 +41,7 @@ class DashboardController
         $monthConvos      = $leadService->monthlyConversations($client->id);
         $convLimit        = ClientBotService::CONV_LIMITS[$client->plan] ?? 0;
         $welcome          = !empty($_GET['welcome']);
+        $qrSetup          = !empty($_GET['qr_setup']);
 
         require __DIR__ . '/../views/client/dashboard.php';
     }
