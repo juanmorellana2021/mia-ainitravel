@@ -87,10 +87,14 @@ function startSession() {
 
     ww = new Client({
         authStrategy: new LocalAuth({ clientId: 'client_' + clientId, dataPath: AUTH_DIR }),
+        // Force a fresh WA Web JS download on every startup — prevents 'getLastMsgKeyForAction
+        // is not a function' errors that occur when WhatsApp updates their web app and the
+        // Chromium cache serves a stale version of their JS.
+        webVersionCache: { type: 'none' },
         puppeteer: {
             headless: true,
             protocolTimeout: 120000, // 2 min — prevents 'Runtime.callFunctionOn timed out' on slow init
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         },
     });
 

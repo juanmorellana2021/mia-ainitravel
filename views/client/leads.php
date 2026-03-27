@@ -101,7 +101,7 @@ require __DIR__ . '/_sidebar.php';
 .lead-desktop-only { display:none; }
 @media(min-width:768px) {
     .lead-mobile-only { display:none !important; }
-    .lead-desktop-only { display:block !important; }
+    .lead-desktop-only { display:flex !important; }
     .lead-fab { display:none !important; }
 }
 </style>

@@ -25,8 +25,9 @@ class ClientBotService
     private bool $canSequences;
     private bool $canAppointments;
 
-    private const GROQ_KEY   = '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';
-    private const GROQ_MODEL = 'llama-3.3-70b-versatile';
+    private const GROQ_KEY          = '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';
+    private const GROQ_MODEL        = 'llama-3.3-70b-versatile';
+    private const GROQ_MODEL_FALLBACK = 'llama-3.1-8b-instant'; // 500K TPD — used when 70B is rate-limited
     private const MAX_HISTORY = 10; // message pairs
 
     private const PLAN_CAPS = [
@@ -740,52 +741,72 @@ PROMPT;
 
     private function callGroq(array $messages, int $maxTokens = 80): string
     {
-        $payload = json_encode([
-            'model'       => self::GROQ_MODEL,
-            'messages'    => $messages,
-            'temperature' => 0.6,
-            'max_tokens'  => $maxTokens,
-            'top_p'       => 0.9,
-        ]);
+        $models = [self::GROQ_MODEL, self::GROQ_MODEL_FALLBACK];
 
-        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $payload,
-            CURLOPT_TIMEOUT        => 15,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . self::GROQ_KEY,
-            ],
-        ]);
-        $response = curl_exec($ch);
-        $err      = curl_error($ch);
-        curl_close($ch);
+        foreach ($models as $model) {
+            $payload = json_encode([
+                'model'       => $model,
+                'messages'    => $messages,
+                'temperature' => 0.6,
+                'max_tokens'  => $maxTokens,
+                'top_p'       => 0.9,
+            ]);
 
-        if ($err) {
-            error_log("[ClientBot:{$this->client->id}] Groq error: $err");
-            return 'Un momento, estoy teniendo un pequeño problema técnico. Intenta de nuevo en un instante 🙏';
-        }
+            $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $payload,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . self::GROQ_KEY,
+                ],
+            ]);
+            $response = curl_exec($ch);
+            $err      = curl_error($ch);
+            curl_close($ch);
 
-        $data = json_decode($response, true);
-        $text = trim($data['choices'][0]['message']['content'] ?? '');
-
-        if (empty($text)) {
-            error_log("[ClientBot:{$this->client->id}] Groq empty: $response");
-            return 'Un momento, estoy teniendo un pequeño problema técnico. Intenta de nuevo en un instante 🙏';
-        }
-
-        // Keep first paragraph only — but preserve [FOTO:url] markers that may be on a separate line
-        $hasPhotos = str_contains($text, '[FOTO:');
-        $hasBook   = str_contains($text, '[BOOK:');
-        if (!$hasPhotos && !$hasBook) {
-            $break = strpos($text, "\n\n");
-            if ($break !== false) {
-                $text = trim(substr($text, 0, $break));
+            if ($err) {
+                error_log("[ClientBot:{$this->client->id}] Groq cURL error ({$model}): $err");
+                continue;
             }
-        }
-        return $text;
+
+            $data = json_decode($response, true);
+
+            // If rate-limited, try next model
+            $errorCode = $data['error']['code'] ?? '';
+            if ($errorCode === 'rate_limit_exceeded') {
+                error_log("[ClientBot:{$this->client->id}] Groq rate limit on {$model}, trying fallback");
+                continue;
+            }
+
+            $text = trim($data['choices'][0]['message']['content'] ?? '');
+
+            if (empty($text)) {
+                error_log("[ClientBot:{$this->client->id}] Groq empty ({$model}): $response");
+                continue;
+            }
+
+            if ($model !== self::GROQ_MODEL) {
+                error_log("[ClientBot:{$this->client->id}] Groq fallback model used: {$model}");
+            }
+
+            // Keep first paragraph only — but preserve [FOTO:url] markers that may be on a separate line
+            $hasPhotos = str_contains($text, '[FOTO:');
+            $hasBook   = str_contains($text, '[BOOK:');
+            if (!$hasPhotos && !$hasBook) {
+                $break = strpos($text, "\n\n");
+                if ($break !== false) {
+                    $text = trim(substr($text, 0, $break));
+                }
+            }
+            return $text;
+        } // end foreach models
+
+        // All models exhausted
+        error_log("[ClientBot:{$this->client->id}] Groq: all models failed (rate limits or errors)");
+        return 'Un momento, estoy teniendo un pequeño problema técnico. Intenta de nuevo en un instante 🙏';
     }
 
     // ── Conversation history ──────────────────────────────────────────────────
