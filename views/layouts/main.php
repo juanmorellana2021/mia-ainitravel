@@ -97,12 +97,13 @@ $base = App::basePath();
                     <li><a href="<?= $base ?>/features" class="text-secondary text-decoration-none">Funciones</a></li>
                     <li><a href="<?= $base ?>/pricing" class="text-secondary text-decoration-none">Precios</a></li>
                     <li><a href="<?= $base ?>/demo" class="text-secondary text-decoration-none">Demo en Vivo</a></li>
+                    <li><a href="<?= $base ?>/privacy" class="text-secondary text-decoration-none">Política de Privacidad</a></li>
                 </ul>
             </div>
             <div class="col-md-4">
                 <h6 class="fw-bold">Contacto</h6>
                 <p class="text-secondary mb-1"><i class="bi bi-whatsapp me-2"></i><?= App::WHATSAPP ?></p>
-                <p class="text-secondary mb-1"><i class="bi bi-envelope me-2"></i>hola@ainitravel.com</p>
+                <p class="text-secondary mb-1"><i class="bi bi-envelope me-2"></i>support@mia-whatsapp.com</p>
                 <p class="text-secondary"><i class="bi bi-globe me-2"></i>mia-whatsapp.com</p>
             </div>
         </div>

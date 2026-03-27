@@ -32,6 +32,11 @@ let clientId       = null;
 let ww             = null;
 let sessionReadyAt = 0;
 
+// Dedup: track recently-seen message IDs to prevent double-processing
+const recentMsgIds = new Set();
+// Ad-click tracking: notification_template is always followed by a regular chat event.
+// Skip notification_template, process the chat. No per-phone dedup timers needed.
+
 // ── IPC: receive commands from parent ─────────────────────────────────────────
 process.on('message', (msg) => {
     if (!msg || !msg.type) return;
@@ -63,10 +68,28 @@ process.on('message', (msg) => {
 
 // ── WhatsApp session ──────────────────────────────────────────────────────────
 function startSession() {
+    // Remove stale Chrome singleton lock files left by a previous crash.
+    // Without this, puppeteer throws "browser is already running" and the worker
+    // crashes immediately, creating an infinite restart loop.
+    const sessionDir = path.join(AUTH_DIR, 'session-client_' + clientId);
+    for (const f of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
+        try { require('fs').unlinkSync(path.join(sessionDir, f)); } catch (_) {}
+    }
+    // Also kill any stale Chrome processes still holding that user-data-dir.
+    // This handles the case where the Node process was killed but Chrome kept running.
+    try {
+        require('child_process').execSync(
+            `pkill -f "user-data-dir=${sessionDir}" 2>/dev/null || true`
+        );
+        // Give Chrome 1s to fully exit before launching a new instance
+        require('child_process').execSync('sleep 1');
+    } catch (_) {}
+
     ww = new Client({
         authStrategy: new LocalAuth({ clientId: 'client_' + clientId, dataPath: AUTH_DIR }),
         puppeteer: {
             headless: true,
+            protocolTimeout: 120000, // 2 min — prevents 'Runtime.callFunctionOn timed out' on slow init
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
         },
     });
@@ -105,8 +128,19 @@ function startSession() {
     });
 
     ww.on('message', async (msg) => {
-        if (msg.from === 'status@broadcast' || msg.from.includes('@g.us')) return;
+        if (msg.from === 'status@broadcast' || msg.from.includes('@g.us') || msg.from.includes('@newsletter')) return;
         if (msg.fromMe) return;
+
+        // Dedup by message ID
+        const msgId = msg.id?._serialized || '';
+        if (msgId && recentMsgIds.has(msgId)) {
+            console.log(`[worker:${clientId}] Duplicate msgId ${msgId} — skipping`);
+            return;
+        }
+        if (msgId) {
+            recentMsgIds.add(msgId);
+            setTimeout(() => recentMsgIds.delete(msgId), 300_000);
+        }
 
         const rawBody = msg.body?.trim() || '';
         console.log(`[worker:${clientId}] RAW from=${msg.from} type=${msg.type} body="${rawBody.substring(0, 60)}"`);
@@ -118,15 +152,23 @@ function startSession() {
         }
 
         // ── Media handling ────────────────────────────────────────────────────
-        // Facebook/Instagram ad clicks arrive as notification_template with empty body
-        // The pre-filled ad text lives in msg._data.body; fall back to "Hola" so the bot always greets them
-        const isAdClick = msg.type === 'notification_template';
+        // Facebook/Instagram ad clicks arrive as notification_template followed by a chat.
+        // Skip the notification_template — the real message comes right after.
+        if (msg.type === 'notification_template') {
+            console.log(`[worker:${clientId}] Ad-click notification_template from ${msg.from} — waiting for chat event`);
+            return;
+        }
+
+        // Detect and skip bot auto-replies from other businesses
+        const autoReplyPatterns = /gracias por (comunicarte|escribirnos|contactarnos)|en este momento no podemos|te responderemos a la brevedad|fuera del horario|horario de atenci[oó]n|mensaje autom[aá]tico|respuesta autom[aá]tica|tu mensaje (fue|ha sido) recibido|bienvenid[oa] a\b/i;
+        if (rawBody && autoReplyPatterns.test(rawBody)) {
+            console.log(`[worker:${clientId}] Auto-reply detected from ${msg.from}: "${rawBody.substring(0, 80)}" — skipping`);
+            return;
+        }
 
         const isMediaMsg = msg.hasMedia && ['ptt', 'audio', 'image'].includes(msg.type);
 
-        let messageText = isAdClick
-            ? (msg._data?.body?.trim() || rawBody || 'Hola')
-            : rawBody;
+        let messageText = rawBody;
         let mediaData = null, mediaMime = null, mediaType = null;
         if (isMediaMsg) {
             try {
@@ -144,7 +186,7 @@ function startSession() {
             }
         }
 
-        if (!messageText && !mediaData && !isAdClick) {
+        if (!messageText && !mediaData) {
             console.log(`[worker:${clientId}] Dropped: empty body, no media (type=${msg.type})`);
             return;
         }

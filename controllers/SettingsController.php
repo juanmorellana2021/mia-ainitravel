@@ -149,6 +149,7 @@ class SettingsController
             'bot_faqs'            => $_POST['bot_faqs']            ?? '',
             'bot_website'         => $_POST['bot_website']         ?? '',
             'bot_location'        => $_POST['bot_location']        ?? '',
+            'bot_google_maps'     => $_POST['bot_google_maps']     ?? '',
             'bot_language'        => $_POST['bot_language']        ?? 'es',
             'bot_tone'            => $_POST['bot_tone']            ?? 'friendly',
             'char_skills'         => $charSkills,

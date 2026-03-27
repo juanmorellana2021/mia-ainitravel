@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 class AppointmentController
 {
-    private const ALLOWED_PLANS = ['trial','pro','enterprise','enterprise_duo','enterprise_chain','enterprise_corp'];
+    private const ALLOWED_PLANS = ['trial','basic','pro','enterprise','enterprise_duo','enterprise_chain','enterprise_corp'];
 
     private function requireClient(): Client
     {

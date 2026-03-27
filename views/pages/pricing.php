@@ -5,7 +5,7 @@
 
 $base = App::basePath();
 $pageTitle = 'Precios — Mia by AiniTravel';
-$pageDescription = 'Planes desde S/59/mes. Asistente WhatsApp con IA para hoteles y agencias de viaje. 7 días gratis, sin tarjeta de crédito, configuración incluida.';
+$pageDescription = 'Planes desde S/84/mes. Asistente WhatsApp con IA para negocios. 15 días gratis, sin tarjeta de crédito, configuración incluida.';
 $waLink = 'https://wa.me/' . preg_replace('/[^0-9]/', '', App::WHATSAPP) . '?text=Hola%20Mia!%20Me%20interesa%20el%20plan%20';
 
 ob_start();
@@ -48,7 +48,7 @@ ob_start();
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Chat directo desde el panel (Mia pausa al instante)</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Notificaciones al dueño</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable (bot respeta tu horario)</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
+                            <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Enlace directo y código QR de WhatsApp</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Traspaso humano por WhatsApp</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Captura de leads automática</li>
                             <li class="mb-2 text-muted"><i class="bi bi-x-circle me-2"></i>Agenda de citas con recordatorios</li>
@@ -83,6 +83,7 @@ ob_start();
                         <hr>
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Starter</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Usuarios adicionales disponibles</strong> <small class="text-muted">(+<?= App::CURRENCY ?><?= App::ADDON_SEAT_PRICE ?>/mes por usuario extra)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Cierra ventas por WhatsApp</strong> <small class="text-muted">(Mia guía al cliente y cierra directamente en la conversación)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Captura de leads automática</strong> <small class="text-muted">(Mia recoge nombre y contacto y los guarda en tu CRM)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Traspaso humano opcional</strong> <small class="text-muted">(disponible si el cliente pide hablar con una persona)</small></li>
@@ -121,7 +122,7 @@ ob_start();
                         <hr>
                         <ul class="list-unstyled text-start">
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Todo lo del Pro</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Múltiples números WhatsApp</li>
+                            <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Usuarios adicionales disponibles</strong> <small class="text-muted">(+<?= App::CURRENCY ?><?= App::ADDON_SEAT_PRICE ?>/mes por usuario extra)</small></li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Horario de atención configurable</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i>Enlace directo y código QR de WhatsApp</li>
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Agenda de citas</strong> <small class="text-muted">(Mia agenda, confirma y envía recordatorios automáticos)</small></li>
@@ -160,7 +161,7 @@ ob_start();
                             <p class="text-muted">/ mes &middot; 2 sedes</p>
                             <hr>
                             <ul class="list-unstyled text-start">
-                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>Todo lo del Enterprise</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>Todo lo del Business</li>
                                 <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i><strong>2 números WhatsApp independientes</strong></li>
                                 <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>Onboarding en 48h</li>
                                 <li class="mb-2"><i class="bi bi-check-circle-fill text-secondary me-2"></i>SLA 99.9% uptime</li>
@@ -187,7 +188,7 @@ ob_start();
                             <p class="text-muted">/ mes · hasta 5 sedes</p>
                             <hr>
                             <ul class="list-unstyled text-start">
-                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Todo lo del Enterprise</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Todo lo del Enterprise Duo</li>
                                 <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i><strong>Hasta 5 números WhatsApp independientes</strong></li>
                                 <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Onboarding prioritario (24h)</li>
                                 <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>SLA 99.9% + soporte 24/7</li>
@@ -230,6 +231,45 @@ ob_start();
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- Team seats add-on -->
+        <div class="mt-5 pt-4 border-top">
+            <div class="row justify-content-center">
+                <div class="col-lg-7">
+                    <div class="card border shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:rgba(37,211,102,0.12)">
+                                    <i class="bi bi-people-fill" style="font-size:1.4rem;color:#25d366"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-0">¿Necesitas más usuarios?</h5>
+                                    <p class="text-muted small mb-0">Agrega miembros de equipo adicionales a cualquier plan</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 mb-3">
+                                <span class="display-6 fw-bold"><?= App::CURRENCY ?><?= App::ADDON_SEAT_PRICE ?></span>
+                                <span class="text-muted">/ usuario extra / mes</span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-sm-6">
+                                    <div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i><small>Acceso al panel CRM completo</small></div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i><small>Chat directo con clientes</small></div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i><small>Ver leads y analíticas</small></div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i><small>Permisos según rol</small></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

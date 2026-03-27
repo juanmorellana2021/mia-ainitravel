@@ -48,6 +48,9 @@ class AuthController
         $_SESSION['mia_client_id'] = $client->id;
         $_SESSION['mia_client']    = (new BillingService())->clientToSession($client);
 
+        // Track login time
+        Database::get()->prepare('UPDATE mia_clients SET last_login_at=NOW() WHERE id=?')->execute([$client->id]);
+
         // Remember Me — write a hashed token in DB + send a 30-day cookie
         if (!empty($_POST['remember_me'])) {
             $rmToken   = bin2hex(random_bytes(32));
@@ -132,6 +135,7 @@ class AuthController
             session_regenerate_id(true);
             $_SESSION['mia_client_id'] = $client->id;
             $_SESSION['mia_client']    = (new BillingService())->clientToSession($client);
+            Database::get()->prepare('UPDATE mia_clients SET last_login_at=NOW() WHERE id=?')->execute([$client->id]);
 
             header('Location: ' . App::basePath() . '/dashboard/settings?onboarding=1');
             exit;
@@ -286,6 +290,8 @@ class AuthController
 
     private function sendResetEmail(string $to, string $resetUrl): void
     {
+        require_once __DIR__ . '/../services/NotificationService.php';
+
         $subject = 'Restablece tu contraseña — Mia';
         $time    = date('d/m/Y H:i');
 
@@ -307,14 +313,11 @@ class AuthController
     </div>
     <p style="color:#6c757d;font-size:13px">Este enlace expira en <strong>30 minutos</strong>.<br>Si no solicitaste este cambio, ignora este correo.</p>
   </div>
-  <div style="background:#f8f9fa;padding:14px 24px;text-align:center;font-size:12px;color:#adb5bd">Mia by AiniTravel &middot; noreply@ainitravel.com</div>
+  <div style="background:#f8f9fa;padding:14px 24px;text-align:center;font-size:12px;color:#adb5bd">Mia WhatsApp &middot; support@mia-whatsapp.com</div>
 </div></body></html>
 HTML;
 
-        $headers  = "MIME-Version: 1.0\r\n";
-        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
-        $headers .= "From: Mia <noreply@ainitravel.com>\r\n";
-        @mail($to, $subject, $html, $headers);
+        (new NotificationService())->sendRaw($to, $subject, $html);
         error_log("[Mia] Password reset email sent to {$to}");
     }
 }

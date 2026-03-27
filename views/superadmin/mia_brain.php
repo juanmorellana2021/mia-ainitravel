@@ -868,7 +868,7 @@ require __DIR__ . '/_sidebar.php';
                 ['title' => 'Filosofía de ventas (9 principios)', 'desc' => 'SPIN, Challenger Sale, micro-compromisos, pérdidas > ganancias, etc.'],
                 ['title' => 'PRODUCTO: Qué hace Mia', 'desc' => 'Features clave, diferenciadores, bilingüe, traspaso inteligente, sin comisiones.'],
                 ['title' => 'Casos de éxito reales', 'desc' => 'Hotel Cusco, Agencia Lima, Restaurante Miraflores, Consultora. Con números.'],
-                ['title' => 'Planes + precios', 'desc' => 'S/59 / S/129 / S/349. Config gratis. 7 días gratis. Inyectados desde constantes de App.php.'],
+                ['title' => 'Planes + precios', 'desc' => 'S/84 / S/129 / S/349. Config gratis. 15 días gratis. Inyectados desde constantes de App.php.'],
                 ['title' => 'Manejo de objeciones (6)', 'desc' => '"Está caro", "Lo pensaré", "No tengo tiempo", "Ya tenemos alguien", "No sé si funcionará", "Debo hablarlo".'],
                 ['title' => 'Contexto actual del prospecto', 'desc' => 'Estado, tipo de negocio, volumen, método, dolor, nombre, email — dinámico por sesión.'],
                 ['title' => 'INTENCIONES — detección por Groq', 'desc' => '"Quiero el bot" → pide email. "¿Cuánto cuesta?" → precios. "No me interesa" → cierra con gracia.'],

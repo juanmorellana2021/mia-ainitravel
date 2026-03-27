@@ -74,7 +74,7 @@ $initials      = strtoupper(substr($clientName, 0, 2));
             <i class="bi bi-images"></i> Galería
         </a>
         <?php
-        $_proPlans = ['trial', 'pro', 'enterprise', 'enterprise_duo', 'enterprise_chain', 'enterprise_corp'];
+        $_proPlans = ['trial', 'basic', 'pro', 'enterprise', 'enterprise_duo', 'enterprise_chain', 'enterprise_corp'];
         $_hasBroadcast = in_array($plan, $_proPlans);
         $_hasSequences = in_array($plan, $_proPlans);
         ?>

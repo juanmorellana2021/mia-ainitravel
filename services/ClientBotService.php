@@ -32,7 +32,7 @@ class ClientBotService
     private const PLAN_CAPS = [
         'trial'           => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
         'starter'         => [],
-        'basic'           => ['handoff', 'leads'],   // Mia Ventas: closes sales + captures leads
+        'basic'           => ['handoff', 'leads', 'appointments'],   // Mia Ventas: closes sales + captures leads
         'pro'             => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
         'enterprise'      => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
         'enterprise_duo'  => ['handoff', 'leads', 'broadcast', 'sequences', 'appointments'],
@@ -260,8 +260,36 @@ class ClientBotService
         // Allow more tokens when photos or memories are in the prompt
         $hasPhotos  = str_contains($systemPrompt, '[FOTO:') || str_contains($systemPrompt, 'FOTOS DEL NEGOCIO');
         $hasMemory  = str_contains($systemPrompt, 'MEMORIA DEL CONTACTO');
-        $maxTokens  = $hasPhotos ? 250 : ($hasMemory ? 120 : 80);
+        $hasAppts   = str_contains($systemPrompt, 'AGENDA DE CITAS:');
+        $maxTokens  = $hasPhotos ? 250 : ($hasMemory ? 120 : ($hasAppts ? 120 : 80));
         $reply = $this->callGroq($messages, $maxTokens);
+
+        // ── Appointment booking detection ────────────────────────────────────
+        if ($this->canAppointments && preg_match('/\[BOOK:(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\]/i', $reply, $bMatch)) {
+            $bookDate = $bMatch[1];
+            $bookTime = $bMatch[2];
+            $reply    = trim(preg_replace('/\s*\[BOOK:[^\]]+\]/i', '', $reply));
+
+            $stmtLN = $this->pdo->prepare('SELECT contact_name FROM mia_client_leads WHERE id = ? LIMIT 1');
+            $stmtLN->execute([$leadId]);
+            $leadName = trim((string)$stmtLN->fetchColumn()) ?: $guestPhone;
+
+            try {
+                (new AppointmentService())->book($this->client->id, [
+                    'date'         => $bookDate,
+                    'time'         => $bookTime,
+                    'contact_name' => $leadName,
+                    'phone'        => $guestPhone,
+                    'lead_id'      => $leadId,
+                ]);
+                error_log("[ClientBot:{$this->client->id}] Cita booked {$bookDate} {$bookTime} for {$guestPhone}");
+            } catch (\RuntimeException $e) {
+                $reply .= ' (Ese horario ya no está disponible, ¿puedes elegir otro?)';
+                error_log("[ClientBot:{$this->client->id}] Booking failed: " . $e->getMessage());
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         $this->log($guestPhone, 'user', $msg);
         $this->log($guestPhone, 'assistant', $reply);
 
@@ -313,6 +341,7 @@ class ClientBotService
         $faqs       = $this->cfg['faqs']           ?? '';
         $website    = $this->cfg['website']        ?? '';
         $location   = $this->cfg['location']       ?? '';
+        $googleMaps = $this->cfg['google_maps']    ?? '';
         $tone       = $this->cfg['tone']        ?? 'friendly';
         $language   = $this->cfg['language']     ?? 'es';
         $charSkills = (array)($this->cfg['char_skills'] ?? []);
@@ -369,7 +398,12 @@ class ClientBotService
         $faqsBlock     = $faqs     ? "PREGUNTAS FRECUENTES:\n{$faqs}"      : '';
         $descBlock     = $desc     ? "SOBRE EL NEGOCIO:\n{$desc}"          : '';
         $websiteBlock  = $website  ? "SITIO WEB / REDES SOCIALES: {$website}" : '';
-        $locationBlock = $location ? "UBICACIÓN / DIRECCIÓN: {$location}"    : '';
+        $locationBlock = '';
+        if ($location || $googleMaps) {
+            $locationBlock = 'UBICACIÓN / DIRECCIÓN:';
+            if ($location)   $locationBlock .= " {$location}";
+            if ($googleMaps) $locationBlock .= "\nLINK GOOGLE MAPS: {$googleMaps} — Comparte este link cuando el cliente pregunte cómo llegar, dónde queda, o pida ubicación.";
+        }
 
         // Lead memory: load remembered facts about this contact
         $memoryBlock = '';
@@ -397,15 +431,18 @@ class ClientBotService
                     $parts = [];
                     if (!empty($row['photo_name']))  $parts[] = $row['photo_name'];
                     if (!empty($row['description'])) $parts[] = $row['description'];
-                    if (!empty($row['price']))       $parts[] = '$' . $row['price'];
+                    if (!empty($row['price']))       $parts[] = 'Precio: ' . $row['price'];
                     if (!empty($row['caption']) && empty($row['photo_name'])) $parts[] = $row['caption'];
                     $label = !empty($parts) ? ' (' . implode(' — ', $parts) . ')' : '';
                     $lines[] = "- {$url}{$label}";
                 }
                 $photosBlock = "FOTOS DEL NEGOCIO (URLs públicas):\n" . implode("\n", $lines) . "\n"
-                    . "Cuando el cliente pida ver fotos, imágenes, el lugar, los productos, el local o cualquier elemento visual del negocio, "
-                    . "incluye en tu respuesta una o más URLs usando este formato exacto: [FOTO:url] — "
-                    . "una por línea. Puedes combinar texto y fotos. Ejemplo: '¡Claro! Te muestro: [FOTO:https://...]'";
+                    . "Cuando el cliente pida ver fotos, imágenes, el lugar, los productos, habitaciones, o cualquier elemento visual del negocio:\n"
+                    . "1. Escribe una descripción breve y atractiva del elemento (nombre, características, precio si aplica).\n"
+                    . "2. Luego incluye la URL en este formato exacto en una línea separada: [FOTO:url]\n"
+                    . "Ejemplo correcto:\n"
+                    . "'Suite King Size — cama matrimonial, vista a la montaña, baño privado. Precio: S/160/noche\n[FOTO:https://...]'\n"
+                    . "NUNCA envíes solo la URL sin texto descriptivo. Siempre narra primero, foto después.";
             }
         } catch (\Throwable $e) {
             // Non-fatal — bot works without photos
@@ -465,6 +502,41 @@ class ClientBotService
             }
         }
 
+        // ── Appointments slot block ──────────────────────────────────────────
+        $appointmentsBlock = '';
+        if ($this->canAppointments) {
+            try {
+                $apptSvc = new AppointmentService();
+                $avail   = $apptSvc->getAvailability($this->client->id);
+                if ($avail) {
+                    $tz        = new \DateTimeZone($avail->timezone);
+                    $today     = new \DateTimeImmutable('today', $tz);
+                    $maxCheck  = min($avail->maxDaysAhead, 7);
+                    $slotLines = [];
+                    for ($i = 0; $i < $maxCheck && count($slotLines) < 4; $i++) {
+                        $dateStr = $today->modify("+{$i} day")->format('Y-m-d');
+                        $slots   = $apptSvc->findSlots($this->client->id, $dateStr);
+                        if (!empty($slots)) {
+                            $slotLines[] = "  {$dateStr}: " . implode(', ', array_slice($slots, 0, 6));
+                        }
+                    }
+                    if (!empty($slotLines)) {
+                        $appointmentsBlock = "AGENDA DE CITAS DISPONIBLES:\n"
+                            . implode("\n", $slotLines) . "\n"
+                            . "Si el cliente quiere agendar una cita, muéstrale esos horarios y deja que elija.\n"
+                            . "Cuando el cliente CONFIRME explícitamente una fecha y hora concreta, "
+                            . "termina tu respuesta con exactamente esto (sin nada después): [BOOK:YYYY-MM-DD HH:MM] "
+                            . "sustituyendo YYYY-MM-DD y HH:MM por la fecha y hora elegidas.";
+                    } else {
+                        $appointmentsBlock = "AGENDA DE CITAS: No hay horarios disponibles próximamente. Si el cliente pide cita, discúlpate e indica que el equipo los contactará pronto.";
+                    }
+                }
+            } catch (\Throwable $e) {
+                error_log("[ClientBot:{$this->client->id}] Appointments block error: " . $e->getMessage());
+            }
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         return <<<PROMPT
 Eres el asistente virtual de WhatsApp de *{$bizName}*, un negocio de tipo {$bizType}.
 
@@ -484,6 +556,8 @@ IDIOMA: {$languageRule}
 {$hoursBlock}
 
 {$faqsBlock}
+
+{$appointmentsBlock}
 
 {$salesBlock}
 
@@ -546,7 +620,8 @@ PROMPT;
 
         // Keep first paragraph only — but preserve [FOTO:url] markers that may be on a separate line
         $hasPhotos = str_contains($text, '[FOTO:');
-        if (!$hasPhotos) {
+        $hasBook   = str_contains($text, '[BOOK:');
+        if (!$hasPhotos && !$hasBook) {
             $break = strpos($text, "\n\n");
             if ($break !== false) {
                 $text = trim(substr($text, 0, $break));

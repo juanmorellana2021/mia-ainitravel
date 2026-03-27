@@ -4,8 +4,8 @@
  */
 
 $base = App::basePath();
-$pageTitle = 'Mia — Responde todos tus leads de WhatsApp, automáticamente';
-$pageDescription = 'Asistente de WhatsApp con IA para hoteles, agencias de viaje y operadores turísticos. Responde leads al instante, califica clientes y cierra ventas 24/7. Prueba gratis 7 días.';
+$pageTitle = 'Mia — Convierte mensajes de WhatsApp en clientes automáticamente 24/7';
+$pageDescription = 'MIA responde, califica y cierra clientes por ti — para restaurantes, hoteles, clínicas y cualquier negocio. Prueba gratis 15 días. Sin riesgo. Configuración en minutos.';
 $pageCanonical = App::URL . '/';
 $waLink = 'https://wa.me/' . preg_replace('/[^0-9]/', '', App::WHATSAPP) . '?text=Hola%20Mia!';
 
@@ -60,7 +60,7 @@ ob_start();
       "name": "¿Cuánto cuesta Mia?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Planes desde S/59 al mes con 7 días de prueba gratis. Sin tarjeta de crédito. Configuración incluida en 48 horas."
+        "text": "Planes desde S/84 al mes con 15 días de prueba gratis. Sin tarjeta de crédito. Configuración incluida en 48 horas."
       }
     },
     {
@@ -83,24 +83,20 @@ ob_start();
             <!-- Left: copy -->
             <div class="col-lg-6 text-center text-lg-start">
                 <h1 class="display-4 fw-bold mb-3">
-                    Pones anuncios en Facebook.<br>
-                    <span class="text-success">¿Quién responde los 100 mensajes de WhatsApp?</span>
+                    Convierte mensajes de WhatsApp en clientes <span class="text-success">automáticamente 24/7</span>
                 </h1>
                 <p class="lead mb-4">
-                    Hoteles, agencias de viaje y operadores turísticos gastan miles en publicidad
-                    y pierden hasta el <strong>60% de sus leads</strong> porque no pueden responder a tiempo.
-                    Mia es tu asistente de WhatsApp — responde al instante, califica al cliente,
-                    toma la reserva o cotización, y confirma el pago. Las 24 horas. Los 7 días. Sin perder ninguno.
+                    MIA responde, califica y cierra clientes por ti — para restaurantes, hoteles, clínicas y cualquier negocio.
                 </p>
                 <div class="d-flex gap-3 justify-content-center justify-content-lg-start flex-wrap">
                     <a href="<?= $base ?>/register" class="btn btn-success btn-lg px-4">
-                        <i class="bi bi-rocket me-2"></i>Prueba Gratis — 7 días
+                        <i class="bi bi-whatsapp me-2"></i>Activar prueba gratis en mi WhatsApp
                     </a>
                     <a href="<?= $base ?>/demo" class="btn btn-outline-light btn-lg px-4">
                         <i class="bi bi-play-circle me-2"></i>Ver Demo
                     </a>
                 </div>
-                <p class="mt-3 small text-light opacity-75">Sin tarjeta de crédito · Configuración en 48h · Cancela cuando quieras</p>
+                <p class="mt-3 small text-light opacity-75">Sin riesgo. Configuración en minutos.</p>
                 <div class="mt-3 d-flex gap-2 justify-content-center justify-content-lg-start flex-wrap">
                     <span class="badge bg-success bg-opacity-75 fs-6 px-3 py-2"><i class="bi bi-translate me-1"></i>Habla más de 50 idiomas</span>
                     <span class="badge bg-light text-dark fs-6 px-3 py-2"><i class="bi bi-clock me-1"></i>Responde en &lt;5 segundos</span>
@@ -332,7 +328,7 @@ ob_start();
             <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel">
                 <div class="text-center">
                     <p class="text-muted mb-3">Tu centro de control: leads, conversiones, plan activo y actividad reciente en un vistazo.</p>
-                    <img src="<?= App::asset('img/screenshots/dashboard.png') ?>" alt="Dashboard principal de Mia — resumen de leads y métricas" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                    <img src="<?= App::asset('img/screenshots/dashboardmia2.png') ?>" alt="Dashboard principal de Mia — resumen de leads y métricas" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
                 </div>
             </div>
             <div class="tab-pane fade" id="pane-analytics" role="tabpanel">
@@ -344,19 +340,19 @@ ob_start();
             <div class="tab-pane fade" id="pane-chat" role="tabpanel">
                 <div class="text-center">
                     <p class="text-muted mb-3">Mia conversa con tus clientes por WhatsApp como si fuera parte de tu equipo.</p>
-                    <img src="<?= App::asset('img/screenshots/chat.png') ?>" alt="Chat de WhatsApp con Mia respondiendo automáticamente" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                    <img src="<?= App::asset('img/screenshots/chatmia2.png') ?>" alt="Chat de WhatsApp con Mia respondiendo automáticamente" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
                 </div>
             </div>
             <div class="tab-pane fade" id="pane-leads" role="tabpanel">
                 <div class="text-center">
                     <p class="text-muted mb-3">Todos tus leads organizados con estado, fuente, valor estimado y acciones rápidas.</p>
-                    <img src="<?= App::asset('img/screenshots/leads.png') ?>" alt="CRM de leads de Mia — gestión de contactos de WhatsApp" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                    <img src="<?= App::asset('img/screenshots/leadsmia2.png') ?>" alt="CRM de leads de Mia — gestión de contactos de WhatsApp" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
                 </div>
             </div>
             <div class="tab-pane fade" id="pane-messages" role="tabpanel">
                 <div class="text-center">
                     <p class="text-muted mb-3">Bandeja de mensajes completa — ve todas las conversaciones de entrada y salida con cada lead.</p>
-                    <img src="<?= App::asset('img/screenshots/messages.png') ?>" alt="Bandeja de mensajes de WhatsApp en Mia" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                    <img src="<?= App::asset('img/screenshots/messegemia2.png') ?>" alt="Bandeja de mensajes de WhatsApp en Mia" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
                 </div>
             </div>
             <div class="tab-pane fade" id="pane-calendar" role="tabpanel">
@@ -380,7 +376,7 @@ ob_start();
             <div class="tab-pane fade" id="pane-broadcast" role="tabpanel">
                 <div class="text-center">
                     <p class="text-muted mb-3">Envía mensajes masivos a tus leads seleccionados — perfecto para promos y recordatorios.</p>
-                    <img src="<?= App::asset('img/screenshots/broadcast.png') ?>" alt="Seguimientos y difusión masiva a leads de WhatsApp" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
+                    <img src="<?= App::asset('img/screenshots/defusionleads.png') ?>" alt="Seguimientos y difusión masiva a leads de WhatsApp" class="img-fluid rounded shadow" style="max-height:520px" loading="lazy">
                 </div>
             </div>
         </div>

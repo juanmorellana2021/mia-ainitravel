@@ -161,6 +161,9 @@ match (true) {
     $uri === 'features'
         => (new PageController())->features(),
 
+    $uri === 'privacy'
+        => (new PageController())->privacy(),
+
     // WhatsApp bot API (Mia sales conversations — Juan's number)
     $uri === 'api/chat' && $method === 'POST'
         => (new ApiController())->chat(),
@@ -423,6 +426,10 @@ match (true) {
     // ── Superadmin — Analytics ───────────────────────────────────────────────
     $uri === 'superadmin/analytics'
         => (new SuperAdminController())->analytics(),
+
+    // ── Superadmin — Client Activity ─────────────────────────────────────────
+    $uri === 'superadmin/activity'
+        => (new SuperAdminController())->activity(),
 
     // ── Admin — leads ─────────────────────────────────────────────────────────
     $uri === 'admin/login' && $method === 'GET'

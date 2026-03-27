@@ -79,9 +79,36 @@ class MiaSalesService
 
         $state = $session['state'] ?? 'new';
 
+        // Hard stop — user opted out, go completely silent
+        if ($state === 'opted_out') {
+            return ['reply' => null];
+        }
+
+        // Detect hard opt-out intent
+        if (preg_match('/\b(d[eé]jame\s+(tranquil[ao]|en\s+paz)|no\s+me\s+escribas\s+m[aá]s|no\s+me\s+molestes|stop\s+mensajes|no\s+quiero\s+m[aá]s\s+mensajes)\b/i', $msg)) {
+            $this->updateSession($phone, ['state' => 'opted_out']);
+            return ['reply' => 'Entendido, no te escribiré más. Si en algún momento cambias de opinión, aquí estaré. ¡Que te vaya muy bien! 🙏'];
+        }
+
+        // Global interceptor: photo/screenshot request — fires in any state
+        if (preg_match('/\b(foto|fotos|imagen|im[aá]genes|captura|screenshot|pantalla|c[oó]mo\s+se\s+ve|mu[eé]strame|ver\s+el\s+panel|ver\s+el\s+dashboard|ver\s+la\s+app|ver\s+la\s+plataforma)\b/i', $msg)) {
+            return $this->handlePhotoRequest($phone, $session, $message);
+        }
+        // Catch "sí / sí mandámela / envíame" when the last bot reply mentioned capturas/fotos
+        if (preg_match('/^(s[ií]|dale|anda|env[ií]a(me)?|m[aá]nda(me)?|cl[aá]ro|quer[eé]r|quiero\s+ver(la)?|vuél[aá]s|v[aé]la|ok|mue|por\s+favor|pf|porfa)[.!\s]*$/iu', $msg)) {
+            $history = $this->loadHistory($phone);
+            $lastBot = '';
+            foreach (array_reverse($history) as $h) {
+                if ($h['role'] === 'assistant') { $lastBot = mb_strtolower($h['content']); break; }
+            }
+            if (preg_match('/captura|imagen|foto|panel|screenshot|dashboard|mostrar/i', $lastBot)) {
+                return $this->handlePhotoRequest($phone, $session, $message);
+            }
+        }
+
         // Global interceptor: client asks directly about price or how it works
         // Fires in any early/mid state — skips the funnel and gives a direct answer
-        $earlyStates = ['intro', 'qualifying_size', 'qualifying_method', 'qualifying_pain', 'roi_pitch', 'demo', 'benefits'];
+        $earlyStates = ['intro', 'value_pitch', 'qualifying_size', 'qualifying_method', 'qualifying_pain', 'roi_pitch', 'demo', 'benefits'];
         if (in_array($state, $earlyStates, true) && $this->detectsPriceOrUsageQuestion($msg)) {
             return $this->handleDirectPriceQuestion($phone, $session, $message);
         }
@@ -90,6 +117,8 @@ class MiaSalesService
             'new'                      => $this->handleNew($phone, $session, $message),
             'collecting_contact_name'  => $this->handleCollectContactName($phone, $session, $message),
             'intro'                    => $this->handleIntro($phone, $session, $message),
+            'value_pitch'              => $this->handleValuePitch($phone, $session, $message),
+            'opted_out'                => ['reply' => null],
             'qualifying_size'          => $this->handleQualifySize($phone, $session, $message),
             'qualifying_method'        => $this->handleQualifyMethod($phone, $session, $message),
             'qualifying_pain'          => $this->handleQualifyPain($phone, $session, $message),
@@ -130,6 +159,44 @@ class MiaSalesService
         );
     }
 
+    private function handlePhotoRequest(string $phone, array $session, string $message): array
+    {
+        $base = App::URL . '/assets/img/screenshots';
+        $msg  = mb_strtolower($message);
+
+        // Pick the 2 most relevant screenshots based on what they asked
+        if (preg_match('/analytics|reporte|estad[ií]stica|métrica/i', $msg)) {
+            $photos = ["{$base}/dashboardmia2.png", "{$base}/analytics.png"];
+            $caption = 'Éstas son las capturas del panel de control y reportes 👇';
+        } elseif (preg_match('/chat|conversa|respond/i', $msg)) {
+            $photos = ["{$base}/chatmia2.png", "{$base}/messegemia2.png"];
+            $caption = 'Aquí ves a Mia respondiendo automáticamente en WhatsApp 👇';
+        } elseif (preg_match('/lead|contacto|crm/i', $msg)) {
+            $photos = ["{$base}/leadsmia2.PNG", "{$base}/chatmia2.png"];
+            $caption = 'El CRM de Mia: todos tus leads y conversaciones en un solo lugar 👇';
+        } elseif (preg_match('/difus|broadcast|masiv/i', $msg)) {
+            $photos = ["{$base}/broadcast.png", "{$base}/automations.png"];
+            $caption = 'Difusión masiva y automatizaciones de Mia 👇';
+        } elseif (preg_match('/cita|agenda|calendar/i', $msg)) {
+            $photos = ["{$base}/calendar.png", "{$base}/chatmia2.png"];
+            $caption = 'La agenda de citas de Mia 👇';
+        } else {
+            // Default: dashboard + live chat (most impressive combo)
+            $photos = ["{$base}/dashboardmia2.png", "{$base}/chatmia2.png"];
+            $caption = 'Capturas reales de la plataforma Mia 👇';
+        }
+
+        // Build reply with hardcoded FOTO markers — never rely on AI to generate these
+        $fotoMarkers = implode("\n", array_map(fn($u) => "[FOTO:{$u}]", $photos));
+        $reply = $caption . "\n" . $fotoMarkers . "\n¿Hay alguna función específica que quieras ver?";
+
+        // Record in history so the AI knows photos were already sent
+        $this->appendHistory($phone, 'user', $message);
+        $this->appendHistory($phone, 'assistant', $reply);
+
+        return ['reply' => $reply];
+    }
+
     private function handleDirectPriceQuestion(string $phone, array $session, string $message): array
     {
         $priS    = App::CURRENCY . App::PLAN_STARTER;
@@ -148,9 +215,9 @@ class MiaSalesService
             ($name ? "El cliente se llama {$name}. " : "") .
             "Estructura tu respuesta así (en 4-5 líneas máximo, sin listas con viñetas, fluido):\n" .
             "1) Cómo funciona en 2 frases: se conecta a su WhatsApp, responde automático 24/7, agenda citas, envía recordatorios, el dueño solo recibe notificaciones. Setup gratis en 48h.\n" .
-            "2) Precios: Starter {$priS}/mes (1 número, respuestas básicas), Pro {$priP}/mes (multi-idioma, agenda, recordatorios), Business {$priB}/mes (múltiples números, panel web, reportes). Configuración GRATIS. 7 días de prueba gratis sin tarjeta.\n" .
+            "2) Precios: Starter {$priS}/mes (1 número, respuestas básicas), Pro {$priP}/mes (multi-idioma, agenda, recordatorios), Business {$priB}/mes (múltiples números, panel web, reportes). Configuración GRATIS. 15 días de prueba gratis sin tarjeta.\n" .
             "3) Recomienda el plan que mejor encaja para un {$bizType} basándote en lo que sabes de ellos.\n" .
-            "4) Cierra con UNA pregunta de avance: '¿Quieres empezar con los 7 días gratis?' o '¿Cuál de los planes se adapta mejor a tu negocio?'\n" .
+            "4) Cierra con UNA pregunta de avance: '¿Quieres empezar con los 15 días gratis?' o '¿Cuál de los planes se adapta mejor a tu negocio?'\n" .
             "Tono: experto, directo, cálido. No de vendedor apresurado. Como alguien que conoce el negocio del cliente y le da una recomendación honesta."
         );
     }
@@ -161,7 +228,7 @@ class MiaSalesService
         $session['state'] = 'collecting_contact_name';
         return $this->aiReply($phone, $session, $message,
             "Primera vez que escribe. Saluda con 'Hola' — cálido, breve, profesional. " .
-            "Preséntate en UNA frase: Mia de AiniDesk, asistente de WhatsApp para negocios. " .
+            "Preséntate en UNA frase: Mia, asistente de WhatsApp para negocios de mia-whatsapp.com. " .
             "Luego haz UNA sola pregunta: el nombre de la persona. Ej: '¿Con quién tengo el gusto?' " .
             "NADA más todavía. Sin preguntas de negocio, sin pitch. Solo el saludo y el nombre."
         );
@@ -182,7 +249,15 @@ class MiaSalesService
             }
         }
 
-        if (!$name || strlen(trim($name)) < 2) {
+        // Reject greetings mistakenly captured as names
+        $greetingWords = ['hola', 'buenas', 'buenos', 'hey', 'hi', 'hello', 'saludos', 'ok', 'bien',
+                          'gracias', 'buen dia', 'buen día', 'buenas tardes', 'buenos dias', 'buenos días',
+                          'buenas noches', 'que tal', 'qué tal', 'claro', 'dale', 'si', 'sí'];
+        $lowerText = mb_strtolower(trim($text));
+        $lowerName = $name ? mb_strtolower(trim($name)) : '';
+        if (!$name || strlen(trim($name)) < 2
+            || in_array($lowerText, $greetingWords, true)
+            || in_array($lowerName, $greetingWords, true)) {
             return $this->aiReply($phone, $session, $message,
                 "No pudiste identificar el nombre. Pide solo el nombre de la persona, de forma breve y amigable."
             );
@@ -216,16 +291,130 @@ class MiaSalesService
             $bizType = 'services';
         }
 
-        $this->updateSession($phone, ['state' => 'qualifying_size', 'business_type' => $bizType]);
-        $session = array_merge($session, ['state' => 'qualifying_size', 'business_type' => $bizType]);
+        $this->updateSession($phone, ['state' => 'value_pitch', 'business_type' => $bizType]);
+        $session = array_merge($session, ['state' => 'value_pitch', 'business_type' => $bizType]);
+
+        // Build a biz-specific intro so the first pitch is always relevant
+        $bizIntros = [
+            'hotel'      => 'los clientes escriben a cualquier hora preguntando disponibilidad, precios y servicios — y si no responden rápido, reservan en otro lado',
+            'agency'     => 'los clientes comparan varias agencias al mismo tiempo — el que responde primero se lleva la venta',
+            'restaurant' => 'los pedidos y reservas llegan por WhatsApp todo el día, incluso cuando están cocinando o atendiendo mesas',
+            'retail'     => 'los clientes preguntan por precios, tallas y disponibilidad antes de comprar — y si no hay respuesta, compran en otro lado',
+            'services'   => 'los clientes potenciales preguntan cotizaciones y disponibilidad, y si no hay respuesta en minutos se van con la competencia',
+            'business'   => 'los clientes esperan respuesta inmediata en WhatsApp — si no la reciben, buscan a la competencia',
+        ];
+        $intro = $bizIntros[$bizType] ?? $bizIntros['business'];
+
         return $this->aiReply($phone, $session, $message,
-            "Acaba de decirte su tipo de negocio ({$bizType}). Reacciona con interés genuino — demuestra que " .
-            "CONOCES ese tipo de negocio y sus desafíos. No repitas lo que dijeron. " .
-            "Luego haz la pregunta de tamaño con maestría: NO preguntes 'cuántas habitaciones tienes' — " .
-            "pregunta algo que haga pensar: por ejemplo para hotel: '¿cuántas noches al mes se te van sin reservar?', " .
-            "para restaurante: '¿cuántos pedidos por WhatsApp manejan en una semana normal?', " .
-            "para agencia: '¿cuántas consultas de viaje les llegan al día que no pueden atender a tiempo?'. " .
-            "La pregunta debe hacer que empiecen a calcular su propia pérdida. Una sola pregunta."
+            "Te acaban de decir su tipo de negocio: {$bizType}. " .
+            "En 2-3 líneas máximo: reconoce su negocio con una observación real ({$intro}). " .
+            "Luego presenta Mia en UNA frase específica para ese negocio — qué hace exactamente por un {$bizType}. " .
+            "Termina con: '¿Quieres que te cuente cómo funciona?' o '¿Te explico qué puede hacer Mia por tu {$bizType}?' " .
+            "NO menciones precio todavía. NO hagas preguntas de dolor. Solo despierta curiosidad."
+        );
+    }
+
+    private function handleValuePitch(string $phone, array $session, string $message): array
+    {
+        $msg     = mb_strtolower(trim($message));
+        $bizType = $session['business_type'] ?? 'negocio';
+        $priS    = App::CURRENCY . App::PLAN_STARTER;
+        $priP    = App::CURRENCY . App::PLAN_BASIC;
+        $priB    = App::CURRENCY . App::PLAN_PRO;
+
+        // Detect buy intent — only THEN move to closing
+        $buyIntent = (bool) preg_match(
+            '/\b(quiero\s+(empezar|probarlo|el\s+bot|mia|el\s+plan|el\s+servicio|una\s+prueba)|me\s+interesa|est[aá]\s+bien|c[oó]mo\s+(me\s+registro|empiezo|activo)|cu[aá]nto\s+cuesta|el\s+precio|los\s+planes|empezar|activar|prueba\s+gratis|15\s+d[ií]as|7\s+d[ií]as)\b/i',
+            $msg
+        );
+
+        if ($buyIntent) {
+            $this->updateSession($phone, ['state' => 'closing']);
+            $session['state'] = 'closing';
+            $contactName = $session['contact_name'] ?? null;
+            $nameRef     = $contactName ? ", {$contactName}" : '';
+            return $this->aiReply($phone, $session, $message,
+                "Muestra claramente interés en empezar o pregunta por el precio. " .
+                "Presenta los planes en 3 líneas: Starter {$priS}/mes (bot básico 24/7), Pro {$priP}/mes (+ fotos, memoria, traspaso humano — el más popular), Business {$priB}/mes (múltiples números + account manager). " .
+                "Configuración GRATIS en todos. 15 días de prueba sin tarjeta. " .
+                "Recomienda el plan que más encaja para su {$bizType} y pregunta solo el email para crear la cuenta ahora mismo{$nameRef}."
+            );
+        }
+
+        // Still in exploration mode — explain ONE feature per turn based on what they said
+        // Features to cover across turns, matched to their business type
+        $featureMap = [
+            'hotel'       => [
+                'respuestas_24_7'   => 'responde disponibilidad, precios y reservas automáticamente a cualquier hora — incluso a las 2am cuando estás durmiendo',
+                'galeria_fotos'     => 'cuando un cliente pregunta por una habitación, Mia le manda las fotos reales directo en WhatsApp — sin links, la imagen sola',
+                'recordatorios'     => 'envía recordatorios de check-in automáticos el día anterior — reduce no-shows sin que hagas nada',
+                'traspaso'          => 'cuando quieres tomar el control de la conversación, el bot se aparta solo — sin que el cliente note el cambio',
+            ],
+            'restaurant'  => [
+                'respuestas_24_7'   => 'toma pedidos y reservas por WhatsApp en automático — incluso cuando están en pleno servicio o fuera de horario',
+                'galeria_fotos'     => 'cuando preguntan por un plato, Mia manda la foto real del menú — no un link, la imagen directa en el chat',
+                'recordatorios'     => 'confirma reservas y manda recordatorios automáticos el día del evento — reduce las ausencias sin esfuerzo',
+                'traspaso'          => 'si hay un pedido especial o queja, Mia te avisa y te pasa la conversación al instante',
+            ],
+            'agency'      => [
+                'respuestas_24_7'   => 'cotiza destinos, precios y disponibilidad automáticamente a cualquier hora — el cliente recibe respuesta en segundos',
+                'galeria_fotos'     => 'envía fotos de destinos, hoteles o paquetes directo en WhatsApp cuando el cliente pregunta — no links, las imágenes reales',
+                'seguimiento'       => 'hace seguimiento a los que pidieron cotización y no cerraron — les escribe de nuevo con una oferta o recordatorio',
+                'memoria'           => 'recuerda las preferencias de cada cliente (destinos favoritos, fechas, presupuesto) y personaliza cada respuesta',
+            ],
+            'default'     => [
+                'respuestas_24_7'   => 'atiende a tus clientes 24/7 en WhatsApp — preguntas frecuentes, precios, disponibilidad — sin que tú hagas nada',
+                'galeria_fotos'     => 'cuando un cliente pregunta por un producto o servicio, Mia le manda fotos reales directo en el chat',
+                'seguimiento'       => 'hace seguimiento automático a los que preguntaron y no compraron — recupera leads sin esfuerzo',
+                'traspaso'          => 'cuando necesitas intervenir, el bot se aparta solo — fluido, sin que el cliente note el cambio',
+            ],
+        ];
+
+        $features = $featureMap[$bizType] ?? $featureMap['default'];
+
+        // Pick which feature to explain next based on conversation history (avoid repeating)
+        $history       = array_map(fn($h) => $h['content'] ?? '', $this->loadHistory($phone));
+        $historyText   = implode(' ', $history);
+        $nextFeature   = null;
+        $nextExplanation = '';
+        foreach ($features as $key => $explanation) {
+            // If this feature hasn't been mentioned in history yet, explain it next
+            $keywords = explode(' ', $key);
+            $alreadyCovered = false;
+            foreach ($keywords as $kw) {
+                if ($kw && str_contains($historyText, $kw)) {
+                    $alreadyCovered = true;
+                    break;
+                }
+            }
+            if (!$alreadyCovered) {
+                $nextFeature     = $key;
+                $nextExplanation = $explanation;
+                break;
+            }
+        }
+
+        // All features covered — gentle close
+        if (!$nextFeature) {
+            $this->updateSession($phone, ['state' => 'closing']);
+            $session['state'] = 'closing';
+            $contactName = $session['contact_name'] ?? null;
+            $nameRef     = $contactName ? ", {$contactName}" : '';
+            return $this->aiReply($phone, $session, $message,
+                "Ya explicaste todas las funciones principales. Momento de cerrar con calidez. " .
+                "Resume en 1 frase lo que Mia haría por su {$bizType}. " .
+                "Menciona los 15 días de prueba gratis sin tarjeta y pregunta solo el email para activar la cuenta{$nameRef}. " .
+                "Breve, natural, sin presión."
+            );
+        }
+
+        // Explain ONE feature this turn, then ask if they want to know more
+        return $this->aiReply($phone, $session, $message,
+            "Explica en 2-3 líneas la siguiente función de Mia adaptada a su negocio ({$bizType}): {$nextExplanation}. " .
+            "Incluye UN ejemplo concreto real de cómo se vería en su negocio. " .
+            "Termina con UNA pregunta liviana: '¿Quieres que te cuente cómo funciona [la siguiente función]?' " .
+            "o '¿Tienes alguna pregunta sobre esto?'. " .
+            "Tono: experto de confianza explicando a un amigo, no vendedor. Sin presión."
         );
     }
 
@@ -387,10 +576,10 @@ class MiaSalesService
         return $this->aiReply($phone, $session, $message,
             "Acaban de ver la demo. Tú (Groq) lees su respuesta y decides: " .
             "• Si pregunta qué incluye / funciones / beneficios → explícalos con entusiasmo: " .
-            "reservas 24/7, bilingüe automático, traspaso humano inteligente, notificaciones, panel web, sin comisiones, configuración en 48h, 7 días gratis. " .
+            "reservas 24/7, bilingüe automático, traspaso humano inteligente, notificaciones, panel web, sin comisiones, configuración en 48h, 15 días gratis. " .
             "• Si reaccionó positivamente → capitaliza el momento: NO pongas lista de planes. " .
             "Recomienda UNO según su negocio: alto volumen / hotel / agencia → Business {$priB}. Mediano → Pro {$priP}. Pequeño → Starter {$priS}. " .
-            "Menciona los 7 días gratis como eliminador de riesgo. " .
+            "Menciona los 15 días gratis como eliminador de riesgo. " .
             "Cierre de elección: '¿Empezamos con el Business o prefieres el Pro para la prueba?' — no sí/no. " .
             "Adapta el lenguaje a {$bizType}. Sin listas, sin URLs, máximo 4 líneas."
         );
@@ -406,7 +595,7 @@ class MiaSalesService
         return $this->aiReply($phone, $session, $message,
             "Después de mostrar los beneficios, es momento de cerrar. " .
             "Presenta los planes (Starter {$priS}, Pro {$priP}, Business {$priB}) de forma concisa. La configuración es GRATIS. " .
-            "Destaca la prueba de 7 días gratis sin compromiso. " .
+            "Destaca la prueba de 15 días gratis sin compromiso. " .
             "Basándote en lo que sabes de su negocio, sugiere cuál plan le encajaría mejor."
         );
     }
@@ -415,6 +604,13 @@ class MiaSalesService
     {
         $msg  = mb_strtolower(trim($message));
         $priB = App::CURRENCY . App::PLAN_PRO;  // Business plan
+
+        // If the user sends their email directly while in closing, capture it immediately
+        if (empty($session['email']) && preg_match('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $message)) {
+            $this->updateSession($phone, ['state' => 'collecting_email']);
+            $session['state'] = 'collecting_email';
+            return $this->handleCollectEmail($phone, $session, $message);
+        }
 
         // Hard yes + soft yes + plan selection all treated as buy intent
         $buyIntent = preg_match(
@@ -456,7 +652,7 @@ class MiaSalesService
             "Luego aplica Find/Felt/Found + elimina el riesgo específico: " .
             "• Precio → '¿Cuánto cobra Booking.com por una reserva? {$priB} al mes es menos que 1 comisión.' " .
             "• Tiempo/técnico → 'No tocas nada — el equipo lo monta en 48h mientras tú sigues con tu negocio.' " .
-            "• Incertidumbre → '7 días gratis, sin tarjeta. Si en una semana no ves 1 cliente extra, cancelas con un WhatsApp y punto.' " .
+            "• Incertidumbre → '15 días gratis, sin tarjeta. Si en dos semanas no ves resultados, cancelas con un WhatsApp y punto.' " .
             "• Debo hablarlo → 'Claro. ¿Qué información necesitas para presentárselo a [él/ella]? Te lo preparo.' " .
             "Termina SIEMPRE con una pregunta de cierre suave que lleve al email: " .
             "'¿Te anoto? Solo necesito tu email para activarte ahora mismo.'"
@@ -746,7 +942,7 @@ class MiaSalesService
             "Configuración → WhatsApp, escanee el código QR con su teléfono y listo (proceso de 2 minutos). " .
             "Si pregunta sobre configuración u opciones: dile que desde Configuración puede ajustar el nombre del bot, " .
             "horario, servicios, precios, y personalidad. " .
-            "Si tiene una duda técnica compleja: dile que el equipo de AiniDesk lo apoya — " .
+            "Si tiene una duda técnica compleja: dile que el equipo de Mia WhatsApp lo apoya — " .
             "puede escribir aquí mismo o al soporte. " .
             "Siempre: texto plano de WhatsApp, sin listas largas, sin URLs (solo 'mia-whatsapp.com' si es necesario)."
         );
@@ -826,35 +1022,45 @@ class MiaSalesService
             : "\n\n⚠️ REGLA DE IDIOMA (OBLIGATORIA): El usuario escribe en español. Responde siempre en español.";
 
         return <<<PROMPT
-Eres *Mia*, la mejor consultora de ventas de AiniDesk — y las mejores vendedoras hablan MENOS, no más.
+Eres *Mia*, asesora de mia-whatsapp.com. Tu trabajo es ayudar a las personas a entender qué hace Mia y si les sirve — no venderles a presión.
 
-Tu superpoder es la precisión. Un mensaje corto y elegido con cuidado cierra más ventas que tres párrafos. Como dijo Pascal: "Hubiera escrito una carta más corta, pero no tuve el tiempo." Tú SÍ tienes el tiempo — y la inteligencia para elegir la única cosa que importa decir ahora.
+La gente en WhatsApp no lee párrafos. Cada mensaje tuyo = UNA idea, explicada clara y corta. Si quieren saber más, preguntan — y tú explicas lo siguiente.
 
 ASÍ ESCRIBES TÚ (WhatsApp humano, no email corporativo):
-✅ "Hola! Soy Mia 😊 ¿Qué tipo de negocio tienes?"
-✅ "Entiendo. Y cuando no hay nadie — ¿cuántos clientes crees que se van sin respuesta?"
-✅ "Perfecto. ¿Quieres probarlo gratis 7 días, sin compromiso?"
+✅ Mensajes cortos: 2-4 líneas máximo por turno
+✅ Una idea por mensaje — explícala bien, con un ejemplo real si ayuda
+✅ Termina con UNA pregunta o invitación: "¿Quieres que te cuente sobre [feature específico]?"
 
 ASÍ NUNCA ESCRIBES:
-❌ Dos o más párrafos separados por una línea en blanco
-❌ Listas con viñetas para responder una pregunta simple
-❌ "¡Hola! Me alegra que hayas escrito. Soy Mia de AiniDesk y me especializo en..."
-❌ Explicar tu razonamiento — solo da el resultado
+❌ Listas de 8 bullets de funcionalidades de golpe
+❌ Presionar a comprar antes de que hayan entendido el producto
+❌ Repetir lo que ya explicaste
+❌ Respuestas genéricas — siempre adapta al tipo de negocio del cliente
 
-REGLA DE ORO: Si escribiste más de 3 líneas, borra y elige solo lo más importante. Eso es pensar, no escribir más.
+═══ FOTOS DE LA PLATAFORMA (solo cuando el cliente pide verla) ═══
+Puedes enviar capturas reales de Mia usando el marcador [FOTO:url] en tu respuesta.
+El sistema detecta ese marcador y envía la imagen directo en WhatsApp — no como link, como foto.
+Fotos disponibles:
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/dashboardmia2.png] → Panel / Dashboard con métricas
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/chatmia2.png] → Chat de WhatsApp automático
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/leadsmia2.PNG] → CRM de leads
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/messegemia2.png] → Bandeja de mensajes
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/analytics.png] → Analytics y reportes
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/broadcast.png] → Difusión masiva
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/automations.png] → Automatizaciones
+• [FOTO:https://mia-whatsapp.com/assets/img/screenshots/calendar.png] → Agenda de citas
+Envía máximo 2-3 fotos por turno. Si no piden fotos, NO incluyas marcadores [FOTO:url].
 
-═══ TU FILOSOFÍA DE VENTAS (INTERIORIZA ESTO) ═══
-• *Diagnostica antes de recetar*: Haz preguntas inteligentes. Un buen médico no receta sin escuchar.
-• *Amplifica la consecuencia*: No solo describes el problema — haces que sientan lo que les CUESTA cada día sin solución. "¿Cuántos clientes crees que se fueron porque respondiste 4 horas tarde?" golpea más que cualquier feature.
-• *Enseña antes de vender* (Challenger Sale): Comparte un insight que no habían considerado. Ej: "El 67% de los clientes por WhatsApp no vuelven a escribir si no responden en 5 minutos."
-• *Micro-compromisos* (Sí progresivos): Consigue pequeños "sí" antes del gran "sí". "¿Te pasa eso?" → "¿Cuánto crees que pierdes?" → "¿Querrías ver cómo lo resolvemos?"
-• *Pérdidas antes que ganancias*: La pérdida duele 2x más que la ganancia. No digas "gana más" — di "deja de perder X al mes".
-• *Historias reales, no features*: "Un restaurante en Lima que tenía el mismo problema que tú ahora recibe 23 pedidos extra al mes por WhatsApp" vende más que cualquier lista de funciones.
-• *Objeciones = preguntas disfrazadas*: Si dicen "está caro" realmente preguntan "¿vale la pena?". Si dicen "lo pensaré" realmente dicen "no me convencí aún". Responde a lo que NO dijeron.
-• *Un paso a la vez*: Nunca intentes cerrar antes de tiempo. Tu única tarea en cada turno es llevarlos al SIGUIENTE paso, no al final.
-• *Silencio después del cierre*: Cuando hagas la pregunta de cierre, quédate callada. La primera persona que habla pierde.
+═══ TU FILOSOFÍA (INTERIORIZA ESTO) ═══
+• *Primero informa, luego vende*: La gente no compra lo que no entiende. Explica una función, da un ejemplo concreto de cómo funciona para SU negocio, y déjala respirar.
+• *Una feature por turno*: No atiborres. Si dices todo de una vez, no recuerdan nada. Di una cosa, bien dicha, con un ejemplo real.
+• *Adapta siempre al negocio*: Un ejemplo para un hotel es diferente al de un asesor inmobiliario. Usa su contexto.
+• *Responde lo que preguntan PRIMERO*: Si preguntan "¿cómo funciona?", explica cómo funciona. No desvíes a hablar de precio ni a hacer más preguntas.
+• *El precio sale solo cuando preguntan o cuando ya entienden el producto*: No lo menciones de entrada. Cuando hayan visto el valor, el precio se justifica solo.
+• *Objeciones = curiosidad disfrazada*: "¿Eso realmente funciona?" = quieren convencerse. Usa un ejemplo real.
+• *Cierra cuando estén listos, no antes*: Cuando alguien entiende el producto y ve que les sirve, piden empezar. Tu trabajo es hacer que lleguen a ese punto informados.
 
-═══ PRODUCTO: MIA POR AINIDESK ═══
+═══ PRODUCTO: MIA WHATSAPP (mia-whatsapp.com) ═══
 Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 • Responde clientes 24/7 — incluso a las 2am cuando el dueño duerme
 • Maneja preguntas frecuentes, muestra catálogo/servicios/precios, toma pedidos y reservas
@@ -879,14 +1085,14 @@ Mia es un asistente de WhatsApp con IA configurable para CUALQUIER negocio:
 • *Pro {$priP}/mes* — todo lo del Starter + traspaso humano inteligente + captura automática de leads + galería de fotos + memoria persistente. El más popular.
 • *Business {$priB}/mes* — todo lo del Pro + múltiples números WhatsApp, galería de fotos, memoria persistente, onboarding dedicado, account manager, SLA 99.9%.
 • Configuración: GRATIS — onboarding y personalización incluidos en todos los planes.
-• 🎁 *7 días GRATIS* — sin tarjeta, sin compromiso, cancela cuando quieras.
+• 🎁 *15 días GRATIS* — sin tarjeta, sin compromiso, cancela cuando quieras.
 
 ═══ OBJECIONES FRECUENTES Y CÓMO MANEJARLAS ═══
 • "Está caro" → "Entiendo. ¿Cuánto cuesta hoy una sola comisión de Booking.com o perder UN cliente grande? El plan Starter son {$priS} al mes — menos de {$dayS} al día. ¿Cuánto vale para ti atender 1 cliente extra por semana?"
 • "Lo voy a pensar" → "Claro, es una decisión importante. Solo quiero asegurarme de haberte dado toda la información — ¿hay algo específico que te genera duda? Prefiero resolver eso ahora."
 • "No tengo tiempo para configurarlo" → "Por eso lo hacemos nosotros. Tú no tocas nada — en 48h está listo y funcionando."
 • "Ya tenemos alguien respondiendo WhatsApp" → "Genial. ¿Esa persona responde a las 2am? ¿Los domingos? ¿En menos de 60 segundos siempre? Mia no reemplaza a tu equipo — lo libera para las conversaciones que sí necesitan un humano."
-• "No sé si funcionará para mi negocio" → "Por eso existe la prueba de 7 días — para que lo veas funcionando en TU negocio, con TUS clientes, antes de comprometer un sol."
+• "No sé si funcionará para mi negocio" → "Por eso existe la prueba de 15 días — para que lo veas funcionando en TU negocio, con TUS clientes, antes de comprometer un sol."
 
 ═══ CONTEXTO ACTUAL DEL PROSPECTO ═══
 Etapa: {$state} | Tipo de negocio: {$bizType}
@@ -898,7 +1104,7 @@ Nombre del negocio: {$bizName} | Email: {$email}
 Groq, tú eres quien entiende el contexto. Nunca hay un regex que filtre antes que tú. Tú decides qué quiso decir el cliente y respondes en consecuencia:
 
 • *"Quiero un agente de IA" / "quiero el bot" / "quiero Mia" / "me interesa el servicio"* → Señal de compra directa. Muévete inmediatamente a cerrar: celebra brevemente y pide el email para crear la cuenta ahora mismo. No preguntes más cosas — pide el email.
-• *"¿Cuánto cuesta?" / "¿Cuál es el precio?" / "planes"* → Responde con los precios en 2-3 líneas, menciona los 7 días gratis, luego retoma el flujo con una pregunta.
+• *"¿Cuánto cuesta?" / "¿Cuál es el precio?" / "planes"* → Responde con los precios en 2-3 líneas, menciona los 15 días gratis, luego retoma el flujo con una pregunta.
 • *"¿Qué funciones tiene?" / "¿Qué incluye?"* → Explica las funcionalidades clave de forma conversacional (no lista interminable), luego retoma.
 • *"¿Qué es Mia?" / "¿Cómo funciona?"* → Explica en 2 frases qué hace Mia para su tipo de negocio, con un ejemplo concreto. Retoma.
 • *"Quiero hablar con una persona" / "hablar con alguien de soporte"* → SOLO cuando piden explícitamente un humano (no cuando piden el producto): diles que se contacten a *mia-whatsapp.com* y ofrece seguir ayudando aquí. NO hacer handoff si piden el producto/bot/IA.
@@ -914,7 +1120,7 @@ Groq, tú eres quien entiende el contexto. Nunca hay un regex que filtre antes q
 • Termina con UNA sola pregunta o acción — nunca dos
 • NUNCA repitas lo que ya dijiste en el historial — avanza
 • NUNCA suenes a script corporativo. Cada mensaje fresco, como un humano real
-• Si no sabes algo, ofrece conectarlos con el equipo: *mia-whatsapp.com*
+• Si no sabes algo, ofrece conectarlos con el equipo: *mia-whatsapp.com* — NUNCA inventes un número de teléfono o email. El único número oficial de este WhatsApp es *+51 920 076 034* (este mismo número donde estás hablando).
 • Listas con viñetas: SOLO para mostrar planes/precios cuando el cliente lo pide{$langRule}{$goalBlock}
 PROMPT;
     }
@@ -927,7 +1133,7 @@ PROMPT;
             'model'       => 'openai/gpt-oss-120b',
             'messages'    => $messages,
             'temperature' => 0.72,
-            'max_tokens'  => 220,
+            'max_tokens'  => 150,
             'reasoning_effort' => 'low',
             'top_p'       => 0.9,
         ]);

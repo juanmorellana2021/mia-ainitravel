@@ -87,7 +87,7 @@ $base = App::basePath();
             <p class="text-muted small mb-0">
                 ¿No tienes cuenta?
                 <a href="<?= $base ?>/register" class="text-decoration-none fw-medium" style="color:#25d366">
-                    Prueba gratis 7 días
+                    Prueba gratis 15 días
                 </a>
             </p>
         </div>

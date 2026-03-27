@@ -19,6 +19,7 @@ $bc = array_merge([
     'faqs'          => '',
     'website'       => '',
     'location'      => '',
+    'google_maps'   => '',
     'language'      => 'es',
     'tone'          => 'friendly',
     'char_skills'   => [],
@@ -364,12 +365,22 @@ $_obStep      = $_hasWa ? 3 : ($_hasBotCfg ? 2 : 1);
 
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold text-muted">
-                            <i class="bi bi-geo-alt me-1"></i>Ubicación / Dirección
+                            <i class="bi bi-geo-alt me-1"></i>Dirección completa
                         </label>
                         <input type="text" name="bot_location" class="form-control"
                                value="<?= htmlspecialchars($bc['location']) ?>"
-                               placeholder="Av. Larco 234, Miraflores, Lima">
-                        <div class="form-text">Mia informará a los clientes cómo llegar a tu negocio.</div>
+                               placeholder="Av. Larco 234, Miraflores, Lima, Perú">
+                        <div class="form-text">Dirección física de tu negocio. Mia la compartirá cuando pregunten dónde están ubicados.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-muted">
+                            <i class="bi bi-pin-map me-1"></i>Link de Google Maps
+                        </label>
+                        <input type="url" name="bot_google_maps" class="form-control"
+                               value="<?= htmlspecialchars($bc['google_maps']) ?>"
+                               placeholder="https://maps.google.com/?q=...  o  https://goo.gl/maps/...">
+                        <div class="form-text">Pega aquí el enlace de Google Maps de tu negocio. Mia lo enviará cuando pregunten cómo llegar.</div>
                     </div>
 
                     <!-- Description -->

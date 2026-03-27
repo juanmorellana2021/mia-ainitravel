@@ -31,6 +31,11 @@ class PageController
         require __DIR__ . '/../views/pages/features.php';
     }
 
+    public function privacy(): void
+    {
+        require __DIR__ . '/../views/pages/privacy.php';
+    }
+
     public function notFound(): void
     {
         http_response_code(404);

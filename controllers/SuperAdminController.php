@@ -442,6 +442,40 @@ class SuperAdminController
         require __DIR__ . '/../views/superadmin/analytics.php';
     }
 
+    // ── Client activity panel ─────────────────────────────────────────────────
+
+    public function activity(): void
+    {
+        $this->requireSuperAdmin();
+        $db = Database::get();
+
+        $clients = $db->query("
+            SELECT
+                c.id,
+                c.email,
+                c.contact_name,
+                c.business_name,
+                c.plan,
+                c.plan_status,
+                c.onboarding_done,
+                c.last_login_at,
+                c.bot_wa_status,
+                c.created_at,
+                COALESCE(l.lead_count, 0) AS lead_count
+            FROM mia_clients c
+            LEFT JOIN (
+                SELECT client_id, COUNT(*) AS lead_count
+                FROM mia_client_leads
+                GROUP BY client_id
+            ) l ON l.client_id = c.id
+            ORDER BY
+                CASE WHEN c.last_login_at IS NULL THEN 1 ELSE 0 END ASC,
+                c.last_login_at DESC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        require __DIR__ . '/../views/superadmin/activity.php';
+    }
+
     // ── Reset prospect bot state ─────────────────────────────────────────────
 
     public function prospectResetState(int $id): void

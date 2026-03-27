@@ -21,7 +21,7 @@
 
 'use strict';
 
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcodeTerminal        = require('qrcode-terminal');
 const qrcodeImage           = require('qrcode');
 const https                 = require('https');
@@ -65,6 +65,9 @@ let miaBotReadyAt  = 0; // Unix timestamp when bot last connected — used to sk
 
 // Dedup: track recently-seen message IDs to prevent double-processing (ad-click duplicates, reconnect storms)
 const recentMsgIds = new Set();
+// Ad-click tracking: notification_template is always followed by a regular chat event
+// with the same text. We skip the notification_template and only process the chat event.
+// This avoids the need for per-phone dedup timers that can block legitimate follow-up messages.
 
 miaClient.on('qr', async (qr) => {
     qrcodeTerminal.generate(qr, { small: true });
@@ -83,7 +86,25 @@ miaClient.on('ready', () => {
     miaBotQrData  = null;
     try { miaBotPhone = miaClient.info?.wid?.user ?? null; } catch(_) {}
     console.log('[mia-bot] ✅ Sales bot connected and ready. Phone:', miaBotPhone);
+    startZombieWatchdog();
 });
+
+// ── Zombie session watchdog ───────────────────────────────────────────────────
+// whatsapp-web.js can silently stop firing 'message' events while still appearing
+// connected. Track the last time a message was received; if >2h with no activity,
+// exit so pm2 restarts and re-establishes the session.
+let lastMsgReceivedAt = Date.now();
+let zombieWatchdogTimer = null;
+function startZombieWatchdog() {
+    if (zombieWatchdogTimer) clearInterval(zombieWatchdogTimer);
+    zombieWatchdogTimer = setInterval(() => {
+        const idleMs = Date.now() - lastMsgReceivedAt;
+        if (idleMs > 6 * 60 * 60 * 1000) { // 6 hours with no messages
+            console.log('[mia-bot] ⚠️ Zombie session detected (no messages in 6h) — restarting...');
+            process.exit(1); // pm2 will restart
+        }
+    }, 15 * 60 * 1000); // check every 15 minutes
+}
 
 miaClient.on('disconnected', (reason) => {
     console.log('[mia-bot] ❌ Disconnected:', reason);
@@ -110,6 +131,7 @@ miaClient.on('message', async (msg) => {
     // Log ALL messages before any filter so nothing is invisible
     const rawBody = msg.body?.trim() || '';
     console.log(`[mia-bot] RAW from=${msg.from} type=${msg.type} body="${rawBody.substring(0, 60)}"`);
+    lastMsgReceivedAt = Date.now(); // reset zombie watchdog
 
     // Skip offline backlog to avoid reply storms after reconnect
     if (miaBotReadyAt > 0 && msg.timestamp && msg.timestamp < miaBotReadyAt) {
@@ -120,14 +142,21 @@ miaClient.on('message', async (msg) => {
     // Accept text AND media (voice notes, images)
     const hasMiaMedia = msg.hasMedia && ['ptt', 'audio', 'image'].includes(msg.type);
 
-    // Facebook/Instagram ad clicks arrive as notification_template with empty body
-    // — the pre-filled ad text lives in msg._data.body; fall back to "Hola" so Mia greets them
-    const isAdClick = msg.type === 'notification_template';
-    if (isAdClick) {
-        const adText = msg._data?.body?.trim() || '';
-        console.log(`[mia-bot] Ad-click from ${msg.from} — extracted text: "${adText || '(empty, using Hola)'}"`);
-        // We'll set rawBody below via messageText; don't drop this message
-    } else if (!rawBody && !hasMiaMedia) {
+    // Facebook/Instagram ad clicks arrive as notification_template followed by a regular chat.
+    // Skip the notification_template — the real message comes right after as a normal chat event.
+    if (msg.type === 'notification_template') {
+        console.log(`[mia-bot] Ad-click notification_template from ${msg.from} — waiting for chat event instead`);
+        return;
+    }
+
+    // Detect and skip bot auto-replies from other businesses
+    const autoReplyPatterns = /gracias por (comunicarte|escribirnos|contactarnos)|en este momento no podemos|te responderemos a la brevedad|fuera del horario|horario de atenci[oó]n|mensaje autom[aá]tico|respuesta autom[aá]tica|tu mensaje (fue|ha sido) recibido|bienvenid[oa] a\b/i;
+    if (rawBody && autoReplyPatterns.test(rawBody)) {
+        console.log(`[mia-bot] Auto-reply detected from ${msg.from}: "${rawBody.substring(0, 80)}" — skipping`);
+        return;
+    }
+
+    if (!rawBody && !hasMiaMedia) {
         console.log(`[mia-bot] Dropped: empty body, no media (type=${msg.type})`);
         return;
     }
@@ -150,10 +179,7 @@ miaClient.on('message', async (msg) => {
     }
 
     // Download media if present (voice notes, images)
-    // For ad-click (notification_template), try _data.body first, then fall back to "Hola"
-    let messageText = isAdClick
-        ? (msg._data?.body?.trim() || rawBody || 'Hola')
-        : rawBody;
+    let messageText = rawBody;
     let mediaData = null, mediaMime = null, mediaType = null;
     if (hasMiaMedia) {
         try {
@@ -182,12 +208,7 @@ miaClient.on('message', async (msg) => {
             media_type: mediaType,
         });
         if (reply) {
-            // @lid contacts (Facebook ads) must use msg.reply() — sendMessage(@lid) silently fails
-            if (isLid) {
-                await msg.reply(reply);
-            } else {
-                await miaClient.sendMessage(from, reply);
-            }
+            await sendReplyWithPhotos(from, reply, msg);
             console.log(`[mia-bot] REPLY to ${from}: ${reply.substring(0, 60)}`);
         }
     } catch (e) {
@@ -290,6 +311,67 @@ async function destroyClientSession(clientId) {
     }
 })();
 
+// ── Download image as base64 ─────────────────────────────────────────────────
+function downloadImageAsBase64(url) {
+    return new Promise((resolve, reject) => {
+        const proto = url.startsWith('https') ? https : require('http');
+        proto.get(url, { rejectUnauthorized: false }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                return downloadImageAsBase64(res.headers.location).then(resolve).catch(reject);
+            }
+            if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+            const mime = res.headers['content-type'] || 'image/jpeg';
+            const chunks = [];
+            res.on('data', (c) => chunks.push(c));
+            res.on('end', () => resolve({ data: Buffer.concat(chunks).toString('base64'), mimetype: mime }));
+            res.on('error', reject);
+        }).on('error', reject);
+    });
+}
+
+// ── Reply sender: handles text + optional [FOTO:url] markers ────────────────
+async function sendReplyWithPhotos(to, reply, originalMsg) {
+    const photoRegex = /\[FOTO:(https?:\/\/[^\]]+)\]/gi;
+    const photoUrls = [];
+    let match;
+    while ((match = photoRegex.exec(reply)) !== null) photoUrls.push(match[1]);
+
+    const isLid = to.includes('@lid');
+    const textPart = reply.replace(/\[FOTO:(https?:\/\/[^\]]+)\]/gi, '').replace(/\s{2,}/g, ' ').trim();
+
+    const sendText = async (content) => {
+        if (isLid && originalMsg) {
+            await originalMsg.reply(content);
+        } else {
+            await miaClient.sendMessage(to, content);
+        }
+    };
+
+    // Photos always use reply() for better media delivery reliability
+    const sendMedia = async (content) => {
+        if (originalMsg) {
+            await originalMsg.reply(content);
+        } else {
+            await miaClient.sendMessage(to, content);
+        }
+    };
+
+    if (textPart) await sendText(textPart);
+
+    for (const url of photoUrls) {
+        try {
+            console.log(`[mia-bot] PHOTO: downloading ${url}`);
+            const { data, mimetype } = await downloadImageAsBase64(url);
+            const media = new MessageMedia(mimetype, data, url.split('/').pop());
+            await sendMedia(media);
+            console.log(`[mia-bot] PHOTO: sent OK`);
+        } catch (e) {
+            console.error(`[mia-bot] PHOTO FAIL ${url}: ${e.message}`);
+            try { await sendText(`📷 Ver foto: ${url}`); } catch (_) {}
+        }
+    }
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // PHP status callback
 // ═════════════════════════════════════════════════════════════════════════════
@@ -372,7 +454,7 @@ const adminServer = http.createServer((req, res) => {
                 const { to, message } = JSON.parse(raw);
                 if (!to || !message) return respond(res, 400, { error: 'to and message required' });
                 const chatId = to.includes('@') ? to : to.replace('+', '') + '@c.us';
-                miaClient.sendMessage(chatId, message)
+                sendReplyWithPhotos(chatId, message, null)
                     .then(() => {
                         console.log(`[admin] OUTBOUND to ${chatId}: ${message.substring(0, 60)}`);
                         respond(res, 200, { success: true, to: chatId });

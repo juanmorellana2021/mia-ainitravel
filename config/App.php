@@ -31,7 +31,7 @@ class App
 
     // ── Pricing (PEN — Soles) ────────────────────────────────────────────
     public const CURRENCY        = 'S/';
-    public const PLAN_STARTER    = 59;
+    public const PLAN_STARTER    = 84;
     public const PLAN_BASIC      = 129;   // "Pro" tier
     public const PLAN_PRO        = 349;   // "Business" tier
     public const PLAN_ENTERPRISE       = 1199;
@@ -39,13 +39,16 @@ class App
     public const PLAN_ENTERPRISE_CHAIN = 3599;
     public const PLAN_ENTERPRISE_CORP  = 11999;
     public const SETUP_FEE             = 0;
-    public const FREE_TRIAL_DAYS = 7;
+    public const FREE_TRIAL_DAYS = 15;
+
+    // ── Team seats ────────────────────────────────────────────────────────
+    public const ADDON_SEAT_PRICE        = 39;   // S/39/mo per additional team member
 
     // ── Add-on credits (one-time monthly purchases, not recurring) ────────
     public const ADDON_EXTRA_500_PRICE   = 50;   // S/50  → 500 extra conversations this month
     public const ADDON_UNLIMITED_PRICE   = 100;  // S/100 → unlimited conversations this month
 
-    // ── Asset base path (auto-detect local vs subdomain) ─────────────────
+    // ── Asset base path (auto-detect local vs subdomain) ────────────────────
     public static function basePath(): string
     {
         $uri = $_SERVER['REQUEST_URI'] ?? '/';

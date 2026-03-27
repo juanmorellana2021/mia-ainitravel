@@ -19,10 +19,10 @@ class NotificationService
     // IONOS SMTP — same credentials used by all apps on this VPS
     private const SMTP_HOST = 'smtp.ionos.com';
     private const SMTP_PORT = 587;
-    private const SMTP_USER = 'support@ainitravel.com';
-    private const SMTP_PASS = 'FpF5vBZ5!t$6LFp';
-    private const FROM_EMAIL = 'support@ainitravel.com';
-    private const FROM_NAME  = 'Mia by AiniTravel';
+    private const SMTP_USER = 'support@mia-whatsapp.com';
+    private const SMTP_PASS = 'JU{or}0027';
+    private const FROM_EMAIL = 'support@mia-whatsapp.com';
+    private const FROM_NAME  = 'Mia WhatsApp';
 
     public function __construct()
     {
@@ -90,7 +90,7 @@ class NotificationService
   <div class="hd">
     <div style="font-size:2.4rem">🎉</div>
     <h2>¡Tu cuenta está lista!</h2>
-    <p style="margin:4px 0 0;color:#adb5bd;font-size:13px">Mia by AiniDesk</p>
+    <p style="margin:4px 0 0;color:#adb5bd;font-size:13px">mia-whatsapp.com</p>
   </div>
   <div class="bd">
     <p style="color:#212529;font-size:15px">Hola <strong>{$name}</strong>,</p>
@@ -110,10 +110,10 @@ class NotificationService
     </div>
     <p class="note">
       ⚠️ Por seguridad, te recomendamos cambiar tu contraseña después del primer ingreso.<br>
-      El equipo de AiniDesk te contactará en las próximas horas para configurar Mia para tu negocio.
+      El equipo de Mia WhatsApp te contactará en las próximas horas para configurar Mia para tu negocio.
     </p>
   </div>
-  <div class="ft">Mia by AiniTravel &middot; Si no creaste esta cuenta, ignora este email.</div>
+  <div class="ft">Mia WhatsApp &middot; mia-whatsapp.com &middot; Si no creaste esta cuenta, ignora este email.</div>
 </div>
 </body>
 </html>
