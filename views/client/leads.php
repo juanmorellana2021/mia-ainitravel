@@ -180,7 +180,16 @@ require __DIR__ . '/_sidebar.php';
             </a>
         <?php endforeach; ?>
     </div>
-    <div class="lead-desktop-only flex-shrink-0" style="display:inline-flex!important;gap:6px;">
+    <div class="lead-desktop-only flex-shrink-0" style="display:inline-flex!important;gap:6px;align-items:center;">
+        <!-- View toggle -->
+        <div class="btn-group btn-group-sm" id="viewToggle" role="group" title="Cambiar vista">
+            <button type="button" class="btn btn-outline-secondary" id="btnViewCards" title="Vista tarjetas">
+                <i class="bi bi-grid-3x3-gap-fill"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="btnViewTable" title="Vista tabla">
+                <i class="bi bi-table"></i>
+            </button>
+        </div>
         <button type="button" class="btn btn-outline-secondary btn-sm"
                 data-bs-toggle="modal" data-bs-target="#importCsvModal"
                 style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
@@ -208,6 +217,60 @@ require __DIR__ . '/_sidebar.php';
         <p>No hay leads<?= $filter ? ' con este estado' : '' ?>.</p>
     </div>
 <?php else: ?>
+    <!-- TABLE VIEW -->
+    <div id="leadsTableView" style="display:none;overflow-x:auto;">
+        <table class="table table-hover align-middle bg-white rounded shadow-sm" style="font-size:0.88rem;">
+            <thead class="table-light">
+                <tr>
+                    <th style="width:40px"></th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th>Fuente</th>
+                    <th>Último mensaje</th>
+                    <th>Fecha</th>
+                    <th style="width:40px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($leads as $i => $lead):
+                $initial  = $lead->displayInitial();
+                $color    = $avatarColors[$lead->id % count($avatarColors)];
+                $emoji    = $statusEmoji[$lead->status] ?? '';
+                $picFile  = $lead->profile_pic ? dirname(__DIR__, 2) . '/' . $lead->profile_pic : null;
+                $timeFmt2 = $lead->last_message_at ? date('d/m/y', strtotime($lead->last_message_at)) : date('d/m/y', strtotime($lead->created_at));
+                $msgPreview2 = $lead->last_message_text ? mb_strimwidth(strip_tags($lead->last_message_text), 0, 45, '…') : '';
+                $sourceLabels2 = ['whatsapp'=>'WhatsApp','facebook'=>'Facebook','instagram'=>'Instagram','website'=>'Website','qr'=>'QR','manual'=>'Manual','import'=>'Import'];
+            ?>
+            <tr style="cursor:pointer"
+                data-lead-id="<?= $lead->id ?>"
+                data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
+                data-lead-phone="<?= htmlspecialchars($lead->phone) ?>"
+                data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>">
+                <td>
+                    <div class="lead-avatar" style="width:34px;height:34px;font-size:0.85rem;background:<?= ($picFile && file_exists($picFile)) ? '#e8e8e8' : $color ?>">
+                        <?php if ($picFile && file_exists($picFile)): ?>
+                            <img src="<?= htmlspecialchars($base . '/' . $lead->profile_pic) ?>?v=<?= filemtime($picFile) ?>" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">
+                        <?php else: ?>
+                            <?= $initial ?>
+                        <?php endif; ?>
+                    </div>
+                </td>
+                <td class="fw-semibold"><?= htmlspecialchars($lead->displayName()) ?></td>
+                <td class="text-muted">+<?= htmlspecialchars($lead->phone) ?></td>
+                <td><span class="badge bg-<?= $lead->statusClass() ?> bg-opacity-10 text-<?= $lead->statusClass() ?> border border-<?= $lead->statusClass() ?> border-opacity-25"><?= $emoji ?> <?= $lead->statusLabel() ?></span></td>
+                <td class="text-muted" style="font-size:0.8rem"><?= $sourceLabels2[$lead->source] ?? ucfirst($lead->source) ?></td>
+                <td class="text-muted" style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= htmlspecialchars($msgPreview2) ?></td>
+                <td class="text-muted" style="white-space:nowrap;font-size:0.8rem"><?= $timeFmt2 ?></td>
+                <td><a href="<?= $base ?>/dashboard/leads/<?= $lead->id ?>" class="btn btn-sm btn-light" onclick="event.stopPropagation()" title="Ver detalle"><i class="bi bi-eye"></i></a></td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CARD VIEW -->
+    <div id="leadsCardsView">
     <div class="leads-grid">
         <?php foreach ($leads as $i => $lead):
             $initial = $lead->displayInitial();
@@ -297,6 +360,7 @@ require __DIR__ . '/_sidebar.php';
         </div>
         <?php endforeach; ?>
     </div>
+    </div><!-- /leadsCardsView -->
 <?php endif; ?>
 
 <!-- FAB: Add contact (mobile) -->
@@ -664,6 +728,49 @@ document.addEventListener('DOMContentLoaded', function(){
     if (m) new bootstrap.Modal(m).show();
 });
 <?php unset($_SESSION['lead_add_error']); endif; ?>
+</script>
+
+<script>
+// ── View toggle (cards / table) ───────────────────────────────────────────
+(function(){
+    var PREF_KEY   = 'mia_leads_view';
+    var cardsView  = document.getElementById('leadsCardsView');
+    var tableView  = document.getElementById('leadsTableView');
+    var btnCards   = document.getElementById('btnViewCards');
+    var btnTable   = document.getElementById('btnViewTable');
+    if (!cardsView || !tableView || !btnCards || !btnTable) return;
+
+    function setView(mode) {
+        if (mode === 'table') {
+            cardsView.style.display = 'none';
+            tableView.style.display = 'block';
+            btnTable.classList.add('active');
+            btnCards.classList.remove('active');
+        } else {
+            tableView.style.display = 'none';
+            cardsView.style.display = 'block';
+            btnCards.classList.add('active');
+            btnTable.classList.remove('active');
+        }
+        localStorage.setItem(PREF_KEY, mode);
+    }
+
+    btnCards.addEventListener('click', function(){ setView('cards'); });
+    btnTable.addEventListener('click', function(){ setView('table'); });
+
+    // Rows in table view open chat panel (same as cards)
+    tableView.querySelectorAll('tr[data-lead-id]').forEach(function(row){
+        row.addEventListener('click', function(){
+            var card = document.querySelector('.lead-card[data-lead-id="' + row.dataset.leadId + '"]');
+            if (card) { card.click(); } else {
+                window.location = '<?= $base ?>/dashboard/leads/' + row.dataset.leadId;
+            }
+        });
+    });
+
+    // Restore saved preference
+    setView(localStorage.getItem(PREF_KEY) || 'cards');
+})();
 </script>
 
 <!-- ── Import CSV Modal ──────────────────────────────────────────────────── -->
