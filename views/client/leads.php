@@ -31,44 +31,63 @@ require __DIR__ . '/_sidebar.php';
 ?>
 
 <style>
-/* ── Mobile lead cards ──────────────────────────────────── */
-.lead-stats-scroll { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
-.lead-stats-scroll::-webkit-scrollbar { display:none; }
-.lead-stats-scroll .mc-stat-card { min-width:130px; flex-shrink:0; padding:14px 16px; }
-
-.lead-filter-pills { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+/* ── Filter pills ───────────────────────────────────────── */
+.lead-filter-pills { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; flex-wrap:wrap; }
 .lead-filter-pills::-webkit-scrollbar { display:none; }
 .lead-filter-pills a {
-    white-space:nowrap; border-radius:20px; padding:6px 16px; font-size:0.82rem; font-weight:500;
+    white-space:nowrap; border-radius:20px; padding:5px 16px; font-size:0.82rem; font-weight:500;
     text-decoration:none; border:1px solid #dee2e6; color:#555; background:#fff; transition:all .2s;
 }
 .lead-filter-pills a.active { background:#1a1a2e; color:#fff; border-color:#1a1a2e; }
 
-.lead-card {
-    background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:10px;
-    box-shadow:0 1px 4px rgba(0,0,0,0.06); display:flex; gap:12px; align-items:flex-start;
-    cursor:pointer; transition:box-shadow .2s; text-decoration:none; color:inherit;
+/* ── Cards grid ─────────────────────────────────────────── */
+.leads-grid {
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:10px;
 }
-.lead-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+@media(min-width:600px) {
+    .leads-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media(min-width:992px) {
+    .leads-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media(min-width:1400px) {
+    .leads-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.lead-card {
+    background:#fff; border-radius:12px; padding:14px 16px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06); display:flex; gap:12px; align-items:flex-start;
+    cursor:pointer; transition:box-shadow .2s, transform .15s; text-decoration:none; color:inherit;
+    height:100%;
+}
+.lead-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.1); transform:translateY(-1px); }
 .lead-avatar {
-    width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font-weight:700; font-size:1.1rem; color:#fff; flex-shrink:0;
+    width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.15rem; color:#fff; flex-shrink:0;
 }
 .lead-card-body { flex:1; min-width:0; }
 .lead-card-top { display:flex; justify-content:space-between; align-items:center; }
-.lead-card-name { font-weight:600; font-size:0.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%; }
+.lead-card-name { font-weight:600; font-size:0.93rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:65%; }
 .lead-card-time { font-size:0.72rem; color:#adb5bd; white-space:nowrap; display:flex; align-items:center; gap:3px; }
 .lead-card-msg { font-size:0.82rem; color:#718096; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:3px 0 6px; }
-.lead-card-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-.lead-card-badges .badge { font-size:0.7rem; font-weight:500; padding:3px 8px; border-radius:10px; }
+.lead-card-badges { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+.lead-card-badges .badge { font-size:0.68rem; font-weight:500; padding:3px 7px; border-radius:10px; }
 .lead-mia-indicator { font-size:0.72rem; color:#25d366; margin-top:5px; display:flex; align-items:center; gap:4px; }
 .lead-card-detail-btn {
     margin-left:auto; width:28px; height:28px; border-radius:50%; display:inline-flex;
     align-items:center; justify-content:center; background:#f0f4f8; color:#718096;
-    font-size:0.82rem; text-decoration:none; transition:background .2s;
+    font-size:0.82rem; text-decoration:none; transition:background .2s; flex-shrink:0;
 }
 .lead-card-detail-btn:hover { background:#e2e8f0; color:#1a1a2e; }
 
+/* ── Stats scroll (mobile) ──────────────────────────────── */
+.lead-stats-scroll { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.lead-stats-scroll::-webkit-scrollbar { display:none; }
+.lead-stats-scroll .mc-stat-card { min-width:130px; flex-shrink:0; padding:14px 16px; }
+
+/* ── FAB (mobile only) ──────────────────────────────────── */
 .lead-fab {
     position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%;
     background:#25d366; color:#fff; border:none; font-size:1.5rem; display:flex;
@@ -77,17 +96,18 @@ require __DIR__ . '/_sidebar.php';
 }
 .lead-fab:hover { transform:scale(1.1); }
 
+/* ── Responsive helpers ─────────────────────────────────── */
+.lead-mobile-only { display:block; }
+.lead-desktop-only { display:none; }
 @media(min-width:768px) {
     .lead-mobile-only { display:none !important; }
+    .lead-desktop-only { display:block !important; }
     .lead-fab { display:none !important; }
-}
-@media(max-width:767.98px) {
-    .lead-desktop-only { display:none !important; }
 }
 </style>
 
 <!-- ══ Stats row ══════════════════════════════════════════════════════════ -->
-<!-- Mobile: horizontal scroll with 4 key stats -->
+<!-- Mobile: horizontal scroll -->
 <div class="lead-mobile-only mb-3">
     <div class="lead-stats-scroll">
         <div class="mc-stat-card text-center">
@@ -151,33 +171,37 @@ require __DIR__ . '/_sidebar.php';
     </div>
 </div>
 
-<!-- ══ Filter pills ═══════════════════════════════════════════════════════ -->
-<!-- Mobile: pill-style horizontal scroll -->
-<div class="lead-mobile-only mb-3">
-    <div class="lead-filter-pills">
+<!-- ══ Toolbar: filter pills + Add button ════════════════════════════════ -->
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+    <div class="lead-filter-pills flex-grow-1">
         <?php foreach ($allStatuses as $val => $label): ?>
             <a href="?status=<?= $val ?>" class="<?= $filter === $val ? 'active' : '' ?>">
                 <?= htmlspecialchars($label) ?>
             </a>
         <?php endforeach; ?>
     </div>
+    <button type="button" class="btn btn-success btn-sm lead-desktop-only flex-shrink-0"
+            data-bs-toggle="modal" data-bs-target="#addContactModal"
+            style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
+        <i class="bi bi-person-plus-fill"></i> Agregar Contacto
+    </button>
 </div>
 
-<!-- ══ Mobile Lead Cards ══════════════════════════════════════════════════ -->
-<div class="lead-mobile-only">
-    <?php if (!empty($_SESSION['lead_add_error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
-            <?= htmlspecialchars($_SESSION['lead_add_error']) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
+<?php if (!empty($_SESSION['lead_add_error'])): ?>
+    <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <?= htmlspecialchars($_SESSION['lead_add_error']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+<?php endif; ?>
 
-    <?php if (empty($leads)): ?>
-        <div class="text-center py-5 text-muted">
-            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
-            <p>No hay leads<?= $filter ? ' con este estado' : '' ?>.</p>
-        </div>
-    <?php else: ?>
+<!-- ══ Unified Lead Cards Grid ═══════════════════════════════════════════ -->
+<?php if (empty($leads)): ?>
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
+        <p>No hay leads<?= $filter ? ' con este estado' : '' ?>.</p>
+    </div>
+<?php else: ?>
+    <div class="leads-grid">
         <?php foreach ($leads as $i => $lead):
             $initial = $lead->displayInitial();
             $color   = $avatarColors[$lead->id % count($avatarColors)];
@@ -205,15 +229,15 @@ require __DIR__ . '/_sidebar.php';
 
             $msgPreview = '';
             if ($lead->last_message_text) {
-                $msgPreview = mb_strimwidth(strip_tags($lead->last_message_text), 0, 50, '…');
+                $msgPreview = mb_strimwidth(strip_tags($lead->last_message_text), 0, 55, '…');
                 if ($lead->last_message_direction === 'outbound') {
                     $msgPreview = ($lead->last_message_handled_by === 'mia' ? '🤖 ' : '👤 ') . $msgPreview;
                 }
             }
 
             $sourceLabels = ['whatsapp' => 'WhatsApp', 'facebook' => 'Facebook', 'instagram' => 'Instagram', 'website' => 'Website', 'qr' => 'QR Code'];
+            $picFile = $lead->profile_pic ? dirname(__DIR__, 2) . '/' . $lead->profile_pic : null;
         ?>
-        <?php $picFile = $lead->profile_pic ? dirname(__DIR__, 2) . '/' . $lead->profile_pic : null; ?>
         <div class="lead-card"
              data-lead-id="<?= $lead->id ?>"
              data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
@@ -240,7 +264,7 @@ require __DIR__ . '/_sidebar.php';
                 <?php if ($msgPreview): ?>
                     <div class="lead-card-msg"><?= htmlspecialchars($msgPreview) ?></div>
                 <?php else: ?>
-                    <div class="lead-card-msg" style="font-style:italic">Sin mensajes aún</div>
+                    <div class="lead-card-msg" style="font-style:italic;color:#c0cadb">Sin mensajes aún</div>
                 <?php endif; ?>
                 <div class="lead-card-badges">
                     <span class="badge bg-<?= $lead->statusClass() ?> bg-opacity-10 text-<?= $lead->statusClass() ?> border border-<?= $lead->statusClass() ?> border-opacity-25">
@@ -265,8 +289,8 @@ require __DIR__ . '/_sidebar.php';
             </div>
         </div>
         <?php endforeach; ?>
-    <?php endif; ?>
-</div>
+    </div>
+<?php endif; ?>
 
 <!-- FAB: Add contact (mobile) -->
 <button type="button" class="lead-fab lead-mobile-only"
@@ -274,114 +298,6 @@ require __DIR__ . '/_sidebar.php';
         title="Agregar Contacto">
     <i class="bi bi-plus-lg"></i>
 </button>
-
-<!-- ══ Desktop: original table view ══════════════════════════════════════ -->
-<div class="mc-table-card lead-desktop-only">
-    <div class="card-header-bar flex-wrap gap-2">
-        <span><i class="bi bi-people me-2 text-muted"></i>Leads (<?= count($leads) ?>)</span>
-        <div class="d-flex gap-1 flex-wrap align-items-center">
-            <?php foreach ($allStatuses as $val => $label): ?>
-                <a href="?status=<?= $val ?>"
-                   class="btn btn-sm <?= $filter === $val ? 'btn-dark' : 'btn-outline-secondary' ?>">
-                    <?= htmlspecialchars($label) ?>
-                </a>
-            <?php endforeach; ?>
-            <button type="button" class="btn btn-sm btn-success ms-2"
-                    data-bs-toggle="modal" data-bs-target="#addContactModal"
-                    style="gap:4px;display:inline-flex;align-items:center">
-                <i class="bi bi-person-plus-fill me-1"></i> Agregar Contacto
-            </button>
-        </div>
-    </div>
-
-    <?php if (!empty($_SESSION['lead_add_error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show m-3 mb-0" role="alert">
-            <?= htmlspecialchars($_SESSION['lead_add_error']) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if (empty($leads)): ?>
-        <div class="text-center py-5 text-muted">
-            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
-            <p>No hay leads<?= $filter ? ' con este estado' : '' ?>.</p>
-        </div>
-    <?php else: ?>
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Contacto</th>
-                        <th>Teléfono</th>
-                        <th>Fuente</th>
-                        <th>Estado</th>
-                        <th>Valor estimado</th>
-                        <th>Fecha</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($leads as $lead): ?>
-                    <tr>
-                        <td class="text-muted">#<?= $lead->id ?></td>
-                        <td class="fw-medium">
-                            <?= htmlspecialchars($lead->displayName()) ?>
-                            <?php if ($lead->contact_type !== 'lead'): ?>
-                            <span class="badge bg-<?= $lead->contactTypeBadgeClass() ?> bg-opacity-10 text-<?= $lead->contactTypeBadgeClass() ?> ms-1" style="font-size:0.68rem;font-weight:500"><?= $lead->contactTypeLabel() ?></span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $lead->phone) ?>"
-                               target="_blank" class="text-decoration-none text-reset">
-                                <i class="bi bi-whatsapp text-success me-1"></i><?= htmlspecialchars($lead->phone) ?>
-                            </a>
-                        </td>
-                        <td>
-                            <i class="bi <?= $lead->sourceIcon() ?> me-1"></i>
-                            <?= ucfirst(htmlspecialchars($lead->source)) ?>
-                        </td>
-                        <td>
-                            <span class="badge bg-<?= $lead->statusClass() ?> bg-opacity-10 text-<?= $lead->statusClass() ?> border border-<?= $lead->statusClass() ?> border-opacity-25">
-                                <?= $lead->statusLabel() ?>
-                            </span>
-                        </td>
-                        <td><?= $lead->value_estimate > 0 ? App::CURRENCY . ' ' . number_format($lead->value_estimate, 0) : '—' ?></td>
-                        <td class="text-muted"><?= date('d/m/y H:i', strtotime($lead->created_at)) ?></td>
-                        <td>
-                            <div class="d-flex gap-1">
-                                <a href="<?= $base ?>/dashboard/leads/<?= $lead->id ?>"
-                                   class="btn btn-sm btn-outline-primary" style="font-size:0.78rem;padding:3px 10px">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-success chat-open-btn"
-                                        style="font-size:0.78rem;padding:3px 10px"
-                                        data-lead-id="<?= $lead->id ?>"
-                                        data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
-                                        data-lead-phone="<?= htmlspecialchars($lead->phone) ?>"
-                                        data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>"
-                                        title="Chatear">
-                                    <i class="bi bi-chat-dots"></i>
-                                </button>
-                                <?php if ($lead->phone): ?>
-                                <a href="https://wa.me/<?= htmlspecialchars(preg_replace('/\D/','',$lead->phone)) ?>"
-                                   class="btn btn-sm btn-outline-secondary"
-                                   style="font-size:0.78rem;padding:3px 10px"
-                                   target="_blank" rel="noopener"
-                                   title="Llamar por WhatsApp +<?= htmlspecialchars($lead->phone) ?>">
-                                    <i class="bi bi-telephone"></i>
-                                </a>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</div>
 
 <!-- ── Chat panel ──────────────────────────────────────────────────────────── -->
 <div id="chatPanel" style="
