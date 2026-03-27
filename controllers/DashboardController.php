@@ -127,6 +127,79 @@ class DashboardController
         exit;
     }
 
+    // ── Lead bulk import ─────────────────────────────────────────────────────
+
+    public function leadImport(): void
+    {
+        App::csrfVerify();
+        $client      = $this->requireClient();
+        $leadService = new ClientLeadService();
+
+        header('Content-Type: application/json');
+
+        if (empty($_FILES['csv_file']['tmp_name'])) {
+            echo json_encode(['error' => 'No se recibió ningún archivo.']);
+            exit;
+        }
+
+        $tmpPath = $_FILES['csv_file']['tmp_name'];
+        $handle  = fopen($tmpPath, 'r');
+        if (!$handle) {
+            echo json_encode(['error' => 'No se pudo leer el archivo.']);
+            exit;
+        }
+
+        $imported = 0;
+        $skipped  = 0;
+        $errors   = [];
+        $lineNum  = 0;
+
+        while (($row = fgetcsv($handle, 200, ',')) !== false) {
+            $lineNum++;
+
+            // Skip empty rows
+            if (empty(array_filter($row))) continue;
+
+            $rawPhone = trim($row[0] ?? '');
+            $name     = trim($row[1] ?? '');
+
+            // Skip header row if first cell looks like text
+            if ($lineNum === 1 && !is_numeric(preg_replace('/\D/', '', $rawPhone))) continue;
+
+            $phone = preg_replace('/\D/', '', $rawPhone);
+
+            if (strlen($phone) < 7 || strlen($phone) > 15) {
+                $errors[] = "Línea {$lineNum}: teléfono inválido ({$rawPhone})";
+                continue;
+            }
+
+            $existing = $leadService->findByPhoneForClient($phone, $client->id);
+            if ($existing) {
+                $skipped++;
+                continue;
+            }
+
+            $leadService->create($client->id, [
+                'contact_name'   => $name,
+                'phone'          => $phone,
+                'source'         => 'import',
+                'status'         => 'new',
+                'value_estimate' => 0,
+                'notes'          => '',
+            ]);
+            $imported++;
+        }
+
+        fclose($handle);
+
+        echo json_encode([
+            'imported' => $imported,
+            'skipped'  => $skipped,
+            'errors'   => array_slice($errors, 0, 10), // cap at 10 error messages
+        ]);
+        exit;
+    }
+
     // ── Lead update ───────────────────────────────────────────────────────────
 
     public function leadUpdate(int $id): void

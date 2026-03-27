@@ -180,11 +180,18 @@ require __DIR__ . '/_sidebar.php';
             </a>
         <?php endforeach; ?>
     </div>
-    <button type="button" class="btn btn-success btn-sm lead-desktop-only flex-shrink-0"
-            data-bs-toggle="modal" data-bs-target="#addContactModal"
-            style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
-        <i class="bi bi-person-plus-fill"></i> Agregar Contacto
-    </button>
+    <div class="lead-desktop-only flex-shrink-0" style="display:inline-flex!important;gap:6px;">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                data-bs-toggle="modal" data-bs-target="#importCsvModal"
+                style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
+            <i class="bi bi-upload"></i> Importar CSV
+        </button>
+        <button type="button" class="btn btn-success btn-sm"
+                data-bs-toggle="modal" data-bs-target="#addContactModal"
+                style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
+            <i class="bi bi-person-plus-fill"></i> Agregar Contacto
+        </button>
+    </div>
 </div>
 
 <?php if (!empty($_SESSION['lead_add_error'])): ?>
@@ -657,6 +664,89 @@ document.addEventListener('DOMContentLoaded', function(){
     if (m) new bootstrap.Modal(m).show();
 });
 <?php unset($_SESSION['lead_add_error']); endif; ?>
+</script>
+
+<!-- ── Import CSV Modal ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="importCsvModal" tabindex="-1" aria-labelledby="importCsvModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importCsvModalLabel">
+                    <i class="bi bi-upload text-primary me-2"></i>Importar Contactos CSV
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Sube un archivo <strong>.csv</strong> con una columna de teléfono y (opcional) una de nombre:<br>
+                    <code>5491155667788, Juan Pérez</code><br>
+                    La primera fila puede ser encabezado — se detecta automáticamente.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Archivo CSV</label>
+                    <input type="file" id="importCsvFile" class="form-control" accept=".csv,text/csv">
+                </div>
+                <div id="importCsvResult" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" id="importCsvBtn" class="btn btn-primary">
+                    <i class="bi bi-upload me-1"></i>Importar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    document.getElementById('importCsvBtn').addEventListener('click', function(){
+        var fileInput = document.getElementById('importCsvFile');
+        var resultEl  = document.getElementById('importCsvResult');
+        if (!fileInput.files.length) {
+            resultEl.className = 'alert alert-warning';
+            resultEl.textContent = 'Selecciona un archivo CSV primero.';
+            return;
+        }
+        var btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importando…';
+        resultEl.className = 'd-none';
+
+        var fd = new FormData();
+        fd.append('_csrf', '<?= htmlspecialchars(App::csrfToken()) ?>');
+        fd.append('csv_file', fileInput.files[0]);
+
+        fetch('<?= $base ?>/dashboard/leads/import', { method:'POST', body:fd })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-upload me-1"></i>Importar';
+                if (data.error) {
+                    resultEl.className = 'alert alert-danger';
+                    resultEl.textContent = data.error;
+                    return;
+                }
+                var html = '<strong>' + data.imported + ' contactos importados</strong>';
+                if (data.skipped)  html += ', ' + data.skipped + ' ya existían (omitidos)';
+                if (data.errors && data.errors.length) {
+                    html += '<ul class="mt-2 mb-0">' + data.errors.map(e => '<li>' + escHtml(e) + '</li>').join('') + '</ul>';
+                }
+                resultEl.className = 'alert ' + (data.imported > 0 ? 'alert-success' : 'alert-warning');
+                resultEl.innerHTML = html;
+                if (data.imported > 0) setTimeout(() => location.reload(), 2500);
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-upload me-1"></i>Importar';
+                resultEl.className = 'alert alert-danger';
+                resultEl.textContent = 'Error de red. Intenta de nuevo.';
+            });
+    });
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+})();
 </script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

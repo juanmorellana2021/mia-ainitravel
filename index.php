@@ -234,6 +234,9 @@ match (true) {
     $uri === 'dashboard/leads/add' && $method === 'POST'
         => (new DashboardController())->leadAdd(),
 
+    $uri === 'dashboard/leads/import' && $method === 'POST'
+        => (new DashboardController())->leadImport(),
+
     str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/messages') && $method === 'GET'
         => (new DashboardController())->leadMessages((int)(explode('/', $uri)[2] ?? 0)),
 
