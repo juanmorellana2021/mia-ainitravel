@@ -16,43 +16,132 @@ $allStatuses = [
     'closed_lost' => 'Perdido',
 ];
 
+$statusEmoji = [
+    'new'         => '🆕',
+    'interested'  => '🔥',
+    'demo'        => '🎯',
+    'closed_won'  => '💰',
+    'closed_lost' => '🔴',
+];
+
+$avatarColors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
 ?>
 
-<!-- Stats row -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-2">
+<style>
+/* ── Mobile lead cards ──────────────────────────────────── */
+.lead-stats-scroll { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.lead-stats-scroll::-webkit-scrollbar { display:none; }
+.lead-stats-scroll .mc-stat-card { min-width:130px; flex-shrink:0; padding:14px 16px; }
+
+.lead-filter-pills { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.lead-filter-pills::-webkit-scrollbar { display:none; }
+.lead-filter-pills a {
+    white-space:nowrap; border-radius:20px; padding:6px 16px; font-size:0.82rem; font-weight:500;
+    text-decoration:none; border:1px solid #dee2e6; color:#555; background:#fff; transition:all .2s;
+}
+.lead-filter-pills a.active { background:#1a1a2e; color:#fff; border-color:#1a1a2e; }
+
+.lead-card {
+    background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06); display:flex; gap:12px; align-items:flex-start;
+    cursor:pointer; transition:box-shadow .2s; text-decoration:none; color:inherit;
+}
+.lead-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.1); }
+.lead-avatar {
+    width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.1rem; color:#fff; flex-shrink:0;
+}
+.lead-card-body { flex:1; min-width:0; }
+.lead-card-top { display:flex; justify-content:space-between; align-items:center; }
+.lead-card-name { font-weight:600; font-size:0.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%; }
+.lead-card-time { font-size:0.72rem; color:#adb5bd; white-space:nowrap; display:flex; align-items:center; gap:3px; }
+.lead-card-msg { font-size:0.82rem; color:#718096; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:3px 0 6px; }
+.lead-card-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.lead-card-badges .badge { font-size:0.7rem; font-weight:500; padding:3px 8px; border-radius:10px; }
+.lead-mia-indicator { font-size:0.72rem; color:#25d366; margin-top:5px; display:flex; align-items:center; gap:4px; }
+.lead-card-detail-btn {
+    margin-left:auto; width:28px; height:28px; border-radius:50%; display:inline-flex;
+    align-items:center; justify-content:center; background:#f0f4f8; color:#718096;
+    font-size:0.82rem; text-decoration:none; transition:background .2s;
+}
+.lead-card-detail-btn:hover { background:#e2e8f0; color:#1a1a2e; }
+
+.lead-fab {
+    position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%;
+    background:#25d366; color:#fff; border:none; font-size:1.5rem; display:flex;
+    align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(37,211,102,0.4);
+    z-index:400; cursor:pointer; transition:transform .2s;
+}
+.lead-fab:hover { transform:scale(1.1); }
+
+@media(min-width:768px) {
+    .lead-mobile-only { display:none !important; }
+    .lead-fab { display:none !important; }
+}
+@media(max-width:767.98px) {
+    .lead-desktop-only { display:none !important; }
+}
+</style>
+
+<!-- ══ Stats row ══════════════════════════════════════════════════════════ -->
+<!-- Mobile: horizontal scroll with 4 key stats -->
+<div class="lead-mobile-only mb-3">
+    <div class="lead-stats-scroll">
+        <div class="mc-stat-card text-center">
+            <div class="stat-num text-info" style="font-size:1.5rem"><?= (int)($stats['interested'] ?? 0) ?></div>
+            <div class="stat-label">Interesados</div>
+        </div>
+        <div class="mc-stat-card text-center">
+            <div class="stat-num text-success" style="font-size:1.5rem"><?= (int)($stats['won'] ?? 0) ?></div>
+            <div class="stat-label">Ganados</div>
+        </div>
+        <div class="mc-stat-card text-center">
+            <div class="stat-num text-secondary" style="font-size:1.5rem"><?= (int)($stats['lost'] ?? 0) ?></div>
+            <div class="stat-label">Perdidos</div>
+        </div>
+        <div class="mc-stat-card text-center">
+            <div class="stat-num" style="color:#25d366;font-size:1.2rem"><?= App::CURRENCY ?><?= number_format((float)($stats['pipeline_value'] ?? 0), 0) ?></div>
+            <div class="stat-label">Pipeline</div>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop: 6-column row -->
+<div class="row g-3 mb-4 lead-desktop-only">
+    <div class="col-md-2">
         <div class="mc-stat-card text-center">
             <div class="stat-num text-dark"><?= (int)($stats['total'] ?? 0) ?></div>
             <div class="stat-label">Total</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-md-2">
         <div class="mc-stat-card text-center">
             <div class="stat-num text-primary"><?= (int)($stats['new_leads'] ?? 0) ?></div>
             <div class="stat-label">Nuevos</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-md-2">
         <div class="mc-stat-card text-center">
             <div class="stat-num text-info"><?= (int)($stats['interested'] ?? 0) ?></div>
             <div class="stat-label">Interesados</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-md-2">
         <div class="mc-stat-card text-center">
             <div class="stat-num text-success"><?= (int)($stats['won'] ?? 0) ?></div>
             <div class="stat-label">Ganados</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-md-2">
         <div class="mc-stat-card text-center">
             <div class="stat-num text-secondary"><?= (int)($stats['lost'] ?? 0) ?></div>
             <div class="stat-label">Perdidos</div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-md-2">
         <div class="mc-stat-card text-center">
             <div class="stat-num" style="color:#25d366;font-size:1.3rem">
                 <?= App::CURRENCY ?><?= number_format((float)($stats['pipeline_value'] ?? 0), 0) ?>
@@ -62,8 +151,132 @@ require __DIR__ . '/_sidebar.php';
     </div>
 </div>
 
-<!-- Filter bar -->
-<div class="mc-table-card">
+<!-- ══ Filter pills ═══════════════════════════════════════════════════════ -->
+<!-- Mobile: pill-style horizontal scroll -->
+<div class="lead-mobile-only mb-3">
+    <div class="lead-filter-pills">
+        <?php foreach ($allStatuses as $val => $label): ?>
+            <a href="?status=<?= $val ?>" class="<?= $filter === $val ? 'active' : '' ?>">
+                <?= htmlspecialchars($label) ?>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- ══ Mobile Lead Cards ══════════════════════════════════════════════════ -->
+<div class="lead-mobile-only">
+    <?php if (!empty($_SESSION['lead_add_error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <?= htmlspecialchars($_SESSION['lead_add_error']) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <?php if (empty($leads)): ?>
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
+            <p>No hay leads<?= $filter ? ' con este estado' : '' ?>.</p>
+        </div>
+    <?php else: ?>
+        <?php foreach ($leads as $i => $lead):
+            $initial = $lead->displayInitial();
+            $color   = $avatarColors[$lead->id % count($avatarColors)];
+            $emoji   = $statusEmoji[$lead->status] ?? '';
+            $timeFmt = '';
+            $miaIndicator = '';
+
+            if ($lead->last_message_at) {
+                $diff = time() - strtotime($lead->last_message_at);
+                if ($diff < 60)         $timeFmt = 'ahora';
+                elseif ($diff < 3600)   $timeFmt = floor($diff / 60) . ' min';
+                elseif ($diff < 86400)  $timeFmt = floor($diff / 3600) . ' h';
+                else                    $timeFmt = date('d/m', strtotime($lead->last_message_at));
+
+                if ($lead->last_message_direction === 'outbound' && $lead->last_message_handled_by === 'mia') {
+                    if ($diff < 60)         $miaLabel = 'ahora';
+                    elseif ($diff < 3600)   $miaLabel = 'hace ' . floor($diff / 60) . ' min';
+                    elseif ($diff < 86400)  $miaLabel = 'hace ' . floor($diff / 3600) . ' h';
+                    else                    $miaLabel = date('d/m', strtotime($lead->last_message_at));
+                    $miaIndicator = '⚡ Mia respondió ' . $miaLabel;
+                }
+            } else {
+                $timeFmt = date('d/m', strtotime($lead->created_at));
+            }
+
+            $msgPreview = '';
+            if ($lead->last_message_text) {
+                $msgPreview = mb_strimwidth(strip_tags($lead->last_message_text), 0, 50, '…');
+                if ($lead->last_message_direction === 'outbound') {
+                    $msgPreview = ($lead->last_message_handled_by === 'mia' ? '🤖 ' : '👤 ') . $msgPreview;
+                }
+            }
+
+            $sourceLabels = ['whatsapp' => 'WhatsApp', 'facebook' => 'Facebook', 'instagram' => 'Instagram', 'website' => 'Website', 'qr' => 'QR Code'];
+        ?>
+        <?php $picFile = $lead->profile_pic ? dirname(__DIR__, 2) . '/' . $lead->profile_pic : null; ?>
+        <div class="lead-card"
+             data-lead-id="<?= $lead->id ?>"
+             data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
+             data-lead-phone="<?= htmlspecialchars($lead->phone) ?>"
+             data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>">
+            <div class="lead-avatar" style="background:<?= ($picFile && file_exists($picFile)) ? '#e8e8e8' : $color ?>">
+                <?php if ($picFile && file_exists($picFile)): ?>
+                    <img src="<?= htmlspecialchars($base . '/' . $lead->profile_pic) ?>?v=<?= filemtime($picFile) ?>"
+                         alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">
+                <?php else: ?>
+                    <?= $initial ?>
+                <?php endif; ?>
+            </div>
+            <div class="lead-card-body">
+                <div class="lead-card-top">
+                    <div class="lead-card-name"><?= htmlspecialchars($lead->displayName()) ?></div>
+                    <div class="lead-card-time">
+                        <?php if ($lead->last_message_direction === 'outbound'): ?>
+                            <i class="bi bi-check2-all" style="color:#53bdeb;font-size:0.8rem"></i>
+                        <?php endif; ?>
+                        <?= $timeFmt ?>
+                    </div>
+                </div>
+                <?php if ($msgPreview): ?>
+                    <div class="lead-card-msg"><?= htmlspecialchars($msgPreview) ?></div>
+                <?php else: ?>
+                    <div class="lead-card-msg" style="font-style:italic">Sin mensajes aún</div>
+                <?php endif; ?>
+                <div class="lead-card-badges">
+                    <span class="badge bg-<?= $lead->statusClass() ?> bg-opacity-10 text-<?= $lead->statusClass() ?> border border-<?= $lead->statusClass() ?> border-opacity-25">
+                        <?= $emoji ?> <?= $lead->statusLabel() ?>
+                    </span>
+                    <span class="badge bg-light text-muted border" style="font-size:0.68rem">
+                        <i class="bi <?= $lead->sourceIcon() ?> me-1" style="font-size:0.65rem"></i><?= $sourceLabels[$lead->source] ?? ucfirst($lead->source) ?>
+                    </span>
+                    <?php if ($lead->contact_type !== 'lead'): ?>
+                    <span class="badge bg-<?= $lead->contactTypeBadgeClass() ?> bg-opacity-10 text-<?= $lead->contactTypeBadgeClass() ?> border border-<?= $lead->contactTypeBadgeClass() ?> border-opacity-25" style="font-size:0.68rem">
+                        <?= $lead->contactTypeLabel() ?>
+                    </span>
+                    <?php endif; ?>
+                    <a href="<?= $base ?>/dashboard/leads/<?= $lead->id ?>"
+                       class="lead-card-detail-btn" onclick="event.stopPropagation()" title="Ver detalle">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                </div>
+                <?php if ($miaIndicator): ?>
+                    <div class="lead-mia-indicator"><?= $miaIndicator ?></div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
+
+<!-- FAB: Add contact (mobile) -->
+<button type="button" class="lead-fab lead-mobile-only"
+        data-bs-toggle="modal" data-bs-target="#addContactModal"
+        title="Agregar Contacto">
+    <i class="bi bi-plus-lg"></i>
+</button>
+
+<!-- ══ Desktop: original table view ══════════════════════════════════════ -->
+<div class="mc-table-card lead-desktop-only">
     <div class="card-header-bar flex-wrap gap-2">
         <span><i class="bi bi-people me-2 text-muted"></i>Leads (<?= count($leads) ?>)</span>
         <div class="d-flex gap-1 flex-wrap align-items-center">
@@ -86,7 +299,6 @@ require __DIR__ . '/_sidebar.php';
             <?= htmlspecialchars($_SESSION['lead_add_error']) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        <?php unset($_SESSION['lead_add_error']); ?>
     <?php endif; ?>
 
     <?php if (empty($leads)): ?>
@@ -99,28 +311,33 @@ require __DIR__ . '/_sidebar.php';
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th class="d-none d-md-table-cell">#</th>
+                        <th>#</th>
                         <th>Contacto</th>
                         <th>Teléfono</th>
-                        <th class="d-none d-md-table-cell">Fuente</th>
+                        <th>Fuente</th>
                         <th>Estado</th>
-                        <th class="d-none d-md-table-cell">Valor estimado</th>
-                        <th class="d-none d-md-table-cell">Fecha</th>
+                        <th>Valor estimado</th>
+                        <th>Fecha</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($leads as $lead): ?>
                     <tr>
-                        <td class="text-muted d-none d-md-table-cell">#<?= $lead->id ?></td>
-                        <td class="fw-medium"><?= htmlspecialchars($lead->contact_name ?: '—') ?></td>
+                        <td class="text-muted">#<?= $lead->id ?></td>
+                        <td class="fw-medium">
+                            <?= htmlspecialchars($lead->displayName()) ?>
+                            <?php if ($lead->contact_type !== 'lead'): ?>
+                            <span class="badge bg-<?= $lead->contactTypeBadgeClass() ?> bg-opacity-10 text-<?= $lead->contactTypeBadgeClass() ?> ms-1" style="font-size:0.68rem;font-weight:500"><?= $lead->contactTypeLabel() ?></span>
+                            <?php endif; ?>
+                        </td>
                         <td>
                             <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $lead->phone) ?>"
                                target="_blank" class="text-decoration-none text-reset">
                                 <i class="bi bi-whatsapp text-success me-1"></i><?= htmlspecialchars($lead->phone) ?>
                             </a>
                         </td>
-                        <td class="d-none d-md-table-cell">
+                        <td>
                             <i class="bi <?= $lead->sourceIcon() ?> me-1"></i>
                             <?= ucfirst(htmlspecialchars($lead->source)) ?>
                         </td>
@@ -129,47 +346,33 @@ require __DIR__ . '/_sidebar.php';
                                 <?= $lead->statusLabel() ?>
                             </span>
                         </td>
-                        <td class="d-none d-md-table-cell"><?= $lead->value_estimate > 0 ? App::CURRENCY . ' ' . number_format($lead->value_estimate, 0) : '—' ?></td>
-                        <td class="text-muted d-none d-md-table-cell"><?= date('d/m/y H:i', strtotime($lead->created_at)) ?></td>
-                        <td class="d-flex gap-1">
-                            <a href="<?= $base ?>/dashboard/leads/<?= $lead->id ?>"
-                               class="btn btn-sm btn-outline-primary" style="font-size:0.78rem;padding:3px 10px">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <button type="button"
-                                    class="btn btn-sm btn-outline-success chat-open-btn"
-                                    style="font-size:0.78rem;padding:3px 10px"
-                                    data-lead-id="<?= $lead->id ?>"
-                                    data-lead-name="<?= htmlspecialchars($lead->contact_name ?: 'Sin nombre') ?>"
-                                    data-lead-phone="<?= htmlspecialchars($lead->phone) ?>"
-                                    title="Chatear">
-                                <i class="bi bi-chat-dots"></i>
-                            </button>
-                            <?php if ($lead->phone): ?>
-                            <a href="https://wa.me/<?= htmlspecialchars(preg_replace('/\D/','',$lead->phone)) ?>"
-                               class="btn btn-sm btn-outline-secondary"
-                               style="font-size:0.78rem;padding:3px 10px"
-                               target="_blank" rel="noopener"
-                               title="Llamar por WhatsApp +<?= htmlspecialchars($lead->phone) ?>">
-                                <i class="bi bi-telephone"></i>
-                            </a>
-                            <?php endif; ?>
-                            <button type="button"
-                                    class="btn btn-sm btn-outline-secondary d-md-none row-expand-btn"
-                                    style="font-size:0.78rem;padding:3px 8px"
-                                    data-target="lead-detail-<?= $lead->id ?>"
-                                    title="Ver más">
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    <tr id="lead-detail-<?= $lead->id ?>" style="display:none">
-                        <td colspan="8" class="py-2 px-3 bg-light border-top-0">
-                            <div class="d-flex flex-wrap gap-3 small">
-                                <span class="text-muted"><strong class="text-dark">#<?= $lead->id ?></strong></span>
-                                <span><i class="bi <?= $lead->sourceIcon() ?> me-1 text-muted"></i><?= ucfirst(htmlspecialchars($lead->source)) ?></span>
-                                <span><strong>Valor:</strong> <?= $lead->value_estimate > 0 ? App::CURRENCY . ' ' . number_format($lead->value_estimate, 0) : '—' ?></span>
-                                <span class="text-muted"><i class="bi bi-calendar3 me-1"></i><?= date('d/m/y H:i', strtotime($lead->created_at)) ?></span>
+                        <td><?= $lead->value_estimate > 0 ? App::CURRENCY . ' ' . number_format($lead->value_estimate, 0) : '—' ?></td>
+                        <td class="text-muted"><?= date('d/m/y H:i', strtotime($lead->created_at)) ?></td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="<?= $base ?>/dashboard/leads/<?= $lead->id ?>"
+                                   class="btn btn-sm btn-outline-primary" style="font-size:0.78rem;padding:3px 10px">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-success chat-open-btn"
+                                        style="font-size:0.78rem;padding:3px 10px"
+                                        data-lead-id="<?= $lead->id ?>"
+                                        data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
+                                        data-lead-phone="<?= htmlspecialchars($lead->phone) ?>"
+                                        data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>"
+                                        title="Chatear">
+                                    <i class="bi bi-chat-dots"></i>
+                                </button>
+                                <?php if ($lead->phone): ?>
+                                <a href="https://wa.me/<?= htmlspecialchars(preg_replace('/\D/','',$lead->phone)) ?>"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   style="font-size:0.78rem;padding:3px 10px"
+                                   target="_blank" rel="noopener"
+                                   title="Llamar por WhatsApp +<?= htmlspecialchars($lead->phone) ?>">
+                                    <i class="bi bi-telephone"></i>
+                                </a>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>
@@ -185,11 +388,11 @@ require __DIR__ . '/_sidebar.php';
     position:fixed; top:0; right:0; bottom:0; width:380px;
     background:#fff; box-shadow:-4px 0 24px rgba(0,0,0,0.12);
     display:flex; flex-direction:column; z-index:500;
-    transform:translateX(100%); transition:transform .28s ease;">
+    transform:translateX(100%); transition:transform .28s ease; max-width:100vw;">
 
     <!-- Header -->
     <div style="padding:14px 16px; background:#1a1a2e; color:#fff; display:flex; align-items:center; gap:10px; flex-shrink:0;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
+        <div id="chatHeaderAvatar" style="width:38px;height:38px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:1.1rem;overflow:hidden;flex-shrink:0;">
             <i class="bi bi-person-fill"></i>
         </div>
         <div style="flex:1;min-width:0;">
@@ -202,6 +405,10 @@ require __DIR__ . '/_sidebar.php';
            title="Llamar por WhatsApp">
             <i class="bi bi-telephone"></i>
         </a>
+        <button id="chatTranslateBtn" title="Traducir conversaci&#243;n"
+                style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;padding:4px 6px;line-height:1;opacity:0.8;">
+            <i class="bi bi-translate"></i>
+        </button>
         <button id="chatCloseBtn" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:4px 6px;line-height:1;opacity:0.8;" title="Cerrar">
             <i class="bi bi-x-lg"></i>
         </button>
@@ -243,22 +450,103 @@ require __DIR__ . '/_sidebar.php';
     let currentLeadId = null;
     let pollTimer     = null;
     let lastMsgId     = 0;
+    let currentMsgs   = [];
+    let translatedState     = false;
+    let translatedOriginals = [];
+
+    // ── Translate button ──────────────────────────────────────────────────────
+    document.getElementById('chatTranslateBtn').addEventListener('click', async function () {
+        if (!currentLeadId || !currentMsgs.length) return;
+        const tBtn = this;
+
+        if (translatedState) {
+            // Restore originals
+            document.querySelectorAll('#chatMessages [data-msgidx]').forEach(function (el) {
+                const i = parseInt(el.dataset.msgidx, 10);
+                if (translatedOriginals[i] !== undefined) el.innerHTML = translatedOriginals[i];
+            });
+            translatedState = false;
+            tBtn.style.opacity = '0.8';
+            tBtn.title = 'Traducir conversaci\u00f3n';
+            return;
+        }
+
+        const bubbles = document.querySelectorAll('#chatMessages [data-msgidx]');
+        if (!bubbles.length) return;
+        translatedOriginals = [];
+        const texts = [];
+        bubbles.forEach(function (el) {
+            const i = parseInt(el.dataset.msgidx, 10);
+            translatedOriginals[i] = el.innerHTML;
+            texts.push(el.innerText.trim());
+        });
+
+        tBtn.style.opacity = '0.4';
+        tBtn.disabled = true;
+        showStatus('Traduciendo...', 'info');
+
+        try {
+            const res = await fetch(BASE + '/dashboard/leads/' + currentLeadId + '/translate', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texts: texts, _csrf: CSRF }),
+            });
+            const data = await res.json();
+            if (data.translations && data.translations.length) {
+                bubbles.forEach(function (el) {
+                    const i = parseInt(el.dataset.msgidx, 10);
+                    if (data.translations[i] !== undefined) {
+                        el.textContent = data.translations[i];
+                    }
+                });
+                if (data.changed) {
+                    translatedState = true;
+                    tBtn.style.opacity = '1';
+                    tBtn.title = 'Ver original';
+                    showStatus('\u2705 Traduci\u00f3n lista \u2014 clic en \uD83C\uDF10 para ver el original', 'success');
+                } else {
+                    showStatus('\u26A0\uFE0F Groq no pudo traducir este contenido', 'warning');
+                    tBtn.style.opacity = '0.8';
+                }
+            } else {
+                tBtn.style.opacity = '0.8';
+                showStatus('\u26A0\uFE0F No se pudo traducir: ' + (data.error || 'sin respuesta'), 'warning');
+            }
+        } catch (e) {
+            tBtn.style.opacity = '0.8';
+            showStatus('\u274C Error de conexi\u00f3n al traducir', 'danger');
+        }
+        tBtn.disabled = false;
+    });
 
     // ── Open panel ────────────────────────────────────────────────────────────
     document.querySelectorAll('.chat-open-btn').forEach(btn => {
         btn.addEventListener('click', function () {
-            const id    = this.dataset.leadId;
-            const name  = this.dataset.leadName;
-            const phone = this.dataset.leadPhone;
-            openChat(id, name, phone);
+            openChat(this.dataset.leadId, this.dataset.leadName, this.dataset.leadPhone, this.dataset.leadPic || '');
         });
     });
 
-    function openChat(id, name, phone) {
+    // ── Mobile card click → open chat ─────────────────────────────────────────
+    document.querySelectorAll('.lead-card').forEach(card => {
+        card.addEventListener('click', function () {
+            openChat(this.dataset.leadId, this.dataset.leadName, this.dataset.leadPhone, this.dataset.leadPic || '');
+        });
+    });
+
+    function openChat(id, name, phone, pic) {
         currentLeadId = id;
         lastMsgId     = 0;
         document.getElementById('chatLeadName').textContent  = name;
         document.getElementById('chatLeadPhone').textContent = phone;
+        const avatarEl = document.getElementById('chatHeaderAvatar');
+        if (pic) {
+            avatarEl.innerHTML = '<img src="' + pic + '" alt="" style="width:100%;height:100%;object-fit:cover;">';
+            avatarEl.style.background = '#e8e8e8';
+        } else {
+            avatarEl.innerHTML = '<i class="bi bi-person-fill"></i>';
+            avatarEl.style.background = '#25d366';
+        }
         const callBtn = document.getElementById('chatCallBtn');
         if (callBtn) callBtn.href = phone ? 'https://wa.me/' + phone.replace(/\D/g,'') : '#';
         msgBox.innerHTML = '<div style="text-align:center;color:#adb5bd;font-size:0.8rem;padding:20px 0">Cargando...</div>';
@@ -280,6 +568,10 @@ require __DIR__ . '/_sidebar.php';
         document.body.style.overflow = '';
         stopPolling();
         currentLeadId = null;
+        translatedState = false;
+        translatedOriginals = [];
+        const tBtn = document.getElementById('chatTranslateBtn');
+        if (tBtn) { tBtn.style.opacity = '0.8'; tBtn.title = 'Traducir conversaci\u00f3n'; }
     }
 
     // ── Load messages ─────────────────────────────────────────────────────────
@@ -289,10 +581,13 @@ require __DIR__ . '/_sidebar.php';
             .then(r => r.json())
             .then(msgs => {
                 if (!Array.isArray(msgs)) return;
-                renderMessages(msgs);
-                if (scrollToBottom) msgBox.scrollTop = msgBox.scrollHeight;
-                else if (msgs.length && msgs[msgs.length - 1].id > lastMsgId) {
-                    msgBox.scrollTop = msgBox.scrollHeight;
+                // Don't disrupt an active translation
+                if (!translatedState) {
+                    renderMessages(msgs);
+                    if (scrollToBottom) msgBox.scrollTop = msgBox.scrollHeight;
+                    else if (msgs.length && msgs[msgs.length - 1].id > lastMsgId) {
+                        msgBox.scrollTop = msgBox.scrollHeight;
+                    }
                 }
                 if (msgs.length) lastMsgId = msgs[msgs.length - 1].id;
             })
@@ -304,7 +599,8 @@ require __DIR__ . '/_sidebar.php';
             msgBox.innerHTML = '<div style="text-align:center;color:#adb5bd;font-size:0.82rem;padding:30px 0">Sin mensajes aún</div>';
             return;
         }
-        msgBox.innerHTML = msgs.map(m => {
+        currentMsgs = msgs;
+        msgBox.innerHTML = msgs.map((m, idx) => {
             const isOut  = m.direction === 'outbound';
             const isHuman = m.handled_by === 'human';
             const bg     = isOut ? (isHuman ? '#25d366' : '#e9ecef') : '#fff';
@@ -314,7 +610,7 @@ require __DIR__ . '/_sidebar.php';
             const label  = isOut && isHuman ? '👤 tú' : (isOut ? '🤖 Mia' : '');
             return `<div style="display:flex;flex-direction:column;align-items:${align};max-width:88%;">
                 ${label ? `<span style="font-size:0.68rem;color:#adb5bd;margin-bottom:2px;${isOut?'text-align:right':''}">${label}</span>` : ''}
-                <div style="background:${bg};color:${color};border-radius:${isOut?'16px 16px 4px 16px':'16px 16px 16px 4px'};padding:8px 12px;font-size:0.88rem;box-shadow:0 1px 3px rgba(0,0,0,0.07);word-break:break-word;">
+                <div data-msgidx="${idx}" style="background:${bg};color:${color};border-radius:${isOut?'16px 16px 4px 16px':'16px 16px 16px 4px'};padding:8px 12px;font-size:0.88rem;box-shadow:0 1px 3px rgba(0,0,0,0.07);word-break:break-word;">
                     ${renderPhotos(escHtml(m.message))}
                 </div>
                 <span style="font-size:0.68rem;color:#adb5bd;margin-top:2px;">${time}</span>
@@ -373,9 +669,16 @@ require __DIR__ . '/_sidebar.php';
     function showStatus(msg, type) {
         statusEl.textContent  = msg;
         statusEl.style.display = 'block';
-        statusEl.style.background = type === 'warning' ? '#fff3cd' : '#f8d7da';
-        statusEl.style.color      = type === 'warning' ? '#856404' : '#842029';
-        setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+        if (type === 'warning') {
+            statusEl.style.background = '#fff3cd'; statusEl.style.color = '#856404';
+        } else if (type === 'success') {
+            statusEl.style.background = '#d1e7dd'; statusEl.style.color = '#0f5132';
+        } else if (type === 'info') {
+            statusEl.style.background = '#cff4fc'; statusEl.style.color = '#055160';
+        } else {
+            statusEl.style.background = '#f8d7da'; statusEl.style.color = '#842029';
+        }
+        if (type !== 'info') setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
     }
 
     function escHtml(s) {
@@ -437,22 +740,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var m = document.getElementById('addContactModal');
     if (m) new bootstrap.Modal(m).show();
 });
-<?php endif; ?>
-// Expandable detail rows (mobile)
-document.querySelectorAll('.row-expand-btn').forEach(function(btn){
-    btn.addEventListener('click', function(){
-        var row = document.getElementById(this.dataset.target);
-        var icon = this.querySelector('i');
-        if (!row) return;
-        if (row.style.display === 'none' || row.style.display === ''){
-            row.style.display = 'table-row';
-            icon.className = 'bi bi-chevron-up';
-        } else {
-            row.style.display = 'none';
-            icon.className = 'bi bi-chevron-down';
-        }
-    });
-});
+<?php unset($_SESSION['lead_add_error']); endif; ?>
 </script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

@@ -178,6 +178,12 @@ match (true) {
     $uri === 'api/apply-lid-resolutions' && $method === 'POST'
         => (new ApiController())->applyLidResolutions(),
 
+    // Startup backfill: fetch profile pics + contact names for existing leads
+    $uri === 'api/leads-needing-backfill' && $method === 'POST'
+        => (new ApiController())->leadsNeedingBackfill(),
+    $uri === 'api/apply-lead-backfill' && $method === 'POST'
+        => (new ApiController())->applyLeadBackfill(),
+
     // WhatsApp status callback from bot server (connected / disconnected)
     $uri === 'api/client-status' && $method === 'POST'
         => (new ApiController())->clientStatus(),
@@ -230,6 +236,9 @@ match (true) {
 
     str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/messages') && $method === 'GET'
         => (new DashboardController())->leadMessages((int)(explode('/', $uri)[2] ?? 0)),
+
+    str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/translate') && $method === 'POST'
+        => (new DashboardController())->leadTranslate((int)(explode('/', $uri)[2] ?? 0)),
 
     str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/send') && $method === 'POST'
         => (new DashboardController())->leadSend((int)(explode('/', $uri)[2] ?? 0)),

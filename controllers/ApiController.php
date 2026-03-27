@@ -153,8 +153,10 @@ class ApiController
         try {
             $service = new ClientBotService($client);
             // Pass the raw LID 'from' so the service can migrate old LID-stored leads
-            $fromLid = trim((string) $data['from']);
-            $result  = $service->process($phone, $message, $fromLid);
+            $fromLid        = trim((string) $data['from']);
+            $contactName    = trim((string) ($data['contact_name'] ?? ''));
+            $profilePicUrl  = trim((string) ($data['profile_pic_url'] ?? ''));
+            $result  = $service->process($phone, $message, $fromLid, $contactName, $profilePicUrl);
 
             echo json_encode([
                 'success' => true,
@@ -226,8 +228,100 @@ class ApiController
         echo json_encode(['success' => true, 'updated' => $updated], JSON_UNESCAPED_UNICODE);
     }
 
+    /** Returns leads missing a profile pic or contact name (for startup backfill) */
+    public function leadsNeedingBackfill(): void
+    {
+        if (!$this->guardBotRequest()) return;
+        $raw      = file_get_contents('php://input');
+        $data     = json_decode($raw ?: '', true);
+        $clientId = (int)($data['client_id'] ?? 0);
+        if (!$clientId) { echo json_encode(['success' => false, 'error' => 'Missing client_id']); return; }
 
-    // GET/POST /api/track
+        $pdo  = Database::get();
+        $stmt = $pdo->prepare(
+            "SELECT id, phone FROM mia_client_leads
+              WHERE client_id = ?
+                AND (profile_pic IS NULL OR contact_name = '' OR contact_name IS NULL)
+                AND phone NOT REGEXP '^[0-9]{14,16}$'
+                AND phone != ''
+              LIMIT 200"
+        );
+        $stmt->execute([$clientId]);
+        $leads = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'leads' => $leads], JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Applies backfill: saves profile pics and contact names for existing leads */
+    public function applyLeadBackfill(): void
+    {
+        if (!$this->guardBotRequest()) return;
+        $raw      = file_get_contents('php://input');
+        $data     = json_decode($raw ?: '', true);
+        $clientId = (int)($data['client_id'] ?? 0);
+        $updates  = $data['updates'] ?? [];
+        if (!$clientId || !is_array($updates)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid payload']); return;
+        }
+
+        $pdo     = Database::get();
+        $applied = 0;
+        foreach ($updates as $u) {
+            $leadId  = (int)($u['lead_id']         ?? 0);
+            $name    = substr(trim((string)($u['contact_name']    ?? '')), 0, 255);
+            $picUrl  = trim((string)($u['profile_pic_url'] ?? ''));
+            if (!$leadId) continue;
+
+            $savedPic = $picUrl ? $this->saveProfilePic($picUrl, $clientId, $leadId) : null;
+
+            if ($name && $savedPic) {
+                $pdo->prepare("UPDATE mia_client_leads SET contact_name = ?, profile_pic = ?
+                                WHERE id = ? AND client_id = ?
+                                  AND (contact_name = '' OR contact_name IS NULL)")
+                    ->execute([$name, $savedPic, $leadId, $clientId]);
+                // If contact_name was already set, still save the pic
+                $pdo->prepare("UPDATE mia_client_leads SET profile_pic = ?
+                                WHERE id = ? AND client_id = ? AND profile_pic IS NULL")
+                    ->execute([$savedPic, $leadId, $clientId]);
+            } elseif ($name) {
+                $pdo->prepare("UPDATE mia_client_leads SET contact_name = ?
+                                WHERE id = ? AND client_id = ?
+                                  AND (contact_name = '' OR contact_name IS NULL)")
+                    ->execute([$name, $leadId, $clientId]);
+            } elseif ($savedPic) {
+                $pdo->prepare("UPDATE mia_client_leads SET profile_pic = ?
+                                WHERE id = ? AND client_id = ? AND profile_pic IS NULL")
+                    ->execute([$savedPic, $leadId, $clientId]);
+            }
+            $applied++;
+        }
+        echo json_encode(['success' => true, 'applied' => $applied], JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Downloads a profile pic URL and saves it to the avatars directory */
+    private function saveProfilePic(string $url, int $clientId, int $leadId): ?string
+    {
+        $dir = __DIR__ . '/../assets/uploads/avatars';
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+        $filename = 'lead_' . $clientId . '_' . $leadId . '.jpg';
+        $path     = $dir . '/' . $filename;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+        $imgData = curl_exec($ch);
+        $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($imgData && $code === 200 && strlen($imgData) > 500) {
+            file_put_contents($path, $imgData);
+            return 'assets/uploads/avatars/' . $filename;
+        }
+        return null;
+    }
+
+
     // Params (query-string or JSON body):
     //   event      string  pageview | pageleave | cta_click
     //   session_id string  client-generated UUID (persisted in localStorage)

@@ -4,8 +4,9 @@
  */
 $base         = App::basePath();
 $pageTitle    = 'Lead #' . $lead->id . ' — Mia';
-$pageTopTitle = 'Lead: ' . ($lead->contact_name ?: $lead->phone);
+$pageTopTitle = 'Lead: ' . $lead->displayName();
 $activeNav    = 'leads';
+$pageBackUrl  = $base . '/dashboard/leads';
 
 require __DIR__ . '/_head.php';
 require __DIR__ . '/_sidebar.php';
@@ -93,10 +94,11 @@ require __DIR__ . '/_sidebar.php';
                         <label class="form-label fw-medium small">Tipo de contacto</label>
                         <?php
                         $ctypes = [
-                            'lead'      => ['label' => 'Lead',      'icon' => 'bi-person-check-fill', 'bg' => '#0d6efd', 'txt' => '#fff'],
-                            'friend'    => ['label' => 'Amigo/a',   'icon' => 'bi-emoji-smile-fill',  'bg' => '#198754', 'txt' => '#fff'],
-                            'proveedor' => ['label' => 'Proveedor', 'icon' => 'bi-truck',             'bg' => '#ffc107', 'txt' => '#000'],
-                            'staff'     => ['label' => 'Ignorar',   'icon' => 'bi-slash-circle-fill', 'bg' => '#dc3545', 'txt' => '#fff'],
+                            'lead'      => ['label' => 'Lead',      'icon' => 'bi-person-check-fill',  'bg' => '#0d6efd', 'txt' => '#fff'],
+                            'friend'    => ['label' => 'Amigo/a',   'icon' => 'bi-emoji-smile-fill',   'bg' => '#198754', 'txt' => '#fff'],
+                            'staff'     => ['label' => 'Staff',     'icon' => 'bi-person-badge-fill',  'bg' => '#0dcaf0', 'txt' => '#000'],
+                            'proveedor' => ['label' => 'Proveedor', 'icon' => 'bi-truck',              'bg' => '#ffc107', 'txt' => '#000'],
+                            'ignored'   => ['label' => 'Ignorar',   'icon' => 'bi-slash-circle-fill',  'bg' => '#dc3545', 'txt' => '#fff'],
                         ];
                         $currentCt = $lead->contact_type ?? 'lead';
                         ?>
@@ -112,8 +114,9 @@ require __DIR__ . '/_sidebar.php';
                         <?php endforeach; ?>
                         </div>
                         <small class="text-muted d-block mt-1">
-                            <b>Lead</b> = bot normal &middot;
+                            <b>Lead</b> = bot ventas &middot;
                             <b>Amigo/a</b> = chat casual sin ventas &middot;
+                            <b>Staff</b> = responde preguntas internas del negocio &middot;
                             <b>Proveedor</b> = asistente profesional &middot;
                             <b>Ignorar</b> = Mia no responde a este número
                         </small>
@@ -229,9 +232,18 @@ require __DIR__ . '/_sidebar.php';
                 <span><i class="bi bi-chat-dots me-2 text-muted"></i>Conversación
                     <span class="badge bg-secondary ms-1"><?= count($messages) ?></span>
                 </span>
-                <?php if ($messages): ?>
-                    <small class="text-muted">Última: <?= date('d/m/y H:i', strtotime(end($messages)->created_at)) ?></small>
-                <?php endif; ?>
+                <div class="d-flex align-items-center gap-2">
+                    <?php if ($messages): ?>
+                        <small class="text-muted">Última: <?= date('d/m/y H:i', strtotime(end($messages)->created_at)) ?></small>
+                    <?php endif; ?>
+                    <?php if ($messages): ?>
+                    <button id="translateBtn" type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            style="font-size:0.75rem;padding:3px 10px">
+                        <i class="bi bi-translate me-1"></i>Traducir
+                    </button>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <div class="p-3" style="max-height:65vh;overflow-y:auto;background:#f8f9fa;">
@@ -241,9 +253,9 @@ require __DIR__ . '/_sidebar.php';
                         <p class="small">No hay mensajes aún en esta conversación.</p>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($messages as $msg): ?>
+                    <?php foreach ($messages as $idx => $msg): ?>
                     <div class="d-flex flex-column <?= $msg->direction === 'outbound' ? 'align-items-end' : 'align-items-start' ?> mb-1">
-                        <div class="msg-bubble <?= $msg->direction ?> <?= $msg->handled_by === 'human' ? 'human' : '' ?>">
+                        <div class="msg-bubble <?= $msg->direction ?> <?= $msg->handled_by === 'human' ? 'human' : '' ?>" data-msgidx="<?= $idx ?>">
                             <?php
                                 $safe = nl2br(htmlspecialchars($msg->message));
                                 // Render [FOTO:url] markers as inline images
@@ -268,5 +280,67 @@ require __DIR__ . '/_sidebar.php';
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const btn = document.getElementById('translateBtn');
+    if (!btn) return;
+
+    let translated = false;
+    let originals = [];
+
+    btn.addEventListener('click', async function () {
+        if (translated) {
+            // Restore originals
+            document.querySelectorAll('.msg-bubble[data-msgidx]').forEach(function (el) {
+                const i = parseInt(el.dataset.msgidx, 10);
+                if (originals[i] !== undefined) el.innerHTML = originals[i];
+            });
+            translated = false;
+            btn.innerHTML = '<i class="bi bi-translate me-1"></i>Traducir';
+            btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+            return;
+        }
+
+        // Collect plain texts from each bubble
+        const bubbles = document.querySelectorAll('.msg-bubble[data-msgidx]');
+        const texts = [];
+        originals = [];
+        bubbles.forEach(function (el) {
+            originals[parseInt(el.dataset.msgidx, 10)] = el.innerHTML;
+            texts.push(el.innerText.trim());
+        });
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Traduciendo...';
+
+        try {
+            const res = await fetch('<?= htmlspecialchars($base) ?>/dashboard/leads/<?= (int)$lead->id ?>/translate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': '<?= App::csrfToken() ?>'},
+                body: JSON.stringify({texts: texts, _csrf: '<?= App::csrfToken() ?>'})
+            });
+            const data = await res.json();
+            if (data.translations && data.translations.length) {
+                bubbles.forEach(function (el) {
+                    const i = parseInt(el.dataset.msgidx, 10);
+                    if (data.translations[i] !== undefined) {
+                        el.textContent = data.translations[i];
+                    }
+                });
+                translated = true;
+                btn.innerHTML = '<i class="bi bi-translate me-1"></i>Ver original';
+                btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+            } else {
+                btn.innerHTML = '<i class="bi bi-translate me-1"></i>Traducir';
+            }
+        } catch (e) {
+            console.error('translate error', e);
+            btn.innerHTML = '<i class="bi bi-translate me-1"></i>Traducir';
+        }
+        btn.disabled = false;
+    });
+}());
+</script>
 
 <?php require __DIR__ . '/_foot.php'; ?>

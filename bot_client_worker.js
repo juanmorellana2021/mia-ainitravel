@@ -118,6 +118,16 @@ function startSession() {
                 console.error(`[worker:${clientId}] LID migration error: ${e.message}`);
             }
         }, 2000);
+
+        // ── One-time profile pic + name backfill ──────────────────────────────
+        // Fetch profile pics and push names for existing leads that are missing them.
+        setTimeout(async () => {
+            try {
+                await backfillLeadInfo();
+            } catch (e) {
+                console.error(`[worker:${clientId}] Backfill error: ${e.message}`);
+            }
+        }, 8000);
     });
 
     ww.on('disconnected', (reason) => {
@@ -196,9 +206,13 @@ function startSession() {
 
         // Resolve real phone number — LID format (@lid) is an internal WA ID, not dialable
         let realPhone = from;
+        let contactName = '';
+        let profilePicUrl = '';
         try {
             const contact = await msg.getContact();
             if (contact && contact.number) realPhone = contact.number;
+            if (contact) contactName = contact.pushname || contact.name || '';
+            try { profilePicUrl = await ww.getProfilePicUrl(msg.from) || ''; } catch (_) {}
         } catch (_) {}
 
         console.log(`[worker:${clientId}] MSG from ${from} (phone:${realPhone}): ${messageText.substring(0, 80)}`);
@@ -206,12 +220,14 @@ function startSession() {
         try {
             const resp = await callApi('/api/client-chat', {
                 from,
-                phone:      realPhone,
-                message:    messageText,
-                client_id:  parseInt(clientId, 10),
-                media_data: mediaData,
-                media_mime: mediaMime,
-                media_type: mediaType,
+                phone:           realPhone,
+                message:         messageText,
+                client_id:       parseInt(clientId, 10),
+                contact_name:    contactName,
+                profile_pic_url: profilePicUrl,
+                media_data:      mediaData,
+                media_mime:      mediaMime,
+                media_type:      mediaType,
             });
             const reply = resp && resp.reply;
             if (reply) {
@@ -310,6 +326,53 @@ async function sendReplyWithPhotos(to, reply, originalMsg) {
                 await sendMsg(`📷 Ver foto: ${url}`);
             } catch (_) {}
         }
+    }
+}
+
+// ── Profile pic + name backfill ──────────────────────────────────────────────
+// Runs once on startup. Fetches profile pics and push names for all existing
+// leads that are missing them in the DB.
+async function backfillLeadInfo() {
+    console.log(`[worker:${clientId}] Backfill: fetching leads needing info...`);
+    let resp;
+    try {
+        resp = await callApi('/api/leads-needing-backfill', { client_id: parseInt(clientId, 10) });
+    } catch (e) {
+        console.error(`[worker:${clientId}] Backfill: API failed: ${e.message}`);
+        return;
+    }
+    if (!resp || !Array.isArray(resp.leads) || resp.leads.length === 0) {
+        console.log(`[worker:${clientId}] Backfill: nothing to update`);
+        return;
+    }
+    console.log(`[worker:${clientId}] Backfill: checking ${resp.leads.length} leads...`);
+    const updates = [];
+    for (const lead of resp.leads) {
+        const phone = lead.phone;
+        if (!phone) continue;
+        try {
+            const chatId = phone + '@c.us';
+            const contact = await ww.getContactById(chatId);
+            const name = contact ? (contact.pushname || contact.name || '') : '';
+            let picUrl = '';
+            try { picUrl = await ww.getProfilePicUrl(chatId) || ''; } catch (_) {}
+            if (name || picUrl) {
+                updates.push({ lead_id: lead.id, contact_name: name, profile_pic_url: picUrl });
+                console.log(`[worker:${clientId}] Backfill: ${phone} → name="${name}" pic=${picUrl ? 'yes' : 'no'}`);
+            }
+        } catch (_) {}
+        // Small delay to avoid hammering WhatsApp
+        await new Promise(r => setTimeout(r, 500));
+    }
+    if (updates.length > 0) {
+        try {
+            await callApi('/api/apply-lead-backfill', { client_id: parseInt(clientId, 10), updates });
+            console.log(`[worker:${clientId}] Backfill: applied ${updates.length} updates`);
+        } catch (e) {
+            console.error(`[worker:${clientId}] Backfill: apply failed: ${e.message}`);
+        }
+    } else {
+        console.log(`[worker:${clientId}] Backfill: no contacts resolved`);
     }
 }
 

@@ -150,6 +150,13 @@ $initials      = strtoupper(substr($clientName, 0, 2));
             <span class="mc-topbar-title"><?= htmlspecialchars($pageTopTitle ?? $pageTitle ?? '') ?></span>
         </div>
         <div class="mc-topbar-user">
+            <?php if (!empty($pageBackUrl)): ?>
+            <a href="<?= htmlspecialchars($pageBackUrl) ?>" title="Cerrar"
+               style="width:34px;height:34px;border-radius:50%;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:1rem;text-decoration:none;flex-shrink:0;transition:background .2s;"
+               onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+                <i class="bi bi-x-lg"></i>
+            </a>
+            <?php endif; ?>
             <div class="avatar"><?= htmlspecialchars($initials) ?></div>
             <span class="d-none d-md-inline"><?= htmlspecialchars($clientName) ?></span>
         </div>

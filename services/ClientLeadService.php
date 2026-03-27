@@ -31,7 +31,7 @@ class ClientLeadService
 
     public function updateContactType(int $id, int $clientId, string $type): void
     {
-        $allowed = ['lead', 'friend', 'staff', 'proveedor'];
+        $allowed = ['lead', 'friend', 'staff', 'proveedor', 'ignored'];
         if (!in_array($type, $allowed, true)) return;
         $this->db->prepare(
             'UPDATE mia_client_leads SET contact_type = ?, updated_at = NOW() WHERE id = ? AND client_id = ?'
@@ -42,22 +42,33 @@ class ClientLeadService
 
     public function allForClient(int $clientId, string $status = ''): array
     {
+        $lastMsgJoin = '
+            LEFT JOIN (
+                SELECT m1.phone, m1.message AS last_message_text, m1.created_at AS last_message_at,
+                       m1.direction AS last_message_direction, m1.handled_by AS last_message_handled_by
+                FROM mia_client_messages m1
+                INNER JOIN (
+                    SELECT phone, MAX(id) AS max_id
+                    FROM mia_client_messages WHERE client_id = ? GROUP BY phone
+                ) m2 ON m1.id = m2.max_id
+            ) lm ON lm.phone = l.phone';
+
         if ($status) {
             $stmt = $this->db->prepare(
-                'SELECT l.* FROM mia_client_leads l
-                 LEFT JOIN (SELECT phone, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY phone) m
-                   ON m.phone = l.phone
+                'SELECT l.*, lm.last_message_text, lm.last_message_at,
+                        lm.last_message_direction, lm.last_message_handled_by
+                 FROM mia_client_leads l' . $lastMsgJoin . '
                  WHERE l.client_id = ? AND l.status = ?
-                 ORDER BY COALESCE(m.last_msg, l.created_at) DESC'
+                 ORDER BY COALESCE(lm.last_message_at, l.created_at) DESC'
             );
             $stmt->execute([$clientId, $clientId, $status]);
         } else {
             $stmt = $this->db->prepare(
-                'SELECT l.* FROM mia_client_leads l
-                 LEFT JOIN (SELECT phone, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY phone) m
-                   ON m.phone = l.phone
+                'SELECT l.*, lm.last_message_text, lm.last_message_at,
+                        lm.last_message_direction, lm.last_message_handled_by
+                 FROM mia_client_leads l' . $lastMsgJoin . '
                  WHERE l.client_id = ?
-                 ORDER BY COALESCE(m.last_msg, l.created_at) DESC'
+                 ORDER BY COALESCE(lm.last_message_at, l.created_at) DESC'
             );
             $stmt->execute([$clientId, $clientId]);
         }

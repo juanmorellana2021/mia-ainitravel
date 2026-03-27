@@ -79,7 +79,7 @@ class ClientBotService
      * Process an incoming WhatsApp message from a guest.
      * Returns ['reply' => string].
      */
-    public function process(string $guestPhone, string $message, string $fromLid = ''): array
+    public function process(string $guestPhone, string $message, string $fromLid = '', string $contactName = '', string $profilePicUrl = ''): array
     {
         $guestPhone = $this->normalizePhone($guestPhone);
         $msg        = trim($message);
@@ -142,7 +142,7 @@ class ClientBotService
         } else {
             // New contact — create lead, trigger auto-enroll sequences
             $lead   = $leadService->create($this->client->id, [
-                'contact_name' => '',         // name captured later by AI if canCaptureLead
+                'contact_name' => $contactName,  // WA pushname from bot worker (may be empty)
                 'phone'        => $guestPhone,
                 'source'       => 'whatsapp',
                 'status'       => 'new',
@@ -150,14 +150,44 @@ class ClientBotService
             $leadId = $lead->id;
         }
 
+        // ── Save profile pic if we have a URL and no pic yet ─────────────────
+        if ($profilePicUrl) {
+            $hasPic = $this->pdo->prepare('SELECT profile_pic FROM mia_client_leads WHERE id = ? LIMIT 1');
+            $hasPic->execute([$leadId]);
+            $currentPic = $hasPic->fetchColumn();
+            if (!$currentPic) {
+                $savedPath = $this->downloadProfilePic($profilePicUrl, $this->client->id, $leadId);
+                if ($savedPath) {
+                    $this->pdo->prepare('UPDATE mia_client_leads SET profile_pic = ? WHERE id = ?')
+                              ->execute([$savedPath, $leadId]);
+                }
+            }
+        }
+
         // ── Contact type routing ──────────────────────────────────────────────
         $contactType = $leadRow ? ($leadRow['contact_type'] ?? 'lead') : 'lead';
 
-        if ($contactType === 'staff') {
-            // Ignorar: save message so owner can see it in the dashboard, but send no reply
+        if ($contactType === 'ignored') {
+            // Silent: save message so owner can see it in the dashboard, but Mia sends no reply
             $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg, 'inbound', 'bot');
-            error_log("[ClientBot:{$this->client->id}] Ignored msg from {$guestPhone} (contact_type=staff)");
+            error_log("[ClientBot:{$this->client->id}] Ignored msg from {$guestPhone} (contact_type=ignored)");
             return ['reply' => ''];
+        }
+
+        if ($contactType === 'staff') {
+            // Staff: Mia answers internal business questions using configured knowledge
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $msg, 'inbound', 'bot');
+            $history   = $this->loadHistory($guestPhone);
+            $chatMsgs  = array_merge(
+                [['role' => 'system', 'content' => $this->buildStaffPrompt()]],
+                $history,
+                [['role' => 'user', 'content' => $msg]]
+            );
+            $reply = $this->callGroq($chatMsgs, 200);
+            $this->log($guestPhone, 'user', $msg);
+            $this->log($guestPhone, 'assistant', $reply);
+            $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
+            return ['reply' => $reply];
         }
 
         if ($contactType === 'friend' || $contactType === 'proveedor') {
@@ -296,6 +326,9 @@ class ClientBotService
         // Save outbound reply to CRM
         $leadService->saveMessage($this->client->id, $leadId, $guestPhone, $reply, 'outbound', 'bot');
 
+        // ── Auto-classify lead status based on conversation ──────────────────
+        $this->autoClassifyLead($leadId, $guestPhone, $msg, $reply);
+
         // Extract and store new facts about this lead (async-safe, non-blocking)
         try {
             (new LeadMemoryService())->extractAndStore($this->client->id, $guestPhone, $msg, $reply);
@@ -304,6 +337,76 @@ class ClientBotService
         }
 
         return ['reply' => $reply];
+    }
+
+    // ── Auto-classify lead status from conversation signals ──────────────────
+
+    private function autoClassifyLead(int $leadId, string $phone, string $inbound, string $outbound): void
+    {
+        try {
+            $stmt = $this->pdo->prepare('SELECT status FROM mia_client_leads WHERE id = ? AND client_id = ? LIMIT 1');
+            $stmt->execute([$leadId, $this->client->id]);
+            $current = (string)$stmt->fetchColumn();
+
+            // Only auto-promote: new → interested. Never demote or override manual changes.
+            if ($current !== 'new') return;
+
+            $combo = mb_strtolower($inbound . ' ' . $outbound);
+
+            // Signals that the person is interested (asking prices, availability, booking, wanting info)
+            $interested = false;
+            $patterns = [
+                '/\bpreci(o|os)\b/',
+                '/\bcuánto|cuanto\b/',
+                '/\bcost(o|a|ar)\b/',
+                '/\bdisponib(le|ilidad)\b/',
+                '/\breserv(a|ar|ación)\b/',
+                '/\bhabitaci(ón|ones)\b/',
+                '/\bnoches?\b/',
+                '/\bpaquete/',
+                '/\bpromoción|promocion\b/',
+                '/\bdescuento/',
+                '/\bquiero\b/',
+                '/\bme\s+interesa/',
+                '/\bcotiza(r|ción|cion)\b/',
+                '/\btarifa/',
+                '/\bpara\s+\d+\s+persona/',
+                '/\bcita\b/',
+                '/\bhora(rio|s)?\b/',
+                '/\bagendar\b/',
+            ];
+
+            foreach ($patterns as $p) {
+                if (preg_match($p, $combo)) {
+                    $interested = true;
+                    break;
+                }
+            }
+
+            // Also check message count — 3+ exchanges from this lead signals engagement
+            if (!$interested) {
+                $stmtCnt = $this->pdo->prepare(
+                    'SELECT COUNT(*) FROM mia_client_messages WHERE client_id = ? AND lead_id = ? AND direction = ?'
+                );
+                $stmtCnt->execute([$this->client->id, $leadId, 'inbound']);
+                if ((int)$stmtCnt->fetchColumn() >= 3) {
+                    $interested = true;
+                }
+            }
+
+            if ($interested) {
+                $this->pdo->prepare(
+                    'UPDATE mia_client_leads SET status = ?, updated_at = NOW() WHERE id = ? AND client_id = ? AND status = ?'
+                )->execute(['interested', $leadId, $this->client->id, 'new']);
+
+                // Trigger auto-enroll sequences for interested leads
+                (new SequenceService())->autoEnroll($leadId, $this->client->id, 'on_interested');
+
+                error_log("[ClientBot:{$this->client->id}] Lead {$leadId} auto-classified: new → interested");
+            }
+        } catch (\Throwable $e) {
+            error_log("[ClientBot:{$this->client->id}] autoClassify error: " . $e->getMessage());
+        }
     }
 
     // ── Alternative prompts (non-lead contact types) ─────────────────────────
@@ -326,6 +429,32 @@ class ClientBotService
              . "Si no tienes la información exacta, indica que transmitirás la consulta al equipo responsable. Máximo 4 oraciones.";
     }
 
+    private function buildStaffPrompt(): string
+    {
+        $bizName  = $this->client->business_name;
+        $desc     = $this->cfg['description']    ?? '';
+        $services = $this->cfg['services']       ?? '';
+        $pricing  = $this->cfg['pricing']        ?? '';
+        $hours    = $this->cfg['hours']          ?? '';
+        $faqs     = $this->cfg['faqs']           ?? '';
+        $custom   = $this->cfg['custom_instructions'] ?? '';
+
+        $knowledge = implode("\n", array_filter([
+            $desc     ? "DESCRIPCIÓN DEL NEGOCIO: {$desc}"     : '',
+            $services ? "SERVICIOS/PRODUCTOS: {$services}"     : '',
+            $pricing  ? "PRECIOS: {$pricing}"                  : '',
+            $hours    ? "HORARIOS: {$hours}"                   : '',
+            $faqs     ? "PREGUNTAS FRECUENTES: {$faqs}"        : '',
+            $custom   ? "INSTRUCCIONES ADICIONALES: {$custom}" : '',
+        ]));
+
+        return "Eres el asistente interno de {$bizName}. Esta persona es un miembro del staff o equipo del negocio. "
+             . "Tu función es responder preguntas sobre el funcionamiento interno del negocio: procesos, horarios, servicios, precios, políticas y cualquier información operativa que el dueño haya configurado. "
+             . "Sé claro, conciso y útil — como un manual de negocio interactivo. "
+             . "NO hagas ventas externas. "
+             . ($knowledge ? "\n\nCONOCIMIENTO DEL NEGOCIO:\n{$knowledge}" : '');
+    }
+
     // ── System prompt ─────────────────────────────────────────────────────────
 
     private function buildSystemPrompt(string $phone = ''): string
@@ -343,7 +472,7 @@ class ClientBotService
         $location   = $this->cfg['location']       ?? '';
         $googleMaps = $this->cfg['google_maps']    ?? '';
         $tone       = $this->cfg['tone']        ?? 'friendly';
-        $language   = $this->cfg['language']     ?? 'es';
+        $language   = $this->cfg['language']     ?? 'auto';
         $charSkills = (array)($this->cfg['char_skills'] ?? []);
 
         // Build skill-specific prompt injections
@@ -579,6 +708,35 @@ PROMPT;
     }
 
     // ── Groq call ─────────────────────────────────────────────────────────────
+
+    private function downloadProfilePic(string $url, int $clientId, int $leadId): ?string
+    {
+        try {
+            $dir = __DIR__ . '/../assets/uploads/avatars';
+            if (!is_dir($dir)) @mkdir($dir, 0755, true);
+            $filename = 'lead_' . $clientId . '_' . $leadId . '.jpg';
+            $path     = $dir . '/' . $filename;
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 8,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+            $data = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($data && $code === 200 && strlen($data) > 500) {
+                file_put_contents($path, $data);
+                return 'assets/uploads/avatars/' . $filename;
+            }
+        } catch (\Throwable $e) {
+            error_log('[ClientBot] Profile pic download failed: ' . $e->getMessage());
+        }
+        return null;
+    }
 
     private function callGroq(array $messages, int $maxTokens = 80): string
     {
