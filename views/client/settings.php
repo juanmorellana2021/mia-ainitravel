@@ -1008,4 +1008,103 @@ $_obStep      = $_hasWa ? 3 : ($_hasBotCfg ? 2 : 1);
 </div>
 <?php endif; ?>
 
+<!-- ══ Team Seats ══════════════════════════════════════════════════════════ -->
+<div class="mc-table-card mt-4 p-4" id="equipo">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+            <h5 class="fw-bold mb-0"><i class="bi bi-people-fill me-2 text-primary"></i>Equipo</h5>
+            <p class="text-muted small mb-0 mt-1">
+                Asientos activos: <strong><?= count($teamSeats) ?></strong> / <?= $maxSeats ?> permitidos en tu plan.
+                Asiento adicional: <strong>S/<?= App::ADDON_SEAT_PRICE ?>/mes</strong>.
+            </p>
+        </div>
+        <?php if ($isOwner && count($teamSeats) < $maxSeats): ?>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#addSeatForm">
+            <i class="bi bi-person-plus-fill me-1"></i> Agregar asiento
+        </button>
+        <?php elseif ($isOwner): ?>
+        <span class="badge bg-warning text-dark">Límite alcanzado — actualiza tu plan</span>
+        <?php endif; ?>
+    </div>
+
+    <?php if ($seatError): ?>
+        <div class="alert alert-danger py-2"><?= htmlspecialchars($seatError) ?></div>
+    <?php endif; ?>
+    <?php if ($seatSuccess): ?>
+        <div class="alert alert-success py-2"><?= htmlspecialchars($seatSuccess) ?></div>
+    <?php endif; ?>
+
+    <!-- Add seat form -->
+    <?php if ($isOwner && count($teamSeats) < $maxSeats): ?>
+    <div class="collapse mb-3" id="addSeatForm">
+        <div class="card card-body bg-light border-0">
+            <form method="POST" action="<?= $base ?>/dashboard/settings/seat/add">
+                <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
+                <div class="row g-2">
+                    <div class="col-sm-4">
+                        <input type="text" name="seat_name" class="form-control form-control-sm" placeholder="Nombre *" required maxlength="120">
+                    </div>
+                    <div class="col-sm-4">
+                        <input type="email" name="seat_email" class="form-control form-control-sm" placeholder="Email *" required>
+                    </div>
+                    <div class="col-sm-3">
+                        <input type="password" name="seat_password" class="form-control form-control-sm" placeholder="Contraseña (mín. 6) *" required minlength="6">
+                    </div>
+                    <div class="col-sm-3">
+                        <select name="seat_role" class="form-select form-select-sm">
+                            <option value="agent">Agente</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success btn-sm w-100">Crear</button>
+                    </div>
+                </div>
+                <div class="form-text mt-1">El nuevo miembro podrá iniciar sesión con su email y contraseña.</div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Seats list -->
+    <?php if (empty($teamSeats)): ?>
+        <p class="text-muted small mb-0">No hay asientos adicionales. <?= $isOwner ? 'Agrega miembros de equipo arriba.' : '' ?></p>
+    <?php else: ?>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Creado</th>
+                    <?php if ($isOwner): ?><th></th><?php endif; ?>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($teamSeats as $seat): ?>
+            <tr>
+                <td class="fw-semibold"><?= htmlspecialchars($seat['name']) ?></td>
+                <td class="text-muted"><?= htmlspecialchars($seat['email']) ?></td>
+                <td><span class="badge bg-<?= $seat['role']==='admin' ? 'primary' : 'secondary' ?> bg-opacity-10 text-<?= $seat['role']==='admin' ? 'primary' : 'secondary' ?> border"><?= ucfirst($seat['role']) ?></span></td>
+                <td class="text-muted" style="font-size:0.8rem"><?= date('d/m/Y', strtotime($seat['created_at'])) ?></td>
+                <?php if ($isOwner): ?>
+                <td>
+                    <form method="POST" action="<?= $base ?>/dashboard/settings/seat/<?= $seat['id'] ?>/delete"
+                          onsubmit="return confirm('¿Eliminar a <?= htmlspecialchars(addslashes($seat['name'])) ?>?')">
+                        <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
+                        <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </form>
+                </td>
+                <?php endif; ?>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
+</div>
+
 <?php require __DIR__ . '/_foot.php'; ?>

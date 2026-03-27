@@ -44,6 +44,17 @@ class App
     // ── Team seats ────────────────────────────────────────────────────────
     public const ADDON_SEAT_PRICE        = 39;   // S/39/mo per additional team member
 
+    public const TEAM_SEATS = [
+        'trial'            => 2,
+        'starter'          => 1,
+        'basic'            => 1,
+        'pro'              => 5,
+        'enterprise'       => 10,
+        'enterprise_duo'   => 20,
+        'enterprise_chain' => 50,
+        'enterprise_corp'  => 200,
+    ];
+
     // ── Add-on credits (one-time monthly purchases, not recurring) ────────
     public const ADDON_EXTRA_500_PRICE   = 50;   // S/50  → 500 extra conversations this month
     public const ADDON_UNLIMITED_PRICE   = 100;  // S/100 → unlimited conversations this month

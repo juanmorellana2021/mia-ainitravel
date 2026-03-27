@@ -93,6 +93,17 @@ class SettingsController
         $client     = $this->requireClient();
         $saved      = isset($_GET['saved']);
         $onboarding = isset($_GET['onboarding']) && $client->onboarding_done === 0;
+
+        // Team seats
+        $pdo   = Database::get();
+        $stmtSeats = $pdo->prepare('SELECT id, name, email, role, created_at FROM mia_client_seats WHERE client_id = ? AND active = 1 ORDER BY id');
+        $stmtSeats->execute([$client->id]);
+        $teamSeats    = $stmtSeats->fetchAll(PDO::FETCH_ASSOC);
+        $maxSeats     = App::TEAM_SEATS[$client->plan] ?? 1;
+        $seatError    = $_SESSION['seat_error']   ?? null; unset($_SESSION['seat_error']);
+        $seatSuccess  = $_SESSION['seat_success'] ?? null; unset($_SESSION['seat_success']);
+        $isOwner      = empty($_SESSION['mia_seat_id']);
+
         require __DIR__ . '/../views/client/settings.php';
     }
 
@@ -458,5 +469,88 @@ class SettingsController
 
         error_log("[Gallery] updatePhoto result: " . ($ok ? 'OK' : 'FAIL'));
         echo json_encode(['ok' => $ok]);
+    }
+
+    // ── Team seats ────────────────────────────────────────────────────────────
+
+    public function seatAdd(): void
+    {
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        // Only owner can manage seats (not a seat login itself)
+        if (!empty($_SESSION['mia_seat_id'])) {
+            $_SESSION['seat_error'] = 'Solo el propietario puede gestionar el equipo.';
+            header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+            exit;
+        }
+
+        $pdo      = Database::get();
+        $name     = trim($_POST['seat_name']     ?? '');
+        $email    = trim($_POST['seat_email']    ?? '');
+        $password = trim($_POST['seat_password'] ?? '');
+        $role     = in_array($_POST['seat_role'] ?? '', ['admin', 'agent']) ? $_POST['seat_role'] : 'agent';
+
+        // Validation
+        if (!$name || !$email || !$password) {
+            $_SESSION['seat_error'] = 'Nombre, email y contraseña son obligatorios.';
+            header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+            exit;
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['seat_error'] = 'Email inválido.';
+            header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+            exit;
+        }
+        if (strlen($password) < 6) {
+            $_SESSION['seat_error'] = 'La contraseña debe tener al menos 6 caracteres.';
+            header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+            exit;
+        }
+
+        // Check plan seat limit
+        $maxSeats = App::TEAM_SEATS[$client->plan] ?? 1;
+        $current  = (int)$pdo->prepare('SELECT COUNT(*) FROM mia_client_seats WHERE client_id = ? AND active = 1')->execute([$client->id]) ? 0 : 0;
+        $stmt     = $pdo->prepare('SELECT COUNT(*) FROM mia_client_seats WHERE client_id = ? AND active = 1');
+        $stmt->execute([$client->id]);
+        $current = (int)$stmt->fetchColumn();
+        if ($current >= $maxSeats) {
+            $_SESSION['seat_error'] = "Tu plan permite máximo {$maxSeats} asiento(s) adicional(es). Actualiza tu plan para agregar más.";
+            header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+            exit;
+        }
+
+        // Check email not already used
+        $chk = $pdo->prepare('SELECT id FROM mia_client_seats WHERE email = ? UNION SELECT id FROM mia_clients WHERE email = ? LIMIT 1');
+        $chk->execute([$email, $email]);
+        if ($chk->fetch()) {
+            $_SESSION['seat_error'] = 'Ese email ya está en uso.';
+            header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+            exit;
+        }
+
+        $pdo->prepare('INSERT INTO mia_client_seats (client_id, name, email, password_hash, role) VALUES (?,?,?,?,?)')
+            ->execute([$client->id, $name, $email, password_hash($password, PASSWORD_BCRYPT), $role]);
+
+        $_SESSION['seat_success'] = "Asiento para {$name} creado correctamente.";
+        header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+        exit;
+    }
+
+    public function seatDelete(int $seatId): void
+    {
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        if (!empty($_SESSION['mia_seat_id'])) {
+            http_response_code(403);
+            exit;
+        }
+
+        Database::get()->prepare('DELETE FROM mia_client_seats WHERE id = ? AND client_id = ?')
+                       ->execute([$seatId, $client->id]);
+
+        header('Location: ' . App::basePath() . '/dashboard/settings#equipo');
+        exit;
     }
 }

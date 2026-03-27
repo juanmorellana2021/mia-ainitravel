@@ -38,6 +38,21 @@ class AuthController
         $service = new ClientService();
         $client  = $service->authenticate($email, $password);
 
+        // If not an owner, check team seats
+        $seatId   = null;
+        $seatRole = null;
+        if (!$client) {
+            $pdo  = Database::get();
+            $stmt = $pdo->prepare('SELECT id, client_id, password_hash, role FROM mia_client_seats WHERE email = ? AND active = 1 LIMIT 1');
+            $stmt->execute([$email]);
+            $seat = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($seat && password_verify($password, $seat['password_hash'])) {
+                $client   = $service->findById((int)$seat['client_id']);
+                $seatId   = (int)$seat['id'];
+                $seatRole = $seat['role'];
+            }
+        }
+
         if (!$client) {
             $error = 'Email o contraseña incorrectos.';
             require __DIR__ . '/../views/auth/login.php';
@@ -47,12 +62,18 @@ class AuthController
         session_regenerate_id(true);
         $_SESSION['mia_client_id'] = $client->id;
         $_SESSION['mia_client']    = (new BillingService())->clientToSession($client);
+        if ($seatId) {
+            $_SESSION['mia_seat_id']   = $seatId;
+            $_SESSION['mia_seat_role'] = $seatRole;
+        }
 
         // Track login time
-        Database::get()->prepare('UPDATE mia_clients SET last_login_at=NOW() WHERE id=?')->execute([$client->id]);
+        if (!$seatId) {
+            Database::get()->prepare('UPDATE mia_clients SET last_login_at=NOW() WHERE id=?')->execute([$client->id]);
+        }
 
-        // Remember Me — write a hashed token in DB + send a 30-day cookie
-        if (!empty($_POST['remember_me'])) {
+        // Remember Me — only for account owners, not seat logins
+        if (!$seatId && !empty($_POST['remember_me'])) {
             $rmToken   = bin2hex(random_bytes(32));
             $rmHash    = hash('sha256', $rmToken);
             $rmTtl     = App::CLIENT_REMEMBER_TTL;
@@ -66,6 +87,12 @@ class AuthController
                 'httponly' => true,
                 'samesite' => 'Lax',
             ]);
+        }
+
+        // Seat logins go straight to dashboard (no onboarding)
+        if ($seatId) {
+            header('Location: ' . App::basePath() . '/dashboard');
+            exit;
         }
 
         // First-time users go to the setup wizard; returning users go to dashboard
@@ -161,7 +188,7 @@ class AuthController
                 'samesite' => 'Lax',
             ]);
         }
-        unset($_SESSION['mia_client_id'], $_SESSION['mia_client']);
+        unset($_SESSION['mia_client_id'], $_SESSION['mia_client'], $_SESSION['mia_seat_id'], $_SESSION['mia_seat_role']);
         header('Location: ' . App::basePath() . '/login');
         exit;
     }

@@ -375,6 +375,12 @@ match (true) {
     preg_match('#^dashboard/settings/photos/(\d+)/delete$#', $uri, $m) && $method === 'POST'
         => (new SettingsController())->deletePhoto((int)$m[1]),
 
+    $uri === 'dashboard/settings/seat/add' && $method === 'POST'
+        => (new SettingsController())->seatAdd(),
+
+    preg_match('#^dashboard/settings/seat/(\d+)/delete$#', $uri, $m) && $method === 'POST'
+        => (new SettingsController())->seatDelete((int)$m[1]),
+
     // ── Superadmin ─────────────────────────────────────────────────────────
     $uri === 'superadmin' || ($uri === 'superadmin/' )
         => (function() { header('Location: ' . App::basePath() . '/superadmin/dashboard'); exit; })(),
