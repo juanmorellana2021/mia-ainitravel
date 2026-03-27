@@ -292,7 +292,7 @@ class ClientBotService
         $hasPhotos  = str_contains($systemPrompt, '[FOTO:') || str_contains($systemPrompt, 'FOTOS DEL NEGOCIO');
         $hasMemory  = str_contains($systemPrompt, 'MEMORIA DEL CONTACTO');
         $hasAppts   = str_contains($systemPrompt, 'AGENDA DE CITAS:');
-        $maxTokens  = $hasPhotos ? 250 : ($hasMemory ? 120 : ($hasAppts ? 120 : 80));
+        $maxTokens  = $hasPhotos ? 600 : ($hasMemory ? 120 : ($hasAppts ? 120 : 80));
         $reply = $this->callGroq($messages, $maxTokens);
 
         // ── Appointment booking detection ────────────────────────────────────
@@ -568,11 +568,15 @@ class ClientBotService
                 }
                 $photosBlock = "FOTOS DEL NEGOCIO (URLs públicas):\n" . implode("\n", $lines) . "\n"
                     . "Cuando el cliente pida ver fotos, imágenes, el lugar, los productos, habitaciones, o cualquier elemento visual del negocio:\n"
-                    . "1. Escribe una descripción breve y atractiva del elemento (nombre, características, precio si aplica).\n"
-                    . "2. Luego incluye la URL en este formato exacto en una línea separada: [FOTO:url]\n"
-                    . "Ejemplo correcto:\n"
-                    . "'Suite King Size — cama matrimonial, vista a la montaña, baño privado. Precio: S/160/noche\n[FOTO:https://...]'\n"
-                    . "NUNCA envíes solo la URL sin texto descriptivo. Siempre narra primero, foto después.";
+                    . "- Envía TODAS las fotos disponibles, una por una.\n"
+                    . "- Por cada foto: escribe primero una línea con nombre, descripción breve y precio (si aplica), luego en la siguiente línea el marcador [FOTO:url].\n"
+                    . "- Separa cada foto con un salto de línea simple (no doble).\n"
+                    . "- Ejemplo correcto para 2 fotos:\n"
+                    . "  Suite King Size — vista a la montaña, baño privado. Precio: S/160/noche\n"
+                    . "  [FOTO:https://...]\n"
+                    . "  Habitación Doble — 2 camas, WiFi, TV. Precio: S/90/noche\n"
+                    . "  [FOTO:https://...]\n"
+                    . "NUNCA uses doble salto de línea entre fotos. SIEMPRE incluye nombre y precio si están disponibles.";
             }
         } catch (\Throwable $e) {
             // Non-fatal — bot works without photos
@@ -792,7 +796,7 @@ PROMPT;
                 error_log("[ClientBot:{$this->client->id}] Groq fallback model used: {$model}");
             }
 
-            // Keep first paragraph only — but preserve [FOTO:url] markers that may be on a separate line
+            // Keep first paragraph only — but preserve [FOTO:url] and [BOOK:] markers that may be on separate lines
             $hasPhotos = str_contains($text, '[FOTO:');
             $hasBook   = str_contains($text, '[BOOK:');
             if (!$hasPhotos && !$hasBook) {
