@@ -108,9 +108,23 @@ class ApiController
             return;
         }
 
-        // Prefer real phone number over LID/internal WA ID if worker resolved it
-        $phone     = trim((string) ($data['phone'] ?? $data['from']));
-        if (empty($phone)) $phone = trim((string) $data['from']);
+        // Bot worker now sends phone and lid as separate, pre-validated fields:
+        //   phone = real dialable number (empty string when unresolved)
+        //   lid   = WhatsApp LID digits (empty string for @c.us contacts)
+        // No need to extract or compare them here — just pass through.
+        $rawFrom  = trim((string) $data['from']);
+        $phone    = trim((string) ($data['phone'] ?? ''));
+        $fromLid  = trim((string) ($data['lid']   ?? ''));
+
+        // Legacy fallback: if the worker didn't send a separate 'lid' field but
+        // 'from' ends with @lid, extract the LID from 'from' ourselves.
+        if ($fromLid === '' && str_contains($rawFrom, '@lid')) {
+            $fromLid = preg_replace('/[^0-9]/', '', explode('@', $rawFrom)[0]);
+        }
+        // Safety: if phone still looks like a LID (same digits as fromLid), clear it.
+        if ($fromLid !== '' && preg_replace('/[^0-9]/', '', $phone) === $fromLid) {
+            $phone = '';
+        }
         $message   = trim((string) ($data['message'] ?? ''));
         $clientId  = (int) $data['client_id'];
 
@@ -152,8 +166,6 @@ class ApiController
 
         try {
             $service = new ClientBotService($client);
-            // Pass the raw LID 'from' so the service can migrate old LID-stored leads
-            $fromLid        = trim((string) $data['from']);
             $contactName    = trim((string) ($data['contact_name'] ?? ''));
             $profilePicUrl  = trim((string) ($data['profile_pic_url'] ?? ''));
             $result  = $service->process($phone, $message, $fromLid, $contactName, $profilePicUrl);
@@ -220,9 +232,26 @@ class ApiController
             $phone = preg_replace('/[^0-9]/', '', (string)($r['phone'] ?? ''));
             if (!$lid || !$phone || $lid === $phone) continue;
 
-            $pdo->prepare("UPDATE mia_client_leads    SET phone=? WHERE client_id=? AND phone=?")->execute([$phone, $clientId, $lid]);
-            $pdo->prepare("UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?")->execute([$phone, $clientId, $lid]);
-            error_log("[LIDmigration] client={$clientId} {$lid} → {$phone}");
+            // Find the LID lead (match by lid column) and the real-phone lead (if it already exists)
+            $stmtLid  = $pdo->prepare("SELECT id FROM mia_client_leads WHERE client_id=? AND lid=? ORDER BY id ASC LIMIT 1");
+            $stmtLid->execute([$clientId, $lid]);
+            $lidLead  = $stmtLid->fetchColumn();
+
+            $stmtReal = $pdo->prepare("SELECT id FROM mia_client_leads WHERE client_id=? AND phone=? ORDER BY id ASC LIMIT 1");
+            $stmtReal->execute([$clientId, $phone]);
+            $realLead = $stmtReal->fetchColumn();
+
+            if ($lidLead && $realLead && $lidLead !== $realLead) {
+                // Both exist — merge LID lead INTO the real-phone lead, then delete LID lead
+                $pdo->prepare("UPDATE mia_client_messages SET lead_id=?, phone=? WHERE lead_id=?")->execute([$realLead, $phone, $lidLead]);
+                $pdo->prepare("DELETE FROM mia_client_leads WHERE id=?")->execute([$lidLead]);
+                error_log("[LIDresolver] client={$clientId} merged lid_lead={$lidLead} ({$lid}) into real_lead={$realLead} ({$phone})");
+            } elseif ($lidLead) {
+                // Only LID lead exists — update its phone (messages matched by lead_id)
+                $pdo->prepare("UPDATE mia_client_leads SET phone=? WHERE id=?")->execute([$phone, $lidLead]);
+                $pdo->prepare("UPDATE mia_client_messages SET phone=? WHERE lead_id=?")->execute([$phone, $lidLead]);
+                error_log("[LIDresolver] client={$clientId} lead={$lidLead} {$lid} → {$phone}");
+            }
             $updated++;
         }
         echo json_encode(['success' => true, 'updated' => $updated], JSON_UNESCAPED_UNICODE);

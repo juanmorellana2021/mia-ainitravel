@@ -133,7 +133,7 @@ if (empty($_SESSION['mia_client_id']) && !empty($_COOKIE['mia_remember'])) {
 }
 
 // ── Route resolution ─────────────────────────────────────────────────────────
-$uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+$uri = trim((string)(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''), '/');
 
 // Strip the base path (handles both /mia/ local dev and subdomain root)
 $basePaths = ['mia'];
@@ -236,6 +236,9 @@ match (true) {
 
     $uri === 'dashboard/leads/import' && $method === 'POST'
         => (new DashboardController())->leadImport(),
+
+    $uri === 'dashboard/leads/gallery' && $method === 'GET'
+        => (new DashboardController())->leadGallery(),
 
     str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/messages') && $method === 'GET'
         => (new DashboardController())->leadMessages((int)(explode('/', $uri)[2] ?? 0)),

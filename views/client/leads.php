@@ -225,6 +225,7 @@ require __DIR__ . '/_sidebar.php';
                     <th style="width:40px"></th>
                     <th>Nombre</th>
                     <th>Teléfono</th>
+                    <th>LID</th>
                     <th>Estado</th>
                     <th>Fuente</th>
                     <th>Último mensaje</th>
@@ -245,7 +246,7 @@ require __DIR__ . '/_sidebar.php';
             <tr style="cursor:pointer"
                 data-lead-id="<?= $lead->id ?>"
                 data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
-                data-lead-phone="<?= htmlspecialchars($lead->phone) ?>"
+                data-lead-phone="<?= htmlspecialchars($lead->displayPhone()) ?>"
                 data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>">
                 <td>
                     <div class="lead-avatar" style="width:34px;height:34px;font-size:0.85rem;background:<?= ($picFile && file_exists($picFile)) ? '#e8e8e8' : $color ?>">
@@ -257,7 +258,10 @@ require __DIR__ . '/_sidebar.php';
                     </div>
                 </td>
                 <td class="fw-semibold"><?= htmlspecialchars($lead->displayName()) ?></td>
-                <td class="text-muted">+<?= htmlspecialchars($lead->phone) ?></td>
+                <?php $dp2 = $lead->displayPhone(); ?>
+                <td class="text-muted"><?= $dp2 !== '' ? '+' . htmlspecialchars($dp2) : '<span style="opacity:0.35">—</span>' ?></td>
+                <?php $dl2 = $lead->displayLid(); ?>
+                <td class="text-muted" style="font-size:0.75rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= $dl2 !== '' ? '<span title="' . htmlspecialchars($dl2) . '">🔗 ' . htmlspecialchars($dl2) . '</span>' : '<span style="opacity:0.35">—</span>' ?></td>
                 <td><span class="badge bg-<?= $lead->statusClass() ?> bg-opacity-10 text-<?= $lead->statusClass() ?> border border-<?= $lead->statusClass() ?> border-opacity-25"><?= $emoji ?> <?= $lead->statusLabel() ?></span></td>
                 <td class="text-muted" style="font-size:0.8rem"><?= $sourceLabels2[$lead->source] ?? ucfirst($lead->source) ?></td>
                 <td class="text-muted" style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= htmlspecialchars($msgPreview2) ?></td>
@@ -311,7 +315,7 @@ require __DIR__ . '/_sidebar.php';
         <div class="lead-card"
              data-lead-id="<?= $lead->id ?>"
              data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
-             data-lead-phone="<?= htmlspecialchars($lead->phone) ?>"
+             data-lead-phone="<?= htmlspecialchars($lead->displayPhone()) ?>"
              data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>">
             <div class="lead-avatar" style="background:<?= ($picFile && file_exists($picFile)) ? '#e8e8e8' : $color ?>">
                 <?php if ($picFile && file_exists($picFile)): ?>
@@ -335,6 +339,20 @@ require __DIR__ . '/_sidebar.php';
                     <div class="lead-card-msg"><?= htmlspecialchars($msgPreview) ?></div>
                 <?php else: ?>
                     <div class="lead-card-msg" style="font-style:italic;color:#c0cadb">Sin mensajes aún</div>
+                <?php endif; ?>
+                <?php
+                    $cardPhone = $lead->displayPhone();
+                    $cardLid   = $lead->displayLid();
+                ?>
+                <?php if ($cardPhone !== '' || $cardLid !== ''): ?>
+                <div style="font-size:0.72rem;color:#9ca3af;margin-bottom:4px;display:flex;gap:10px;flex-wrap:wrap">
+                    <?php if ($cardPhone !== ''): ?>
+                        <span title="Teléfono real"><i class="bi bi-telephone" style="font-size:0.65rem"></i> +<?= htmlspecialchars($cardPhone) ?></span>
+                    <?php endif; ?>
+                    <?php if ($cardLid !== ''): ?>
+                        <span title="WhatsApp LID (ID interno)"><i class="bi bi-link-45deg" style="font-size:0.65rem"></i> <?= htmlspecialchars($cardLid) ?></span>
+                    <?php endif; ?>
+                </div>
                 <?php endif; ?>
                 <div class="lead-card-badges">
                     <span class="badge bg-<?= $lead->statusClass() ?> bg-opacity-10 text-<?= $lead->statusClass() ?> border border-<?= $lead->statusClass() ?> border-opacity-25">
@@ -407,8 +425,17 @@ require __DIR__ . '/_sidebar.php';
     <!-- Messages -->
     <div id="chatMessages" style="flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px;background:#f0f4f8;"></div>
 
+    <!-- Photo picker panel -->
+    <div id="photoPickerPanel" style="display:none;padding:10px 12px;border-top:1px solid #e9ecef;background:#fafafa;max-height:220px;overflow-y:auto;">
+        <div id="photoPickerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;"></div>
+    </div>
+
     <!-- Input area -->
     <div style="padding:10px 12px;border-top:1px solid #e9ecef;background:#fff;flex-shrink:0;display:flex;gap-8;gap:8px;align-items:flex-end;">
+        <button id="chatPhotoBtn" title="Enviar foto del catálogo"
+            style="background:#f0f4f8;border:1px solid #dee2e6;color:#495057;border-radius:10px;padding:9px 11px;font-size:1rem;cursor:pointer;flex-shrink:0;align-self:flex-end;">
+            <i class="bi bi-image"></i>
+        </button>
         <textarea id="chatInput" rows="2"
             placeholder="Escribe un mensaje..."
             style="flex:1;resize:none;border:1px solid #dee2e6;border-radius:10px;padding:8px 12px;font-size:0.88rem;outline:none;font-family:inherit;"></textarea>
@@ -440,6 +467,78 @@ require __DIR__ . '/_sidebar.php';
     let currentMsgs   = [];
     let translatedState     = false;
     let translatedOriginals = [];
+
+    // ── Photo picker ──────────────────────────────────────────────────────────
+    const photoBtn    = document.getElementById('chatPhotoBtn');
+    const pickerPanel = document.getElementById('photoPickerPanel');
+    const pickerGrid  = document.getElementById('photoPickerGrid');
+    let galleryCache  = null;
+
+    photoBtn.addEventListener('click', function () {
+        const open = pickerPanel.style.display !== 'none';
+        pickerPanel.style.display = open ? 'none' : 'block';
+        if (!open && galleryCache === null) loadGallery();
+    });
+
+    function loadGallery() {
+        pickerGrid.innerHTML = '<span style="font-size:0.8rem;color:#888;">Cargando...</span>';
+        fetch(BASE + '/dashboard/leads/gallery', { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(data => {
+                galleryCache = data.photos || [];
+                renderGallery();
+            })
+            .catch(() => {
+                pickerGrid.innerHTML = '<span style="font-size:0.8rem;color:#c00;">Error al cargar fotos</span>';
+            });
+    }
+
+    function renderGallery() {
+        if (!galleryCache || !galleryCache.length) {
+            pickerGrid.innerHTML = '<span style="font-size:0.8rem;color:#888;">Sin fotos en el catálogo</span>';
+            return;
+        }
+        pickerGrid.innerHTML = galleryCache.map(function (p, i) {
+            const label = p.price ? escHtml(p.name) + ' — ' + escHtml(p.price) : escHtml(p.name);
+            return '<div data-idx="' + i + '" title="' + label + '" style="cursor:pointer;border:2px solid transparent;border-radius:8px;overflow:hidden;" class="gallery-thumb">'
+                 + '<img src="' + escHtml(p.url) + '" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">'
+                 + '<div style="font-size:0.65rem;padding:2px 3px;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + label + '</div>'
+                 + '</div>';
+        }).join('');
+
+        pickerGrid.querySelectorAll('.gallery-thumb').forEach(function (el) {
+            el.addEventListener('click', function () {
+                const idx   = parseInt(this.dataset.idx);
+                const photo = galleryCache[idx];
+                if (!photo || !currentLeadId) return;
+                sendPhoto(photo);
+                pickerPanel.style.display = 'none';
+            });
+        });
+    }
+
+    function sendPhoto(photo) {
+        const label = photo.price ? photo.name + ' — ' + photo.price : photo.name;
+        const text  = label + '\n[FOTO:' + photo.url + ']';
+
+        const fd = new FormData();
+        fd.append('_csrf', CSRF);
+        fd.append('message', text);
+
+        fetch(BASE + '/dashboard/leads/' + currentLeadId + '/send', {
+            method: 'POST', credentials: 'same-origin', body: fd,
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadMessages(true);
+                if (!data.delivered) showStatus('⚠️ Guardado, pero WhatsApp no está conectado.', 'warning');
+            } else {
+                showStatus('❌ Error: ' + (data.error || 'desconocido'), 'danger');
+            }
+        })
+        .catch(() => showStatus('❌ Error de red al enviar foto', 'danger'));
+    }
 
     // ── Translate button ──────────────────────────────────────────────────────
     document.getElementById('chatTranslateBtn').addEventListener('click', async function () {
@@ -524,6 +623,8 @@ require __DIR__ . '/_sidebar.php';
     function openChat(id, name, phone, pic) {
         currentLeadId = id;
         lastMsgId     = 0;
+        pickerPanel.style.display = 'none';
+        // gallery is per-client (not per-lead), so keep cache across leads
         document.getElementById('chatLeadName').textContent  = name;
         document.getElementById('chatLeadPhone').textContent = phone;
         const avatarEl = document.getElementById('chatHeaderAvatar');
@@ -557,6 +658,7 @@ require __DIR__ . '/_sidebar.php';
         currentLeadId = null;
         translatedState = false;
         translatedOriginals = [];
+        pickerPanel.style.display = 'none';
         const tBtn = document.getElementById('chatTranslateBtn');
         if (tBtn) { tBtn.style.opacity = '0.8'; tBtn.title = 'Traducir conversaci\u00f3n'; }
     }

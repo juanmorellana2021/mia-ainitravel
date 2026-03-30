@@ -44,14 +44,14 @@ class ClientLeadService
     {
         $lastMsgJoin = '
             LEFT JOIN (
-                SELECT m1.phone, m1.message AS last_message_text, m1.created_at AS last_message_at,
+                SELECT m1.lead_id, m1.message AS last_message_text, m1.created_at AS last_message_at,
                        m1.direction AS last_message_direction, m1.handled_by AS last_message_handled_by
                 FROM mia_client_messages m1
                 INNER JOIN (
-                    SELECT phone, MAX(id) AS max_id
-                    FROM mia_client_messages WHERE client_id = ? GROUP BY phone
+                    SELECT lead_id, MAX(id) AS max_id
+                    FROM mia_client_messages WHERE client_id = ? GROUP BY lead_id
                 ) m2 ON m1.id = m2.max_id
-            ) lm ON lm.phone = l.phone';
+            ) lm ON lm.lead_id = l.id';
 
         if ($status) {
             $stmt = $this->db->prepare(
@@ -79,8 +79,8 @@ class ClientLeadService
     {
         $stmt = $this->db->prepare(
             'SELECT l.* FROM mia_client_leads l
-             LEFT JOIN (SELECT phone, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY phone) m
-               ON m.phone = l.phone
+             LEFT JOIN (SELECT lead_id, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY lead_id) m
+               ON m.lead_id = l.id
              WHERE l.client_id = ?
              ORDER BY COALESCE(m.last_msg, l.created_at) DESC LIMIT ?'
         );

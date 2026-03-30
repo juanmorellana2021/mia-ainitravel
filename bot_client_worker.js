@@ -1,4 +1,4 @@
-/**
+﻿/**
  * bot_client_worker.js
  *
  * Isolated worker process for ONE subscribed client's WhatsApp session.
@@ -49,7 +49,8 @@ process.on('message', (msg) => {
     }
 
     if (msg.type === 'send' && ww) {
-        const chatId = msg.to.includes('@') ? msg.to : msg.to.replace('+', '') + '@c.us';
+        const raw = msg.to.replace('+', '');
+        const chatId = msg.to.includes('@') ? msg.to : (raw.length >= 14 ? raw + '@lid' : raw + '@c.us');
         sendReplyWithPhotos(chatId, msg.message, null)
             .then(() => console.log(`[worker:${clientId}] OUTBOUND to ${chatId}`))
             .catch((e) => console.error(`[worker:${clientId}] OUTBOUND error: ${e.message}`));
@@ -208,23 +209,62 @@ function startSession() {
 
         const from = msg.from;
 
-        // Resolve real phone number — LID format (@lid) is an internal WA ID, not dialable
-        let realPhone = from;
+        // -- phone and lid are always SEPARATE --
+        // phone = real dialable number (empty if unresolved)
+        // lid   = WhatsApp internal LID digits (empty for normal @c.us contacts)
+        const isLid     = from.endsWith('@lid');
+        const fromDigits = from.replace(/@.*/, '').replace(/[^0-9]/g, '');
+        let phone       = isLid ? '' : fromDigits;  // @c.us: phone known immediately
+        let lid         = isLid ? fromDigits : '';   // @lid:  LID known immediately
         let contactName = '';
         let profilePicUrl = '';
-        try {
-            const contact = await msg.getContact();
-            if (contact && contact.number) realPhone = contact.number;
-            if (contact) contactName = contact.pushname || contact.name || '';
-            try { profilePicUrl = await ww.getProfilePicUrl(msg.from) || ''; } catch (_) {}
-        } catch (_) {}
 
-        console.log(`[worker:${clientId}] MSG from ${from} (phone:${realPhone}): ${messageText.substring(0, 80)}`);
+        if (isLid) {
+            // Method 1: getContactLidAndPhone -- the only reliable LID->phone API
+            try {
+                const results = await ww.getContactLidAndPhone([from]);
+                const pn = results?.[0]?.pn || '';
+                const resolved = pn.replace(/@.*/, '').replace(/[^0-9]/g, '');
+                if (resolved.length >= 7 && resolved.length <= 15) {
+                    phone = resolved;
+                    console.log(`[worker:${clientId}] LID resolved (method 1): ${lid} -> ${phone}`);
+                }
+            } catch (e) {
+                console.log(`[worker:${clientId}] getContactLidAndPhone failed for ${lid}: ${e.message}`);
+            }
+            // Method 2: contact.number -- only valid if DIFFERENT from the LID itself
+            if (!phone) {
+                try {
+                    const contact = await msg.getContact();
+                    if (contact) {
+                        contactName = contact.pushname || contact.name || '';
+                        const num = (contact.number || '').replace(/[^0-9]/g, '');
+                        if (num.length >= 7 && num.length <= 15 && num !== lid) {
+                            phone = num;
+                            console.log(`[worker:${clientId}] LID resolved (method 2): ${lid} -> ${phone}`);
+                        }
+                    }
+                } catch (_) {}
+            }
+            if (!phone) {
+                if (!contactName) {
+                    try { const c = await msg.getContact(); if (c) contactName = c.pushname || c.name || ''; } catch (_) {}
+                }
+                console.log(`[worker:${clientId}] LID unresolved: ${lid} -- routing by LID only`);
+            }
+        } else {
+            try { const contact = await msg.getContact(); if (contact) contactName = contact.pushname || contact.name || ''; } catch (_) {}
+        }
+
+        try { profilePicUrl = await ww.getProfilePicUrl(from) || ''; } catch (_) {}
+
+        console.log(`[worker:${clientId}] MSG from ${from} phone=${phone||'(none)'} lid=${lid||'(none)'} name="${contactName}": ${messageText.substring(0, 80)}`);
 
         try {
             const resp = await callApi('/api/client-chat', {
                 from,
-                phone:           realPhone,
+                phone,           // real dialable number or empty string
+                lid,             // LID digits or empty string
                 message:         messageText,
                 client_id:       parseInt(clientId, 10),
                 contact_name:    contactName,
@@ -384,36 +424,47 @@ async function backfillLeadInfo() {
 // Runs once on startup. Finds all leads/messages with LID-format phone numbers
 // (15-digit internal WA IDs) and resolves them to real phone numbers via WA.
 async function resolveLidPhones() {
-    console.log(`[worker:${clientId}] LID migration: querying stored LIDs...`);
+    console.log(`[worker:${clientId}] LID resolver: querying unresolved LIDs...`);
     let resp;
     try {
         resp = await callApi('/api/resolve-lids', { client_id: parseInt(clientId, 10) });
     } catch (e) {
-        console.error(`[worker:${clientId}] LID migration: resolve-lids API failed: ${e.message}`);
+        console.error(`[worker:${clientId}] LID resolver: API failed: ${e.message}`);
         return;
     }
     if (!resp || !Array.isArray(resp.lids) || resp.lids.length === 0) {
-        console.log(`[worker:${clientId}] LID migration: nothing to resolve`);
+        console.log(`[worker:${clientId}] LID resolver: nothing to resolve`);
         return;
     }
-    console.log(`[worker:${clientId}] LID migration: resolving ${resp.lids.length} numbers...`);
+    console.log(`[worker:${clientId}] LID resolver: trying ${resp.lids.length} LIDs...`);
     const resolved = [];
     for (const lid of resp.lids) {
         try {
-            // lid is the raw stored value e.g. "132002179223582"
-            // WhatsApp needs it as "132002179223582@lid"
-            const contact = await ww.getContactById(lid + '@lid');
-            if (contact && contact.number) {
-                resolved.push({ lid, phone: contact.number });
-                console.log(`[worker:${clientId}] LID ${lid} → ${contact.number}`);
+            // IMPORTANT: contact.number for @lid contacts returns the LID digits back.
+            // Only getContactLidAndPhone().pn gives the real phone number.
+            const results = await ww.getContactLidAndPhone([lid + '@lid']);
+            const pn = results?.[0]?.pn || '';
+            const phone = pn.replace(/@.*/, '').replace(/[^0-9]/g, '');
+            if (phone.length >= 7 && phone.length <= 15 && phone !== lid) {
+                resolved.push({ lid, phone });
+                console.log(`[worker:${clientId}] LID resolved: ${lid} -> ${phone}`);
+            } else {
+                console.log(`[worker:${clientId}] LID unresolvable: ${lid} (pn="${pn}")`);
             }
-        } catch (_) {}
-        // Small delay to avoid hammering WA
-        await new Promise(r => setTimeout(r, 300));
+        } catch (e) {
+            console.log(`[worker:${clientId}] LID resolver error for ${lid}: ${e.message}`);
+        }
+        await new Promise(r => setTimeout(r, 400));
     }
     if (resolved.length > 0) {
-        await callApi('/api/apply-lid-resolutions', { client_id: parseInt(clientId, 10), resolved });
-        console.log(`[worker:${clientId}] LID migration: updated ${resolved.length} records`);
+        try {
+            await callApi('/api/apply-lid-resolutions', { client_id: parseInt(clientId, 10), resolved });
+            console.log(`[worker:${clientId}] LID resolver: applied ${resolved.length} updates`);
+        } catch (e) {
+            console.error(`[worker:${clientId}] LID resolver: apply failed: ${e.message}`);
+        }
+    } else {
+        console.log(`[worker:${clientId}] LID resolver: 0/${resp.lids.length} resolved -- WhatsApp has not mapped these yet`);
     }
 }
 

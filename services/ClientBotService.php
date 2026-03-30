@@ -116,30 +116,118 @@ class ClientBotService
             }
         }
 
-        // ── LID migration: if not found by real phone, check old LID-derived number ──
+        // ── Direct LID lookup: match lead where lid column = fromLid ─────────
+        // This is the fastest path — if we've seen this contact before and stored
+        // their LID, we find them instantly without any phone matching.
         if (!$leadRow && $fromLid !== '') {
+            $stmtLidCol = $this->pdo->prepare(
+                "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND lid=? ORDER BY id ASC LIMIT 1"
+            );
+            $stmtLidCol->execute([$this->client->id, $fromLid]);
+            $leadRow = $stmtLidCol->fetch();
+            if ($leadRow) {
+                error_log("[ClientBot:{$this->client->id}] Matched lead {$leadRow['id']} by LID column '{$fromLid}'");
+            }
+        }
+
+        // ── LID migration: if not found by real phone, check old LID-derived number ──
+        // Only run when $guestPhone is a real phone number (not empty/unresolved LID)
+        if (!$leadRow && $fromLid !== '' && $guestPhone !== '') {
             $lidPhone = $this->normalizePhone($fromLid);
             if ($lidPhone !== $guestPhone) {
                 $stmtLid = $this->pdo->prepare(
-                    "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? ORDER BY id DESC LIMIT 1"
+                    "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? ORDER BY id ASC LIMIT 1"
                 );
                 $stmtLid->execute([$this->client->id, $lidPhone]);
-                $leadRow = $stmtLid->fetch();
+                $lidLeadRow = $stmtLid->fetch();
+                if ($lidLeadRow) {
+                    // Check if a lead with the real phone already exists
+                    $stmtReal = $this->pdo->prepare(
+                        "SELECT id, contact_type FROM mia_client_leads WHERE client_id=? AND phone=? ORDER BY id ASC LIMIT 1"
+                    );
+                    $stmtReal->execute([$this->client->id, $guestPhone]);
+                    $realLeadRow = $stmtReal->fetch();
+
+                    if ($realLeadRow && $realLeadRow['id'] !== $lidLeadRow['id']) {
+                        // Real-phone lead exists — merge LID lead into it, delete LID lead
+                        $this->pdo->prepare("UPDATE mia_client_messages SET lead_id=?, phone=? WHERE lead_id=?")
+                                  ->execute([$realLeadRow['id'], $guestPhone, $lidLeadRow['id']]);
+                        $this->pdo->prepare("DELETE FROM mia_client_leads WHERE id=?")
+                                  ->execute([$lidLeadRow['id']]);
+                        $leadRow = $realLeadRow;
+                        error_log("[ClientBot:{$this->client->id}] Merged LID lead {$lidLeadRow['id']} ({$lidPhone}) into real lead {$realLeadRow['id']} ({$guestPhone})");
+                    } else {
+                        // Only LID lead exists — update its phone to real phone
+                        $this->pdo->prepare("UPDATE mia_client_leads SET phone=? WHERE id=?")
+                                  ->execute([$guestPhone, $lidLeadRow['id']]);
+                        $this->pdo->prepare("UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?")
+                                  ->execute([$guestPhone, $this->client->id, $lidPhone]);
+                        $leadRow = $lidLeadRow;
+                        error_log("[ClientBot:{$this->client->id}] Migrated phone {$lidPhone} → {$guestPhone} for lead {$lidLeadRow['id']}");
+                    }
+                }
+            }
+        }
+
+        // ── Fallback: match by contact_name when phone lookup fails ──────────
+        if (!$leadRow && $contactName !== '') {
+            $stmtName = $this->pdo->prepare(
+                "SELECT id, contact_type, phone FROM mia_client_leads WHERE client_id=? AND contact_name=? ORDER BY id DESC LIMIT 1"
+            );
+            $stmtName->execute([$this->client->id, $contactName]);
+            $leadRow = $stmtName->fetch();
+            if ($leadRow) {
+                error_log("[ClientBot:{$this->client->id}] Matched lead {$leadRow['id']} by contact_name '{$contactName}' (phone {$guestPhone} didn't match)");
+                // If the stored phone is a LID and we now have a real phone, upgrade it
+                $storedPhone = $leadRow['phone'] ?? '';
+                if (strlen($storedPhone) >= 14 && $guestPhone !== '' && strlen($guestPhone) < 14) {
+                    $this->pdo->prepare("UPDATE mia_client_leads SET phone=? WHERE id=?")
+                              ->execute([$guestPhone, $leadRow['id']]);
+                    $this->pdo->prepare("UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?")
+                              ->execute([$guestPhone, $this->client->id, $storedPhone]);
+                    error_log("[ClientBot:{$this->client->id}] Upgraded phone {$storedPhone} → {$guestPhone} for lead {$leadRow['id']} (name match)");
+                }
+            }
+        }
+
+        // ── Fallback: match by profile pic URL hash ───────────────────────────
+        // WhatsApp profile pic URLs contain a stable hash even when LIDs change.
+        // Extract the hash from the URL (the long alphanumeric segment) and compare
+        // against hashes stored in profile_pic_url column.
+        if (!$leadRow && $profilePicUrl !== '') {
+            // Extract hash: the long token after the last / and before ?
+            if (preg_match('/\/([a-zA-Z0-9_\-]{20,})\b/', $profilePicUrl, $picMatch)) {
+                $picHash = $picMatch[1];
+                $stmtPic = $this->pdo->prepare(
+                    "SELECT id, contact_type FROM mia_client_leads
+                     WHERE client_id=? AND profile_pic_url LIKE ?
+                     ORDER BY id DESC LIMIT 1"
+                );
+                $stmtPic->execute([$this->client->id, '%' . $picHash . '%']);
+                $leadRow = $stmtPic->fetch();
                 if ($leadRow) {
-                    // Update to real phone so future lookups find it correctly
-                    $this->pdo->prepare(
-                        "UPDATE mia_client_leads SET phone=? WHERE id=?"
-                    )->execute([$guestPhone, $leadRow['id']]);
-                    $this->pdo->prepare(
-                        "UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?"
-                    )->execute([$guestPhone, $this->client->id, $lidPhone]);
-                    error_log("[ClientBot:{$this->client->id}] Migrated phone {$lidPhone} → {$guestPhone} for lead {$leadRow['id']}");
+                    error_log("[ClientBot:{$this->client->id}] Matched lead {$leadRow['id']} by profile pic hash '{$picHash}' (phone {$guestPhone})");
+                    // If the stored phone is a LID and we now have a real phone, upgrade it
+                    $storedPhone = $leadRow['phone'] ?? '';
+                    if (strlen($storedPhone) >= 14 && $guestPhone !== '' && strlen($guestPhone) < 14) {
+                        $this->pdo->prepare("UPDATE mia_client_leads SET phone=? WHERE id=?")
+                                  ->execute([$guestPhone, $leadRow['id']]);
+                        $this->pdo->prepare("UPDATE mia_client_messages SET phone=? WHERE client_id=? AND phone=?")
+                                  ->execute([$guestPhone, $this->client->id, $storedPhone]);
+                        error_log("[ClientBot:{$this->client->id}] Upgraded phone {$storedPhone} → {$guestPhone} for lead {$leadRow['id']} (pic hash match)");
+                    }
                 }
             }
         }
 
         if ($leadRow) {
             $leadId = (int)$leadRow['id'];
+            // Save LID on the lead if we have one and it isn't stored yet
+            if ($fromLid !== '') {
+                $this->pdo->prepare(
+                    "UPDATE mia_client_leads SET lid=? WHERE id=? AND (lid IS NULL OR lid='')"
+                )->execute([$fromLid, $leadId]);
+            }
         } else {
             // New contact — create lead, trigger auto-enroll sequences
             $lead   = $leadService->create($this->client->id, [
@@ -149,13 +237,59 @@ class ClientBotService
                 'status'       => 'new',
             ]);
             $leadId = $lead->id;
+            // Save LID immediately so the next message from this contact resolves directly
+            if ($fromLid !== '') {
+                $this->pdo->prepare("UPDATE mia_client_leads SET lid=? WHERE id=?")
+                          ->execute([$fromLid, $leadId]);
+            }
+        }
+
+        // ── Routing verification: verify the resolved lead matches incoming data ─
+        // Re-fetch the full lead record to verify identity consistency.
+        $verifyStmt = $this->pdo->prepare(
+            "SELECT id, phone, lid, contact_name FROM mia_client_leads WHERE id = ? LIMIT 1"
+        );
+        $verifyStmt->execute([$leadId]);
+        $verifiedLead = $verifyStmt->fetch();
+        if ($verifiedLead) {
+            $vPhone = $verifiedLead['phone'] ?? '';
+            $vLid   = $verifiedLead['lid']   ?? '';
+            $vName  = $verifiedLead['contact_name'] ?? '';
+
+            // 1) If we have a real phone and lead phone is set but different → possible mismatch
+            if ($guestPhone !== '' && $vPhone !== '' && $guestPhone !== $vPhone) {
+                error_log("[RoutingCheck:{$this->client->id}] WARN Lead {$leadId} phone mismatch: incoming={$guestPhone} stored={$vPhone}");
+            }
+            // 2) If we have a LID and lead LID is set but different → identity may have changed
+            if ($fromLid !== '' && $vLid !== '' && $fromLid !== $vLid) {
+                error_log("[RoutingCheck:{$this->client->id}] WARN Lead {$leadId} LID mismatch: incoming={$fromLid} stored={$vLid}");
+            }
+            // 3) Log-only: no auto-writes here — phone upgrades are handled by
+            //    the dedicated migration/name-match/pic-match blocks above.
+            //    Auto-writing caused LID digits to bleed into phone columns.
+            if ($guestPhone !== '' && $vPhone !== '' && $guestPhone !== $vPhone) {
+                error_log("[RoutingCheck:{$this->client->id}] INFO Lead {$leadId} phone differs: incoming={$guestPhone} stored={$vPhone}");
+            }
+            // 5) Log the connection used for this message
+            $routeType = $fromLid !== '' ? 'LID' : 'Phone';
+            $routeAddr = $fromLid !== '' ? $fromLid : $guestPhone;
+            error_log("[RoutingCheck:{$this->client->id}] Routed to lead {$leadId} via {$routeType}={$routeAddr} (stored phone={$vPhone}, lid={$vLid})");
         }
 
         // ── Save profile pic if we have a URL and no pic yet ─────────────────
         if ($profilePicUrl) {
-            $hasPic = $this->pdo->prepare('SELECT profile_pic FROM mia_client_leads WHERE id = ? LIMIT 1');
+            $hasPic = $this->pdo->prepare('SELECT profile_pic, profile_pic_url FROM mia_client_leads WHERE id = ? LIMIT 1');
             $hasPic->execute([$leadId]);
-            $currentPic = $hasPic->fetchColumn();
+            $picRow = $hasPic->fetch();
+            $currentPic    = $picRow ? $picRow['profile_pic']     : null;
+            $currentPicUrl = $picRow ? $picRow['profile_pic_url'] : null;
+
+            // Always persist the latest WA URL (used as fingerprint for future hash matching)
+            if ($currentPicUrl !== $profilePicUrl) {
+                $this->pdo->prepare('UPDATE mia_client_leads SET profile_pic_url = ? WHERE id = ?')
+                          ->execute([$profilePicUrl, $leadId]);
+            }
+
             if (!$currentPic) {
                 $savedPath = $this->downloadProfilePic($profilePicUrl, $this->client->id, $leadId);
                 if ($savedPath) {

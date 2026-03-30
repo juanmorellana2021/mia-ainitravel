@@ -42,11 +42,23 @@ require __DIR__ . '/_sidebar.php';
             <div class="p-4">
                 <p class="mb-2">
                     <i class="bi bi-telephone me-2 text-muted"></i>
-                    <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $lead->phone) ?>"
+                    <?php $dp = $lead->displayPhone(); ?>
+                    <?php if ($dp !== ''): ?>
+                    <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $dp) ?>"
                        target="_blank" class="text-reset fw-medium">
-                        <?= htmlspecialchars($lead->phone) ?>
+                        <?= htmlspecialchars($dp) ?>
                     </a>
+                    <?php else: ?>
+                    <span class="text-muted fst-italic small">Sin número disponible</span>
+                    <?php endif; ?>
                 </p>
+                <?php $dl = $lead->displayLid(); ?>
+                <?php if ($dl !== ''): ?>
+                <p class="mb-2">
+                    <i class="bi bi-link-45deg me-2 text-muted"></i>
+                    <span class="text-muted small" title="WhatsApp internal LID — not a phone number">LID: <?= htmlspecialchars($dl) ?></span>
+                </p>
+                <?php endif; ?>
                 <p class="mb-2">
                     <i class="bi <?= $lead->sourceIcon() ?> me-2 text-muted"></i>
                     <?= ucfirst(htmlspecialchars($lead->source)) ?>

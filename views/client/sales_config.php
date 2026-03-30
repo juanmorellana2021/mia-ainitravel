@@ -52,7 +52,7 @@ require __DIR__ . '/_sidebar.php';
     <?php endif; ?>
 
     <form method="POST" action="<?= $base ?>/dashboard/sales-config/save">
-        <input type="hidden" name="csrf_token" value="<?= App::csrfToken() ?>">
+        <input type="hidden" name="_csrf" value="<?= App::csrfToken() ?>">
 
         <!-- ── 1. Modo de ventas ─────────────────────────────────────────────── -->
         <div class="mc-table-card mb-4">
@@ -324,7 +324,7 @@ require __DIR__ . '/_sidebar.php';
             statusEl.innerHTML = '<span class="text-muted"><i class="bi bi-arrow-repeat spin"></i> Subiendo...</span>';
             const fd = new FormData();
             fd.append('qr_image', file);
-            fd.append('csrf_token', csrf);
+            fd.append('_csrf', csrf);
             fetch(BASE + '/dashboard/sales-config/upload-qr', { method:'POST', body: fd })
                 .then(r => r.json())
                 .then(data => {

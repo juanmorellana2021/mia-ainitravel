@@ -252,6 +252,28 @@ class DashboardController
         ], $messages));
     }
 
+    public function leadGallery(): void
+    {
+        header('Content-Type: application/json');
+        $client = $this->requireClient();
+        $stmt = Database::get()->prepare(
+            'SELECT filename, photo_name, description, price
+             FROM mia_client_photos
+             WHERE client_id = ?
+             ORDER BY sort_order ASC, id ASC
+             LIMIT 60'
+        );
+        $stmt->execute([$client->id]);
+        $rows   = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $base   = rtrim(App::URL, '/') . '/assets/uploads/photos/' . $client->id . '/';
+        $photos = array_map(fn($r) => [
+            'url'   => $base . rawurlencode($r['filename']),
+            'name'  => $r['photo_name'] ?: $r['description'] ?: 'Foto',
+            'price' => $r['price'] ?? '',
+        ], $rows);
+        echo json_encode(['photos' => $photos]);
+    }
+
     public function leadSend(int $id): void
     {
         header('Content-Type: application/json');
@@ -270,8 +292,16 @@ class DashboardController
             echo json_encode(['error' => 'Empty message']);
             return;
         }
-        $leadService->saveMessage($client->id, $lead->id, $lead->phone, $text, 'outbound', 'human');
-        $delivered = $this->sendViaBot($client->id, $lead->phone, $text);
+        // For LID-only leads (no resolved phone yet), use the LID as the address.
+        // The bot worker converts bare digits to NUMBER@lid when length >= 14.
+        $sendTo = $lead->phone !== '' ? $lead->phone : ($lead->lid ?? '');
+        if (empty($sendTo)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'No WhatsApp address for this lead yet']);
+            return;
+        }
+        $leadService->saveMessage($client->id, $lead->id, $sendTo, $text, 'outbound', 'human');
+        $delivered = $this->sendViaBot($client->id, $sendTo, $text);
         echo json_encode(['success' => true, 'delivered' => $delivered]);
     }
 
@@ -314,7 +344,7 @@ class DashboardController
                 . "- No explanations, no markdown, no extra text.\n\n"
                 . "Input:\n" . json_encode($texts, JSON_UNESCAPED_UNICODE);
 
-        $groqKey = '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';
+        $groqKey = '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';
 
         $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
         curl_setopt_array($ch, [

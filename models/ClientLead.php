@@ -13,6 +13,7 @@ class ClientLead
     public int    $client_id;
     public string $contact_name   = '';
     public string $phone          = '';
+    public ?string $lid           = null;  // WhatsApp LID (internal ID, never dialable)
     public string $source         = 'whatsapp';  // facebook, whatsapp, instagram, website
     public string $status         = 'new';       // new, interested, demo, closed_won, closed_lost
     public string $contact_type   = 'lead';      // lead | friend | staff | proveedor | ignored
@@ -101,6 +102,17 @@ class ClientLead
     }
 
     /**
+     * Returns the real phone number, or empty string if the stored value is a
+     * WhatsApp LID (internal identifier ≥14 digits, not a dialable number).
+     */
+    public function displayPhone(): string
+    {
+        $digits = preg_replace('/\D/', '', $this->phone);
+        if ($digits === '' || strlen($digits) >= 14) return '';
+        return $this->phone;
+    }
+
+    /**
      * Best available display name for this lead.
      * Falls back to formatted phone when no real name is known.
      */
@@ -110,9 +122,21 @@ class ClientLead
         if ($name !== '' && $name !== 'Sin nombre') {
             return $name;
         }
-        // Format phone as +XXXXXXXXXXX (groups of 3 after country prefix)
+        // Format phone as +XXXXXXXXXXX — only if it's a real phone (not a LID)
         $p = preg_replace('/\D/', '', $this->phone);
-        return $p !== '' ? '+' . $p : 'Sin nombre';
+        if ($p !== '' && strlen($p) < 14) {
+            return '+' . $p;
+        }
+        return 'Sin nombre';
+    }
+
+    /**
+     * Returns the LID (WhatsApp internal ID) formatted for display,
+     * or empty string if no LID is stored.
+     */
+    public function displayLid(): string
+    {
+        return ($this->lid !== null && $this->lid !== '') ? $this->lid : '';
     }
 
     /**

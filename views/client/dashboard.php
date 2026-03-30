@@ -324,7 +324,7 @@ $_planLabel = $_planLabels[$client->plan] ?? ucfirst($client->plan);
                     <?php foreach ($recentLeads as $lead): ?>
                     <tr>
                         <td class="fw-medium"><?= htmlspecialchars($lead->contact_name ?: 'Sin nombre') ?></td>
-                        <td><?= htmlspecialchars($lead->phone) ?></td>
+                        <td><?php $dp = $lead->displayPhone(); echo $dp !== '' ? htmlspecialchars($dp) : '<span style="opacity:0.35">—</span>'; ?></td>
                         <td>
                             <i class="bi <?= $lead->sourceIcon() ?> me-1"></i>
                             <?= ucfirst(htmlspecialchars($lead->source)) ?>
