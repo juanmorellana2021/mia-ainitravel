@@ -430,11 +430,20 @@ require __DIR__ . '/_sidebar.php';
         <div id="photoPickerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;"></div>
     </div>
 
+    <!-- Docs picker panel -->
+    <div id="docPickerPanel" style="display:none;padding:10px 12px;border-top:1px solid #e9ecef;background:#fafafa;max-height:220px;overflow-y:auto;">
+        <div id="docPickerList" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
     <!-- Input area -->
     <div style="padding:10px 12px;border-top:1px solid #e9ecef;background:#fff;flex-shrink:0;display:flex;gap-8;gap:8px;align-items:flex-end;">
         <button id="chatPhotoBtn" title="Enviar foto del catálogo"
             style="background:#f0f4f8;border:1px solid #dee2e6;color:#495057;border-radius:10px;padding:9px 11px;font-size:1rem;cursor:pointer;flex-shrink:0;align-self:flex-end;">
             <i class="bi bi-image"></i>
+        </button>
+        <button id="chatDocBtn" title="Enviar documento"
+            style="background:#f0f4f8;border:1px solid #dee2e6;color:#495057;border-radius:10px;padding:9px 11px;font-size:1rem;cursor:pointer;flex-shrink:0;align-self:flex-end;">
+            <i class="bi bi-file-earmark-text"></i>
         </button>
         <textarea id="chatInput" rows="2"
             placeholder="Escribe un mensaje..."
@@ -539,6 +548,88 @@ require __DIR__ . '/_sidebar.php';
         })
         .catch(() => showStatus('❌ Error de red al enviar foto', 'danger'));
     }
+
+    // ── Docs picker ───────────────────────────────────────────────────────────
+    const docBtn        = document.getElementById('chatDocBtn');
+    const docPickerPanel= document.getElementById('docPickerPanel');
+    const docPickerList = document.getElementById('docPickerList');
+    let docsCache = null;
+
+    const DOC_ICONS = { pdf:'bi-file-earmark-pdf', docx:'bi-file-earmark-word', xlsx:'bi-file-earmark-excel', pptx:'bi-file-earmark-ppt' };
+    const DOC_COLORS= { pdf:'#e53e3e', docx:'#2b6cb0', xlsx:'#276749', pptx:'#c05621' };
+
+    docBtn.addEventListener('click', function () {
+        // Close photo picker if open
+        pickerPanel.style.display = 'none';
+        const open = docPickerPanel.style.display !== 'none';
+        docPickerPanel.style.display = open ? 'none' : 'block';
+        if (!open && docsCache === null) loadDocs();
+    });
+
+    function loadDocs() {
+        docPickerList.innerHTML = '<span style="font-size:0.8rem;color:#888;">Cargando...</span>';
+        fetch(BASE + '/dashboard/leads/docs', { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(data => { docsCache = data.docs || []; renderDocs(); })
+            .catch(() => { docPickerList.innerHTML = '<span style="font-size:0.8rem;color:#c00;">Error al cargar documentos</span>'; });
+    }
+
+    function renderDocs() {
+        if (!docsCache || !docsCache.length) {
+            docPickerList.innerHTML = '<span style="font-size:0.8rem;color:#888;">Sin documentos en la biblioteca. <a href="' + BASE + '/dashboard/documents" target="_blank">Subir</a></span>';
+            return;
+        }
+        docPickerList.innerHTML = docsCache.map(function(d, i) {
+            const icon  = DOC_ICONS[d.file_type]  || 'bi-file-earmark';
+            const color = DOC_COLORS[d.file_type] || '#718096';
+            return '<div data-idx="' + i + '" class="doc-pick-item" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;border:1px solid #e9ecef;background:#fff;">'
+                 + '<i class="bi ' + icon + '" style="font-size:1.3rem;color:' + color + ';flex-shrink:0;"></i>'
+                 + '<div style="min-width:0;flex:1;">'
+                 + '<div style="font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(d.name) + '</div>'
+                 + (d.description ? '<div style="font-size:0.7rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(d.description) + '</div>' : '')
+                 + '</div>'
+                 + '<span style="font-size:0.68rem;color:#aaa;flex-shrink:0;">' + escHtml(d.file_size) + '</span>'
+                 + '</div>';
+        }).join('');
+
+        docPickerList.querySelectorAll('.doc-pick-item').forEach(function(el) {
+            el.addEventListener('mouseenter', () => el.style.background = '#f0f7ff');
+            el.addEventListener('mouseleave', () => el.style.background = '#fff');
+            el.addEventListener('click', function() {
+                const doc = docsCache[parseInt(this.dataset.idx)];
+                if (!doc || !currentLeadId) return;
+                sendDoc(doc);
+                docPickerPanel.style.display = 'none';
+            });
+        });
+    }
+
+    function sendDoc(doc) {
+        // Send as [ARCHIVO:url:filename] so bot worker delivers it as a native file attachment
+        const origName = doc.name.replace(/[^\w\s.\-]/g, '') + '.' + doc.file_type;
+        const text = doc.name + '\n[ARCHIVO:' + doc.url + ':' + origName + ']';
+        const fd = new FormData();
+        fd.append('_csrf', CSRF);
+        fd.append('message', text);
+        fetch(BASE + '/dashboard/leads/' + currentLeadId + '/send', {
+            method: 'POST', credentials: 'same-origin', body: fd,
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadMessages(true);
+                if (!data.delivered) showStatus('⚠️ Guardado, pero WhatsApp no está conectado.', 'warning');
+            } else {
+                showStatus('❌ Error: ' + (data.error || 'desconocido'), 'danger');
+            }
+        })
+        .catch(() => showStatus('❌ Error de red al enviar documento', 'danger'));
+    }
+
+    // Also close the photo picker when doc picker opens (hook)
+    photoBtn.addEventListener('click', function () {
+        docPickerPanel.style.display = 'none';
+    }, true);
 
     // ── Translate button ──────────────────────────────────────────────────────
     document.getElementById('chatTranslateBtn').addEventListener('click', async function () {

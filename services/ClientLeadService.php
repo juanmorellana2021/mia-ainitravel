@@ -78,14 +78,19 @@ class ClientLeadService
     public function recent(int $clientId, int $limit = 10): array
     {
         $stmt = $this->db->prepare(
-            'SELECT l.* FROM mia_client_leads l
+            'SELECT l.*, COALESCE(m.last_msg, l.created_at) AS last_activity
+             FROM mia_client_leads l
              LEFT JOIN (SELECT lead_id, MAX(created_at) AS last_msg FROM mia_client_messages WHERE client_id = ? GROUP BY lead_id) m
                ON m.lead_id = l.id
              WHERE l.client_id = ?
-             ORDER BY COALESCE(m.last_msg, l.created_at) DESC LIMIT ?'
+             ORDER BY last_activity DESC LIMIT ?'
         );
         $stmt->execute([$clientId, $clientId, $limit]);
-        return array_map([ClientLead::class, 'fromRow'], $stmt->fetchAll());
+        return array_map(function($row) {
+            $lead = ClientLead::fromRow($row);
+            $lead->last_activity = $row['last_activity'];
+            return $lead;
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     public function findById(int $id, int $clientId): ?ClientLead

@@ -471,6 +471,82 @@ class SettingsController
         echo json_encode(['ok' => $ok]);
     }
 
+    // ── Documents library ─────────────────────────────────────────────────────
+
+    /** GET /dashboard/documents */
+    public function documents(): void
+    {
+        $client = $this->requireClient();
+        require __DIR__ . '/../views/client/documents.php';
+    }
+
+    /** GET /dashboard/settings/docs — returns JSON array of docs */
+    public function listDocs(): void
+    {
+        header('Content-Type: application/json');
+        $client = $this->requireClient();
+        echo json_encode((new ClientDocService())->listWithUrls($client->id));
+    }
+
+    /** POST /dashboard/documents/upload — multipart upload */
+    public function uploadDoc(): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        if (empty($_FILES['doc']) || $_FILES['doc']['error'] === UPLOAD_ERR_NO_FILE) {
+            http_response_code(400);
+            echo json_encode(['error' => 'No se recibió ningún archivo.']);
+            return;
+        }
+
+        $result = (new ClientDocService())->upload($client->id, $_FILES['doc']);
+
+        if (!empty($result['error'])) {
+            http_response_code(422);
+        }
+        echo json_encode($result);
+    }
+
+    /** POST /dashboard/documents/{id}/delete */
+    public function deleteDoc(int $docId): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        if ($docId < 1) {
+            http_response_code(400);
+            echo json_encode(['ok' => false]);
+            return;
+        }
+
+        $ok = (new ClientDocService())->delete($docId, $client->id);
+        echo json_encode(['ok' => $ok]);
+    }
+
+    /** POST /dashboard/documents/update — update doc_name / description */
+    public function updateDoc(): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client = $this->requireClient();
+
+        $docId = (int)($_POST['doc_id'] ?? 0);
+        if ($docId < 1) {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID inválido']);
+            return;
+        }
+
+        $ok = (new ClientDocService())->updateDoc($docId, $client->id, [
+            'doc_name'    => $_POST['doc_name']    ?? '',
+            'description' => $_POST['description'] ?? '',
+        ]);
+        echo json_encode(['ok' => $ok]);
+    }
+
     // ── Team seats ────────────────────────────────────────────────────────────
 
     public function seatAdd(): void

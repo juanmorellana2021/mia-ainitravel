@@ -424,9 +424,10 @@ class ClientBotService
 
         // Allow more tokens when photos or memories are in the prompt
         $hasPhotos  = str_contains($systemPrompt, '[FOTO:') || str_contains($systemPrompt, 'FOTOS DEL NEGOCIO');
+        $hasDocs    = str_contains($systemPrompt, 'DOCUMENTOS DEL NEGOCIO');
         $hasMemory  = str_contains($systemPrompt, 'MEMORIA DEL CONTACTO');
         $hasAppts   = str_contains($systemPrompt, 'AGENDA DE CITAS:');
-        $maxTokens  = $hasPhotos ? 600 : ($hasMemory ? 120 : ($hasAppts ? 120 : 80));
+        $maxTokens  = ($hasPhotos || $hasDocs) ? 600 : ($hasMemory ? 120 : ($hasAppts ? 120 : 80));
         $reply = $this->callGroq($messages, $maxTokens);
 
         // ── Appointment booking detection ────────────────────────────────────
@@ -716,6 +717,38 @@ class ClientBotService
             // Non-fatal — bot works without photos
         }
 
+        // Documents: fetch public URLs for this client
+        $docsBlock = '';
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT filename, original_name, doc_name, description, file_type
+                 FROM mia_client_docs WHERE client_id = ? ORDER BY sort_order ASC, id ASC LIMIT 50"
+            );
+            $stmt->execute([$this->client->id]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            if (!empty($rows)) {
+                $baseUrl = \App::URL;
+                $lines = [];
+                foreach ($rows as $row) {
+                    $url   = $baseUrl . '/assets/uploads/docs/' . $this->client->id . '/' . rawurlencode($row['filename']);
+                    $name  = $row['doc_name'] ?: $row['original_name'] ?: 'Documento';
+                    $ext   = strtoupper($row['file_type']);
+                    $desc  = !empty($row['description']) ? ' — ' . $row['description'] : '';
+                    $lines[] = "- [{$ext}] {$name}{$desc} | URL: {$url}";
+                }
+                $docsBlock = "DOCUMENTOS DEL NEGOCIO (archivos PDF, Word, Excel, PowerPoint disponibles):\n"
+                    . implode("\n", $lines) . "\n"
+                    . "Cuando el cliente pida documentos, catálogos, listas de precios, menús, contratos, fichas técnicas, presentaciones o cualquier archivo descargable:\n"
+                    . "- Responde con el marcador [ARCHIVO:url:nombre_archivo] en tu mensaje.\n"
+                    . "- Puedes incluir texto antes o después del marcador.\n"
+                    . "- Ejemplo: \"Aquí tienes nuestro catálogo completo:\n[ARCHIVO:https://ejemplo.com/docs/1_abc.pdf:Catalogo_2026.pdf]\"\n"
+                    . "- Si hay varios documentos relevantes, envíalos todos usando un marcador por cada uno.\n"
+                    . "NUNCA inventes URLs. Usa SOLO las URLs listadas arriba.";
+            }
+        } catch (\Throwable $e) {
+            // Non-fatal — bot works without documents
+        }
+
         // Sales config injection
         $salesBlock = '';
         $salesCfg = $this->cfg['sales'] ?? [];
@@ -830,6 +863,8 @@ IDIOMA: {$languageRule}
 {$salesBlock}
 
 {$photosBlock}
+
+{$docsBlock}
 
 {$memoryBlock}
 

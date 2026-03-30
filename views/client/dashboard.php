@@ -334,7 +334,7 @@ $_planLabel = $_planLabels[$client->plan] ?? ucfirst($client->plan);
                                 <?= $lead->statusLabel() ?>
                             </span>
                         </td>
-                        <td class="text-muted"><?= date('d/m/y', strtotime($lead->created_at)) ?></td>
+                        <td class="text-muted"><?= date('d/m/y', strtotime($lead->last_activity ?? $lead->created_at)) ?></td>
                         <td>
                             <a href="<?= $base ?>/dashboard/leads/<?= $lead->id ?>"
                                class="btn btn-xs btn-outline-secondary" style="font-size:0.78rem;padding:2px 8px">
@@ -496,6 +496,47 @@ $_planLabel = $_planLabels[$client->plan] ?? ucfirst($client->plan);
             }).catch(()=>{});
         }, 2500);
     }
+})();
+</script>
+<?php endif; ?>
+
+<!-- ── Recent leads live refresh ──────────────────────────────────────────── -->
+<?php if (!empty($recentLeads)): ?>
+<script>
+(function(){
+    const BASE = <?= json_encode(rtrim(App::basePath(), '/')) ?>;
+    const tbody = document.querySelector('.mc-table-card .table tbody');
+    if (!tbody) return;
+
+    function refreshLeads(){
+        fetch(BASE + '/dashboard/recent-leads', {credentials:'same-origin'})
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok || !Array.isArray(data.leads)) return;
+            const rows = data.leads.map(l => {
+                const phone = l.phone
+                    ? `<td>${escHtml(l.phone)}</td>`
+                    : `<td><span style="opacity:0.35">—</span></td>`;
+                return `<tr>
+                    <td class="fw-medium">${escHtml(l.name)}</td>
+                    ${phone}
+                    <td><i class="bi ${escHtml(l.sourceIcon)} me-1"></i>${escHtml(l.source)}</td>
+                    <td><span class="badge bg-${escHtml(l.statusClass)} bg-opacity-10 text-${escHtml(l.statusClass)} border border-${escHtml(l.statusClass)} border-opacity-25">${escHtml(l.statusLabel)}</span></td>
+                    <td class="text-muted">${escHtml(l.last_activity)}</td>
+                    <td><a href="${BASE}/dashboard/leads/${l.id}" class="btn btn-xs btn-outline-secondary" style="font-size:0.78rem;padding:2px 8px">Ver</a></td>
+                </tr>`;
+            });
+            tbody.innerHTML = rows.join('');
+        }).catch(()=>{});
+    }
+
+    function escHtml(str){
+        return String(str ?? '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    setInterval(refreshLeads, 30000);
 })();
 </script>
 <?php endif; ?>

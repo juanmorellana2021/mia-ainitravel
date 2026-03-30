@@ -274,6 +274,24 @@ class DashboardController
         echo json_encode(['photos' => $photos]);
     }
 
+    // ── Docs picker JSON (AJAX) ───────────────────────────────────────────────
+
+    public function leadDocsJson(): void
+    {
+        header('Content-Type: application/json');
+        $client = $this->requireClient();
+        $docs   = (new ClientDocService())->listWithUrls($client->id);
+        $result = array_map(fn($d) => [
+            'id'          => $d['id'],
+            'url'         => $d['url'],
+            'name'        => $d['doc_name'] ?: $d['original_name'] ?: 'Documento',
+            'description' => $d['description'],
+            'file_type'   => $d['file_type'],
+            'file_size'   => ClientDocService::formatSize((int)$d['file_size']),
+        ], $docs);
+        echo json_encode(['docs' => $result]);
+    }
+
     public function leadSend(int $id): void
     {
         header('Content-Type: application/json');
@@ -459,5 +477,30 @@ class DashboardController
         $messages = $stmt->fetchAll();
 
         require __DIR__ . '/../views/client/messages.php';
+    }
+
+    // ── Recent leads JSON (AJAX polling) ─────────────────────────────────────
+
+    public function recentLeadsJson(): void
+    {
+        $client = $this->requireClient();
+        $leads  = (new ClientLeadService())->recent($client->id, 8);
+
+        $rows = [];
+        foreach ($leads as $lead) {
+            $rows[] = [
+                'id'           => $lead->id,
+                'name'         => $lead->contact_name ?: 'Sin nombre',
+                'phone'        => $lead->displayPhone(),
+                'source'       => ucfirst($lead->source),
+                'sourceIcon'   => $lead->sourceIcon(),
+                'statusLabel'  => $lead->statusLabel(),
+                'statusClass'  => $lead->statusClass(),
+                'last_activity'=> date('d/m/y', strtotime($lead->last_activity ?? $lead->created_at)),
+            ];
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => true, 'leads' => $rows]);
     }
 }

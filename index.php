@@ -56,6 +56,7 @@ require_once __DIR__ . '/controllers/DashboardController.php';
 require_once __DIR__ . '/controllers/BillingController.php';
 require_once __DIR__ . '/controllers/SettingsController.php';
 require_once __DIR__ . '/services/ClientPhotoService.php';
+require_once __DIR__ . '/services/ClientDocService.php';
 require_once __DIR__ . '/models/LeadMemory.php';
 require_once __DIR__ . '/services/LeadMemoryService.php';
 require_once __DIR__ . '/controllers/BroadcastController.php';
@@ -240,6 +241,9 @@ match (true) {
     $uri === 'dashboard/leads/gallery' && $method === 'GET'
         => (new DashboardController())->leadGallery(),
 
+    $uri === 'dashboard/leads/docs' && $method === 'GET'
+        => (new DashboardController())->leadDocsJson(),
+
     str_starts_with($uri, 'dashboard/leads/') && str_ends_with($uri, '/messages') && $method === 'GET'
         => (new DashboardController())->leadMessages((int)(explode('/', $uri)[2] ?? 0)),
 
@@ -254,6 +258,9 @@ match (true) {
 
     str_starts_with($uri, 'dashboard/leads/') && $method === 'POST'
         => (new DashboardController())->leadUpdate((int)basename($uri)),
+
+    $uri === 'dashboard/recent-leads' && $method === 'GET'
+        => (new DashboardController())->recentLeadsJson(),
 
     $uri === 'dashboard/messages'
         => (new DashboardController())->messages(),
@@ -336,6 +343,22 @@ match (true) {
 
     $uri === 'dashboard/gallery/update' && $method === 'POST'
         => (new SettingsController())->updatePhoto(),
+
+    // ── Documents ────────────────────────────────────────────────────────────
+    $uri === 'dashboard/documents' && $method === 'GET'
+        => (new SettingsController())->documents(),
+
+    $uri === 'dashboard/documents/upload' && $method === 'POST'
+        => (new SettingsController())->uploadDoc(),
+
+    $uri === 'dashboard/documents/update' && $method === 'POST'
+        => (new SettingsController())->updateDoc(),
+
+    str_starts_with($uri, 'dashboard/documents/') && str_ends_with($uri, '/delete') && $method === 'POST'
+        => (new SettingsController())->deleteDoc((int)(explode('/', $uri)[2] ?? 0)),
+
+    $uri === 'dashboard/settings/docs' && $method === 'GET'
+        => (new SettingsController())->listDocs(),
 
     // ── Sales config ─────────────────────────────────────────────────────────
     $uri === 'dashboard/sales-config' && $method === 'GET'

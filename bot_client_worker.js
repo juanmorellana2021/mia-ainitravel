@@ -311,22 +311,31 @@ function downloadImageAsBase64(url) {
 }
 
 // ── Reply sender: handles text + optional [FOTO:url] markers ─────────────────
-// The AI can include [FOTO:https://...] anywhere in its reply.
-// We extract those, send the text portion first (if any), then each image.
+// The AI can include [FOTO:https://...] for images and [ARCHIVO:https://...:filename] for documents.
+// We extract those, send the text portion first (if any), then each attachment.
 // @lid contacts MUST use chat.sendMessage() via Chat object — ww.sendMessage(@lid) silently fails for media.
 async function sendReplyWithPhotos(to, reply, originalMsg) {
-    const photoRegex = /\[FOTO:(https?:\/\/[^\]]+)\]/gi;
-    const photoUrls = [];
+    const photoRegex   = /\[FOTO:(https?:\/\/[^\]]+)\]/gi;
+    const archivoRegex = /\[ARCHIVO:(https?:\/\/[^\]]+):([^\]]+)\]/gi;
+    const photoUrls  = [];
+    const archivos   = [];
     let match;
     while ((match = photoRegex.exec(reply)) !== null) {
         photoUrls.push(match[1]);
     }
+    while ((match = archivoRegex.exec(reply)) !== null) {
+        archivos.push({ url: match[1], filename: match[2] });
+    }
 
     const isLid = to.includes('@lid');
-    console.log(`[worker:${clientId}] PHOTO: ${photoUrls.length} photos, isLid=${isLid}`);
+    console.log(`[worker:${clientId}] PHOTO: ${photoUrls.length} photos, ARCHIVO: ${archivos.length} docs, isLid=${isLid}`);
 
-    // Text with [FOTO:...] markers removed and trimmed
-    const textPart = reply.replace(photoRegex, '').replace(/\s{2,}/g, ' ').trim();
+    // Text with all markers removed and trimmed
+    const textPart = reply
+        .replace(photoRegex, '')
+        .replace(archivoRegex, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 
     // For @lid contacts, get the Chat object — ww.sendMessage(@lid) silently fails for media
     let chat = null;
@@ -339,13 +348,13 @@ async function sendReplyWithPhotos(to, reply, originalMsg) {
     }
 
     // Helper: send to the right place
-    const sendMsg = async (content) => {
+    const sendMsg = async (content, opts) => {
         if (chat) {
-            await chat.sendMessage(content);
+            await chat.sendMessage(content, opts || {});
         } else if (originalMsg && isLid) {
             await originalMsg.reply(content);
         } else {
-            await ww.sendMessage(to, content);
+            await ww.sendMessage(to, content, opts || {});
         }
     };
 
@@ -368,6 +377,27 @@ async function sendReplyWithPhotos(to, reply, originalMsg) {
             // Fallback: send URL as clickable link so user can at least see the photo
             try {
                 await sendMsg(`📷 Ver foto: ${url}`);
+            } catch (_) {}
+        }
+    }
+
+    // Send each document as a file attachment
+    for (const archivo of archivos) {
+        try {
+            console.log(`[worker:${clientId}] ARCHIVO: downloading ${archivo.url}`);
+            const response = await fetch(archivo.url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const buffer   = await response.arrayBuffer();
+            const b64      = Buffer.from(buffer).toString('base64');
+            const mime     = response.headers.get('content-type') || 'application/octet-stream';
+            const safeName = archivo.filename.replace(/[^\w.\-]/g, '_') || 'documento';
+            const media = new MessageMedia(mime, b64, safeName);
+            await sendMsg(media, { sendMediaAsDocument: true });
+            console.log(`[worker:${clientId}] ARCHIVO: sent OK — ${safeName}`);
+        } catch (e) {
+            console.error(`[worker:${clientId}] ARCHIVO FAIL ${archivo.url}: ${e.message}`);
+            try {
+                await sendMsg(`📄 Ver documento: ${archivo.url}`);
             } catch (_) {}
         }
     }
