@@ -415,7 +415,7 @@ class ClientBotService
         // (see INTENCIONES block in buildSystemPrompt)
 
         $history  = $this->loadHistory($guestPhone);
-        $systemPrompt = $this->buildSystemPrompt($guestPhone);
+        $systemPrompt = $this->buildSystemPrompt($guestPhone, $msg);
         $messages = array_merge(
             [['role' => 'system', 'content' => $systemPrompt]],
             $history,
@@ -591,9 +591,25 @@ class ClientBotService
              . ($knowledge ? "\n\nCONOCIMIENTO DEL NEGOCIO:\n{$knowledge}" : '');
     }
 
+    // ── Language detection ────────────────────────────────────────────────────
+
+    private function detectLang(string $text): string
+    {
+        $t = mb_strtolower($text);
+        $esWords = ['que', 'de', 'es', 'en', 'un', 'una', 'por', 'con', 'para', 'los', 'las', 'del', 'no', 'si', 'me', 'mi', 'tu', 'su', 'hola', 'como', 'cómo', 'gracias', 'buenas', 'tengo', 'quiero'];
+        $enWords = ['the', 'is', 'are', 'this', 'that', 'have', 'has', 'with', 'what', 'how', 'hello', 'hi', 'yes', 'great', 'good', 'thanks', 'and', 'for', 'my', 'your', 'want', 'need', 'can', 'we', 'our'];
+        $esScore = 0;
+        $enScore = 0;
+        foreach (preg_split('/\W+/u', $t) as $word) {
+            if (in_array($word, $esWords)) $esScore++;
+            if (in_array($word, $enWords)) $enScore++;
+        }
+        return $enScore > $esScore ? 'en' : 'es';
+    }
+
     // ── System prompt ─────────────────────────────────────────────────────────
 
-    private function buildSystemPrompt(string $phone = ''): string
+    private function buildSystemPrompt(string $phone = '', string $currentMsg = ''): string
     {
         $bizName    = $this->client->business_name;
         $rawType    = $this->cfg['business_type']  ?? $this->client->business_type ?? 'negocio';
@@ -639,11 +655,17 @@ class ClientBotService
             default        => 'Amigable y cercano. Cálido, directo y genuinamente útil.',
         };
 
-        $languageRule = match ($language) {
-            'en'   => 'Always respond in English.',
-            'auto' => 'Detect the language of the customer\'s message and respond in the same language.',
-            default => 'Responde siempre en español.',
-        };
+        if ($language === 'auto' && $currentMsg !== '') {
+            $detectedLang = $this->detectLang($currentMsg);
+            $languageRule = $detectedLang === 'en'
+                ? "⚠️ LANGUAGE RULE (MANDATORY): The customer is writing in ENGLISH. You MUST reply in ENGLISH. Do not switch to Spanish."
+                : "⚠️ REGLA DE IDIOMA (OBLIGATORIA): El cliente escribe en español. Responde siempre en español.";
+        } else {
+            $languageRule = match ($language) {
+                'en'   => '⚠️ LANGUAGE RULE (MANDATORY): Always respond in English. Never switch to Spanish.',
+                default => '⚠️ REGLA DE IDIOMA (OBLIGATORIA): Responde siempre en español.',
+            };
+        }
 
         $handoffInstruction = $this->canHandoff
             ? "Si el cliente claramente pide hablar con una persona real (ej: 'quiero hablar con alguien', 'necesito un humano', 'comunícame con el equipo'), responde: 'Entendido, aviso al equipo de {$bizName} ahora mismo. Alguien te contactará en breve 👋'. NO actives esto si el cliente pregunta sobre servicios, agentes de viaje, o cualquier otra cosa que incluya las palabras humano/agente/persona en otro contexto."
