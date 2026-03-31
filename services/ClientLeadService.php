@@ -113,6 +113,44 @@ class ClientLeadService
         return $row ? ClientLead::fromRow($row) : null;
     }
 
+    public function findByPhoneOrLid(int $clientId, string $phone, string $lid): ?ClientLead
+    {
+        if ($phone !== '') {
+            $stmt = $this->db->prepare(
+                'SELECT * FROM mia_client_leads WHERE client_id = ? AND phone = ? LIMIT 1'
+            );
+            $stmt->execute([$clientId, $phone]);
+            $row = $stmt->fetch();
+            if ($row) return ClientLead::fromRow($row);
+        }
+        if ($lid !== '') {
+            $stmt = $this->db->prepare(
+                'SELECT * FROM mia_client_leads WHERE client_id = ? AND lid = ? LIMIT 1'
+            );
+            $stmt->execute([$clientId, $lid]);
+            $row = $stmt->fetch();
+            if ($row) return ClientLead::fromRow($row);
+        }
+        return null;
+    }
+
+    public function pauseBot(int $leadId, int $clientId, int $hours = 2): void
+    {
+        $until = date('Y-m-d H:i:s', time() + $hours * 3600);
+        $stmt  = $this->db->prepare(
+            'UPDATE mia_client_leads SET bot_paused_until = ? WHERE id = ? AND client_id = ?'
+        );
+        $stmt->execute([$until, $leadId, $clientId]);
+    }
+
+    public function resumeBot(int $leadId, int $clientId): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE mia_client_leads SET bot_paused_until = NULL WHERE id = ? AND client_id = ?'
+        );
+        $stmt->execute([$leadId, $clientId]);
+    }
+
     public function create(int $clientId, array $data): ClientLead
     {
         $stmt = $this->db->prepare(

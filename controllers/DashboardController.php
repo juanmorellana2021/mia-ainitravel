@@ -319,8 +319,26 @@ class DashboardController
             return;
         }
         $leadService->saveMessage($client->id, $lead->id, $sendTo, $text, 'outbound', 'human');
+        // Pause bot for 2 hours — human has taken over
+        $leadService->pauseBot($lead->id, $client->id, 2);
         $delivered = $this->sendViaBot($client->id, $sendTo, $text);
-        echo json_encode(['success' => true, 'delivered' => $delivered]);
+        echo json_encode(['success' => true, 'delivered' => $delivered, 'bot_paused' => true]);
+    }
+
+    public function resumeBot(int $id): void
+    {
+        header('Content-Type: application/json');
+        App::csrfVerify();
+        $client      = $this->requireClient();
+        $leadService = new ClientLeadService();
+        $lead        = $leadService->findById($id, $client->id);
+        if (!$lead) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Lead not found']);
+            return;
+        }
+        $leadService->resumeBot($lead->id, $client->id);
+        echo json_encode(['success' => true]);
     }
 
     public function leadTranslate(int $id): void

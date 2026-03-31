@@ -164,6 +164,22 @@ class ApiController
             return;
         }
 
+        // ── Human takeover check — bot paused? ───────────────────────────────
+        require_once __DIR__ . '/../services/ClientLeadService.php';
+        $leadSvc   = new ClientLeadService();
+        $leadForPause = $leadSvc->findByPhoneOrLid($clientId, $phone, $fromLid);
+        if ($leadForPause && $leadForPause->bot_paused_until) {
+            $pausedUntil = strtotime($leadForPause->bot_paused_until);
+            if ($pausedUntil && $pausedUntil > time()) {
+                // Save inbound message to CRM but return no bot reply
+                $leadSvc->saveMessage($clientId, $leadForPause->id, $phone ?: $fromLid, $message, 'inbound', 'bot');
+                error_log("[ClientBot:{$clientId}] Bot paused for lead {$leadForPause->id} until {$leadForPause->bot_paused_until} — skipping AI.");
+                echo json_encode(['success' => true, 'reply' => '', 'bot_paused' => true], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         try {
             $service = new ClientBotService($client);
             $contactName    = trim((string) ($data['contact_name'] ?? ''));

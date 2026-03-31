@@ -28,6 +28,7 @@ class ClientLead
     public ?string $last_message_direction  = null;
     public ?string $last_message_handled_by = null;
     public ?string $profile_pic             = null;
+    public ?string $bot_paused_until        = null;  // NULL = bot active; future datetime = bot paused
 
     public static function fromRow(array $row): self
     {

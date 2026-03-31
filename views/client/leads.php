@@ -247,6 +247,7 @@ require __DIR__ . '/_sidebar.php';
                 data-lead-id="<?= $lead->id ?>"
                 data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
                 data-lead-phone="<?= htmlspecialchars($lead->displayPhone()) ?>"
+                data-lead-paused="<?= ($lead->bot_paused_until && strtotime($lead->bot_paused_until) > time()) ? '1' : '0' ?>"
                 data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>">
                 <td>
                     <div class="lead-avatar" style="width:34px;height:34px;font-size:0.85rem;background:<?= ($picFile && file_exists($picFile)) ? '#e8e8e8' : $color ?>">
@@ -316,6 +317,7 @@ require __DIR__ . '/_sidebar.php';
              data-lead-id="<?= $lead->id ?>"
              data-lead-name="<?= htmlspecialchars($lead->displayName()) ?>"
              data-lead-phone="<?= htmlspecialchars($lead->displayPhone()) ?>"
+             data-lead-paused="<?= ($lead->bot_paused_until && strtotime($lead->bot_paused_until) > time()) ? '1' : '0' ?>"
              data-lead-pic="<?= ($picFile && file_exists($picFile)) ? htmlspecialchars($base . '/' . $lead->profile_pic) : '' ?>">
             <div class="lead-avatar" style="background:<?= ($picFile && file_exists($picFile)) ? '#e8e8e8' : $color ?>">
                 <?php if ($picFile && file_exists($picFile)): ?>
@@ -419,6 +421,12 @@ require __DIR__ . '/_sidebar.php';
         </button>
     </div>
 
+    <!-- Bot paused banner -->
+    <div id="botPausedBanner" style="display:none;background:#fff3cd;color:#856404;font-size:0.8rem;padding:7px 14px;border-bottom:1px solid #ffc107;flex-shrink:0;display:none;align-items:center;justify-content:space-between;gap:8px;">
+        <span><i class="bi bi-pause-circle-fill"></i> Bot pausado &mdash; respondiendo manualmente</span>
+        <button id="resumeBotBtn" style="background:#ffc107;border:none;border-radius:6px;padding:3px 10px;font-size:0.78rem;cursor:pointer;color:#212529;font-weight:600;">Reactivar bot</button>
+    </div>
+
     <!-- Status bar -->
     <div id="chatStatus" style="font-size:0.75rem;text-align:center;padding:4px 12px;background:#f0f4f8;color:#6c757d;flex-shrink:0;display:none;"></div>
 
@@ -469,8 +477,10 @@ require __DIR__ . '/_sidebar.php';
     const input    = document.getElementById('chatInput');
     const sendBtn  = document.getElementById('chatSendBtn');
     const statusEl = document.getElementById('chatStatus');
+    const pauseBanner = document.getElementById('botPausedBanner');
 
     let currentLeadId = null;
+    let botIsPaused   = false;
     let pollTimer     = null;
     let lastMsgId     = 0;
     let currentMsgs   = [];
@@ -728,6 +738,10 @@ require __DIR__ . '/_sidebar.php';
         }
         const callBtn = document.getElementById('chatCallBtn');
         if (callBtn) callBtn.href = phone ? 'https://wa.me/' + phone.replace(/\D/g,'') : '#';
+        // Bot pause state — read from data attribute of the card/row that was clicked
+        const el = document.querySelector('[data-lead-id="' + id + '"]');
+        botIsPaused = el ? el.dataset.leadPaused === '1' : false;
+        updatePauseBanner();
         msgBox.innerHTML = '<div style="text-align:center;color:#adb5bd;font-size:0.8rem;padding:20px 0">Cargando...</div>';
         statusEl.style.display = 'none';
         panel.style.transform  = 'translateX(0)';
@@ -747,12 +761,43 @@ require __DIR__ . '/_sidebar.php';
         document.body.style.overflow = '';
         stopPolling();
         currentLeadId = null;
+        botIsPaused   = false;
         translatedState = false;
         translatedOriginals = [];
         pickerPanel.style.display = 'none';
         const tBtn = document.getElementById('chatTranslateBtn');
         if (tBtn) { tBtn.style.opacity = '0.8'; tBtn.title = 'Traducir conversaci\u00f3n'; }
     }
+
+    // ── Bot pause helpers ─────────────────────────────────────────────────────
+    function updatePauseBanner() {
+        pauseBanner.style.display = botIsPaused ? 'flex' : 'none';
+    }
+
+    function updateLeadCardPauseState(id, paused) {
+        document.querySelectorAll('[data-lead-id="' + id + '"]').forEach(function(el) {
+            el.dataset.leadPaused = paused ? '1' : '0';
+        });
+    }
+
+    document.getElementById('resumeBotBtn').addEventListener('click', function() {
+        if (!currentLeadId) return;
+        const fd = new FormData();
+        fd.append('_csrf', CSRF);
+        fetch(BASE + '/dashboard/leads/' + currentLeadId + '/resume-bot', {
+            method: 'POST', credentials: 'same-origin', body: fd,
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                botIsPaused = false;
+                updatePauseBanner();
+                updateLeadCardPauseState(currentLeadId, false);
+                showStatus('\u2705 Bot reactivado', 'success');
+            }
+        })
+        .catch(() => {});
+    });
 
     // ── Load messages ─────────────────────────────────────────────────────────
     function loadMessages(scrollToBottom) {
@@ -828,6 +873,10 @@ require __DIR__ . '/_sidebar.php';
             sendBtn.disabled = false;
             if (data.success) {
                 loadMessages(true);
+                // Mark bot as paused in UI
+                botIsPaused = true;
+                updatePauseBanner();
+                updateLeadCardPauseState(currentLeadId, true);
                 if (!data.delivered) showStatus('⚠️ Guardado, pero WhatsApp no está conectado — el mensaje no fue enviado.', 'warning');
             } else {
                 showStatus('❌ Error: ' + (data.error || 'desconocido'), 'danger');
