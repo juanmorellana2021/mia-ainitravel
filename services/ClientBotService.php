@@ -656,7 +656,10 @@ class ClientBotService
         };
 
         if ($language === 'auto' && $currentMsg !== '') {
-            $detectedLang = $this->detectLang($currentMsg);
+            // Strip [Nota de voz]: / [Imagen]: prefixes so the Spanish label
+            // doesn't pollute language detection for voice/image messages
+            $msgForLang   = preg_replace('/^\[.*?\]:\s*/u', '', $currentMsg);
+            $detectedLang = $this->detectLang($msgForLang ?: $currentMsg);
             $languageRule = $detectedLang === 'en'
                 ? "⚠️ LANGUAGE RULE (MANDATORY): The customer is writing in ENGLISH. You MUST reply in ENGLISH. Do not switch to Spanish."
                 : "⚠️ REGLA DE IDIOMA (OBLIGATORIA): El cliente escribe en español. Responde siempre en español.";
