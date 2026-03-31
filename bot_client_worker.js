@@ -167,11 +167,11 @@ function startSession() {
         }
 
         // ── Media handling ────────────────────────────────────────────────────
-        // Facebook/Instagram ad clicks arrive as notification_template followed by a chat.
-        // Skip the notification_template — the real message comes right after.
+        // Facebook/Instagram ad clicks arrive as notification_template with empty body.
+        // Treat as a greeting opener so the bot sends a welcome message.
         if (msg.type === 'notification_template') {
-            console.log(`[worker:${clientId}] Ad-click notification_template from ${msg.from} — waiting for chat event`);
-            return;
+            console.log(`[worker:${clientId}] Ad-click notification_template from ${msg.from} — triggering welcome`);
+            // fall through with default opener below
         }
 
         // Detect and skip bot auto-replies from other businesses
@@ -202,8 +202,12 @@ function startSession() {
         }
 
         if (!messageText && !mediaData) {
-            console.log(`[worker:${clientId}] Dropped: empty body, no media (type=${msg.type})`);
-            return;
+            if (msg.type === 'notification_template') {
+                messageText = 'Hola';
+            } else {
+                console.log(`[worker:${clientId}] Dropped: empty body, no media (type=${msg.type})`);
+                return;
+            }
         }
         if (!messageText) messageText = `[${mediaType || 'media'}]`;
 
