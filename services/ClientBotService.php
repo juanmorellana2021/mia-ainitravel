@@ -89,6 +89,12 @@ class ClientBotService
             return ['reply' => ''];
         }
 
+        // ── Owner mode: if the sender is the account owner, skip lead logic ──
+        $ownerPhoneNorm = $this->normalizePhone($this->client->phone ?? '');
+        if ($ownerPhoneNorm !== '' && $guestPhone === $ownerPhoneNorm) {
+            return $this->processOwnerMessage($msg);
+        }
+
         // ── Upsert lead record ────────────────────────────────────────────────
         // Every phone that messages the bot becomes a lead automatically.
         $leadService = new ClientLeadService();
@@ -935,6 +941,84 @@ PROMPT;
             error_log('[ClientBot] Profile pic download failed: ' . $e->getMessage());
         }
         return null;
+    }
+
+    /**
+     * Owner mode: the account owner is chatting with their own bot.
+     * Completely separate from the lead/sales flow.
+     */
+    private function processOwnerMessage(string $msg): array
+    {
+        $name   = $this->client->contact_name ?: 'dueño';
+        $biz    = $this->client->business_name;
+
+        // ── Lead stats for context ─────────────────────────────────────────
+        $stmt = $this->pdo->prepare(
+            "SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status='new'       THEN 1 ELSE 0 END) AS new_count,
+                SUM(CASE WHEN status='contacted' THEN 1 ELSE 0 END) AS contacted,
+                SUM(CASE WHEN status='qualified' THEN 1 ELSE 0 END) AS qualified,
+                SUM(CASE WHEN status='closed'    THEN 1 ELSE 0 END) AS closed,
+                SUM(CASE WHEN DATE(created_at)=CURDATE() THEN 1 ELSE 0 END) AS today
+             FROM mia_client_leads
+             WHERE client_id=? AND contact_type != 'owner'"
+        );
+        $stmt->execute([$this->client->id]);
+        $stats = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
+
+        // ── Last 5 leads ───────────────────────────────────────────────────
+        $stmtRecent = $this->pdo->prepare(
+            "SELECT contact_name, phone, status, created_at
+             FROM mia_client_leads
+             WHERE client_id=? AND contact_type != 'owner'
+             ORDER BY id DESC LIMIT 5"
+        );
+        $stmtRecent->execute([$this->client->id]);
+        $recentLeads = $stmtRecent->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+
+        $recentLines = '';
+        foreach ($recentLeads as $l) {
+            $recentLines .= "- {$l['contact_name']} ({$l['phone']}) · estado: {$l['status']} · {$l['created_at']}\n";
+        }
+
+        // ── Load conversation memory for owner ────────────────────────────
+        $ownerHistory = $this->loadHistory('owner_' . $this->client->id);
+
+        // ── System prompt ─────────────────────────────────────────────────
+        $system = <<<PROMPT
+Eres Mia, la asistente de IA de {$biz}. Estás hablando directamente con {$name}, el dueño o administrador de esta cuenta.
+Trátalo con confianza y de forma directa — no como un cliente.
+
+RESUMEN DE LEADS HOY:
+- Totales: {$stats['total']} | Hoy: {$stats['today']} | Nuevos: {$stats['new_count']} | Contactados: {$stats['contacted']} | Calificados: {$stats['qualified']} | Cerrados: {$stats['closed']}
+
+ÚLTIMOS LEADS:
+{$recentLines}
+
+REGLAS:
+- Puedes responder preguntas sobre los leads, conversaciones recientes o el estado del bot.
+- Si el dueño te da una instrucción ("dile a los clientes que el pool está cerrado"), responde confirmando y recuérdale que debe actualizar su configuración del bot en el panel web.
+- No hagas script de ventas. No trates de capturar sus datos.
+- Responde en el idioma en que te escribe.
+- Sé directo y conciso.
+PROMPT;
+
+        $messages = [['role' => 'system', 'content' => $system]];
+        foreach ($ownerHistory as $h) {
+            $messages[] = ['role' => $h['role'], 'content' => $h['content']];
+        }
+        $messages[] = ['role' => 'user', 'content' => $msg];
+
+        $reply = $this->callGroq($messages, 300);
+
+        // ── Save owner conversation to memory ─────────────────────────────
+        $this->log('owner_' . $this->client->id, 'user',      $msg);
+        $this->log('owner_' . $this->client->id, 'assistant', $reply);
+
+        error_log("[ClientBot:{$this->client->id}] Owner message processed");
+
+        return ['reply' => $reply];
     }
 
     private function callGroq(array $messages, int $maxTokens = 80): string
