@@ -164,6 +164,22 @@ class ApiController
             return;
         }
 
+        // ── Path 1: Owner self-message (Saved Messages / "Yo" chat) ──────────
+        // Bot worker sends is_owner_self=true when msg.fromMe && msg.from===msg.to
+        if (!empty($data['is_owner_self'])) {
+            try {
+                $service = new ClientBotService($client);
+                $result  = $service->processOwner($message);
+                echo json_encode(['success' => true, 'reply' => $result['reply'] ?? ''], JSON_UNESCAPED_UNICODE);
+            } catch (Throwable $e) {
+                error_log("[ClientBot:{$clientId}] Owner error: " . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            }
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         // ── Owner bypass: skip pause check if the sender is the account owner ──
         $ownerPhoneStored = preg_replace('/[^0-9]/', '', $client->phone ?? '');
         $incomingNorm     = preg_replace('/[^0-9]/', '', $phone);
