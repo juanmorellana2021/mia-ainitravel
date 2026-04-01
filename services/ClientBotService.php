@@ -91,7 +91,12 @@ class ClientBotService
 
         // ── Owner mode: if the sender is the account owner, skip lead logic ──
         $ownerPhoneNorm = $this->normalizePhone($this->client->phone ?? '');
-        if ($ownerPhoneNorm !== '' && $guestPhone === $ownerPhoneNorm) {
+        $isOwner = $ownerPhoneNorm !== '' && (
+            $guestPhone === $ownerPhoneNorm ||
+            $guestPhone === '51' . $ownerPhoneNorm ||
+            substr($guestPhone, 2) === $ownerPhoneNorm
+        );
+        if ($isOwner) {
             return $this->processOwnerMessage($msg);
         }
 
