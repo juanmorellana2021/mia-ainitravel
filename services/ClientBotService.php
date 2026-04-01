@@ -949,6 +949,22 @@ PROMPT;
     }
 
     /**
+     * Public entry-point for the owner self-message path (called from ApiController).
+     */
+    public function processOwner(string $msg): array
+    {
+        return $this->processOwnerMessage(trim($msg));
+    }
+
+    /**
+     * Public entry-point for the owner self-message path (called from ApiController).
+     */
+    public function processOwner(string $msg): array
+    {
+        return $this->processOwnerMessage(trim($msg));
+    }
+
+    /**
      * Owner mode: the account owner is chatting with their own bot.
      * Completely separate from the lead/sales flow.
      */
