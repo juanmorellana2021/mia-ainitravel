@@ -290,250 +290,45 @@ function startSession() {
         }
     });
 
-    ww.initialize();
-}
 
-// ── Download image as base64 (more reliable than MessageMedia.fromUrl) ────────
-function downloadImageAsBase64(url) {
-    return new Promise((resolve, reject) => {
-        const proto = url.startsWith('https') ? https : require('http');
-        proto.get(url, { rejectUnauthorized: false }, (res) => {
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                // Follow redirect
-                return downloadImageAsBase64(res.headers.location).then(resolve).catch(reject);
-            }
-            if (res.statusCode !== 200) {
-                return reject(new Error(`HTTP ${res.statusCode}`));
-            }
-            const mime = res.headers['content-type'] || 'image/jpeg';
-            const chunks = [];
-            res.on('data', (c) => chunks.push(c));
-            res.on('end', () => resolve({ data: Buffer.concat(chunks).toString('base64'), mimetype: mime }));
-            res.on('error', reject);
-        }).on('error', reject);
-    });
-}
+    // -- Owner mode: fires for ALL messages including self-sent --
+    // When owner opens WhatsApp "Saved Messages" (texts own number),
+    // msg.fromMe = true AND msg.from === msg.to === own number.
+    // The normal 'message' event blocks fromMe so we need 'message_create'.
+    ww.on('message_create', async (msg) => {
+        if (!msg.fromMe) return;
+        if (!msg.body?.trim()) return;
+        if (msg.from !== msg.to) return;   // only Saved Messages chat
 
-// ── Reply sender: handles text + optional [FOTO:url] markers ─────────────────
-// The AI can include [FOTO:https://...] for images and [ARCHIVO:https://...:filename] for documents.
-// We extract those, send the text portion first (if any), then each attachment.
-// @lid contacts MUST use chat.sendMessage() via Chat object — ww.sendMessage(@lid) silently fails for media.
-async function sendReplyWithPhotos(to, reply, originalMsg) {
-    const photoRegex   = /\[FOTO:(https?:\/\/[^\]]+)\]/gi;
-    const archivoRegex = /\[ARCHIVO:(https?:\/\/[^\]]+):([^\]]+)\]/gi;
-    const photoUrls  = [];
-    const archivos   = [];
-    let match;
-    while ((match = photoRegex.exec(reply)) !== null) {
-        photoUrls.push(match[1]);
-    }
-    while ((match = archivoRegex.exec(reply)) !== null) {
-        archivos.push({ url: match[1], filename: match[2] });
-    }
+        const body = msg.body.trim();
+        if (body.startsWith('[Mia]')) return;  // avoid infinite loop
 
-    const isLid = to.includes('@lid');
-    console.log(`[worker:${clientId}] PHOTO: ${photoUrls.length} photos, ARCHIVO: ${archivos.length} docs, isLid=${isLid}`);
-
-    // Text with all markers removed and trimmed
-    const textPart = reply
-        .replace(photoRegex, '')
-        .replace(archivoRegex, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
-
-    // For @lid contacts, get the Chat object — ww.sendMessage(@lid) silently fails for media
-    let chat = null;
-    if (isLid) {
-        try {
-            chat = await ww.getChatById(to);
-        } catch (e) {
-            console.error(`[worker:${clientId}] PHOTO: getChatById failed: ${e.message}`);
+        const msgId = msg.id?._serialized || '';
+        if (msgId && recentMsgIds.has(msgId)) return;
+        if (msgId) {
+            recentMsgIds.add(msgId);
+            setTimeout(() => recentMsgIds.delete(msgId), 300_000);
         }
-    }
 
-    // Helper: send to the right place
-    const sendMsg = async (content, opts) => {
-        if (chat) {
-            await chat.sendMessage(content, opts || {});
-        } else if (originalMsg && isLid) {
-            await originalMsg.reply(content);
-        } else {
-            await ww.sendMessage(to, content, opts || {});
-        }
-    };
+        console.log(`[worker:${clientId}] OWNER self-msg: "${body.substring(0, 60)}"`);
 
-    // Send text portion
-    if (textPart) {
-        await sendMsg(textPart);
-    }
-
-    // Send each photo as media attachment
-    for (const url of photoUrls) {
         try {
-            console.log(`[worker:${clientId}] PHOTO: downloading ${url}`);
-            const { data, mimetype } = await downloadImageAsBase64(url);
-
-            const media = new MessageMedia(mimetype, data, url.split('/').pop());
-            await sendMsg(media);
-            console.log(`[worker:${clientId}] PHOTO: sent OK`);
-        } catch (e) {
-            console.error(`[worker:${clientId}] PHOTO FAIL ${url}: ${e.message}`);
-            // Fallback: send URL as clickable link so user can at least see the photo
-            try {
-                await sendMsg(`📷 Ver foto: ${url}`);
-            } catch (_) {}
-        }
-    }
-
-    // Send each document as a file attachment
-    for (const archivo of archivos) {
-        try {
-            console.log(`[worker:${clientId}] ARCHIVO: downloading ${archivo.url}`);
-            const response = await fetch(archivo.url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const buffer   = await response.arrayBuffer();
-            const b64      = Buffer.from(buffer).toString('base64');
-            const mime     = response.headers.get('content-type') || 'application/octet-stream';
-            const safeName = archivo.filename.replace(/[^\w.\-]/g, '_') || 'documento';
-            const media = new MessageMedia(mime, b64, safeName);
-            await sendMsg(media, { sendMediaAsDocument: true });
-            console.log(`[worker:${clientId}] ARCHIVO: sent OK — ${safeName}`);
-        } catch (e) {
-            console.error(`[worker:${clientId}] ARCHIVO FAIL ${archivo.url}: ${e.message}`);
-            try {
-                await sendMsg(`📄 Ver documento: ${archivo.url}`);
-            } catch (_) {}
-        }
-    }
-}
-
-// ── Profile pic + name backfill ──────────────────────────────────────────────
-// Runs once on startup. Fetches profile pics and push names for all existing
-// leads that are missing them in the DB.
-async function backfillLeadInfo() {
-    console.log(`[worker:${clientId}] Backfill: fetching leads needing info...`);
-    let resp;
-    try {
-        resp = await callApi('/api/leads-needing-backfill', { client_id: parseInt(clientId, 10) });
-    } catch (e) {
-        console.error(`[worker:${clientId}] Backfill: API failed: ${e.message}`);
-        return;
-    }
-    if (!resp || !Array.isArray(resp.leads) || resp.leads.length === 0) {
-        console.log(`[worker:${clientId}] Backfill: nothing to update`);
-        return;
-    }
-    console.log(`[worker:${clientId}] Backfill: checking ${resp.leads.length} leads...`);
-    const updates = [];
-    for (const lead of resp.leads) {
-        const phone = lead.phone;
-        if (!phone) continue;
-        try {
-            const chatId = phone + '@c.us';
-            const contact = await ww.getContactById(chatId);
-            const name = contact ? (contact.pushname || contact.name || '') : '';
-            let picUrl = '';
-            try { picUrl = await ww.getProfilePicUrl(chatId) || ''; } catch (_) {}
-            if (name || picUrl) {
-                updates.push({ lead_id: lead.id, contact_name: name, profile_pic_url: picUrl });
-                console.log(`[worker:${clientId}] Backfill: ${phone} → name="${name}" pic=${picUrl ? 'yes' : 'no'}`);
-            }
-        } catch (_) {}
-        // Small delay to avoid hammering WhatsApp
-        await new Promise(r => setTimeout(r, 500));
-    }
-    if (updates.length > 0) {
-        try {
-            await callApi('/api/apply-lead-backfill', { client_id: parseInt(clientId, 10), updates });
-            console.log(`[worker:${clientId}] Backfill: applied ${updates.length} updates`);
-        } catch (e) {
-            console.error(`[worker:${clientId}] Backfill: apply failed: ${e.message}`);
-        }
-    } else {
-        console.log(`[worker:${clientId}] Backfill: no contacts resolved`);
-    }
-}
-
-// ── LID → real phone resolver ─────────────────────────────────────────────────
-// Runs once on startup. Finds all leads/messages with LID-format phone numbers
-// (15-digit internal WA IDs) and resolves them to real phone numbers via WA.
-async function resolveLidPhones() {
-    console.log(`[worker:${clientId}] LID resolver: querying unresolved LIDs...`);
-    let resp;
-    try {
-        resp = await callApi('/api/resolve-lids', { client_id: parseInt(clientId, 10) });
-    } catch (e) {
-        console.error(`[worker:${clientId}] LID resolver: API failed: ${e.message}`);
-        return;
-    }
-    if (!resp || !Array.isArray(resp.lids) || resp.lids.length === 0) {
-        console.log(`[worker:${clientId}] LID resolver: nothing to resolve`);
-        return;
-    }
-    console.log(`[worker:${clientId}] LID resolver: trying ${resp.lids.length} LIDs...`);
-    const resolved = [];
-    for (const lid of resp.lids) {
-        try {
-            // IMPORTANT: contact.number for @lid contacts returns the LID digits back.
-            // Only getContactLidAndPhone().pn gives the real phone number.
-            const results = await ww.getContactLidAndPhone([lid + '@lid']);
-            const pn = results?.[0]?.pn || '';
-            const phone = pn.replace(/@.*/, '').replace(/[^0-9]/g, '');
-            if (phone.length >= 7 && phone.length <= 15 && phone !== lid) {
-                resolved.push({ lid, phone });
-                console.log(`[worker:${clientId}] LID resolved: ${lid} -> ${phone}`);
-            } else {
-                console.log(`[worker:${clientId}] LID unresolvable: ${lid} (pn="${pn}")`);
-            }
-        } catch (e) {
-            console.log(`[worker:${clientId}] LID resolver error for ${lid}: ${e.message}`);
-        }
-        await new Promise(r => setTimeout(r, 400));
-    }
-    if (resolved.length > 0) {
-        try {
-            await callApi('/api/apply-lid-resolutions', { client_id: parseInt(clientId, 10), resolved });
-            console.log(`[worker:${clientId}] LID resolver: applied ${resolved.length} updates`);
-        } catch (e) {
-            console.error(`[worker:${clientId}] LID resolver: apply failed: ${e.message}`);
-        }
-    } else {
-        console.log(`[worker:${clientId}] LID resolver: 0/${resp.lids.length} resolved -- WhatsApp has not mapped these yet`);
-    }
-}
-
-// ── HTTPS API caller ──────────────────────────────────────────────────────────
-function callApi(apiPath, payload) {
-    return new Promise((resolve, reject) => {
-        const body = JSON.stringify(payload);
-        const opts = {
-            hostname:           MIA_API_HOST,
-            port:               MIA_API_PORT,
-            path:               apiPath,
-            method:             'POST',
-            rejectUnauthorized: false,
-            headers: {
-                'Content-Type':   'application/json',
-                'Content-Length': Buffer.byteLength(body),
-                'X-Mia-Bot-Key':  MIA_BOT_SECRET,
-            },
-        };
-        const req = https.request(opts, (res) => {
-            let data = '';
-            res.on('data', (c) => data += c);
-            res.on('end', () => {
-                try {
-                    const json = JSON.parse(data);
-                    if (!json.success) reject(new Error(json.error || 'API error'));
-                    else resolve(json);   // return full JSON so callers can read any field
-                } catch (e) {
-                    reject(new Error('Invalid JSON: ' + data.substring(0, 100)));
-                }
+            const resp = await callApi('/api/client-chat', {
+                from:          msg.from,
+                phone:         msg.from.replace('@c.us', '').replace(/[^0-9]/g, ''),
+                lid:           '',
+                message:       body,
+                client_id:     parseInt(clientId, 10),
+                contact_name:  'Owner',
+                is_owner_self: true,
             });
-        });
-        req.on('error', reject);
-        req.setTimeout(20000, () => { req.destroy(); reject(new Error('API timeout')); });
-        req.write(body);
-        req.end();
+            const reply = resp && resp.reply;
+            if (reply) {
+                await ww.sendMessage(msg.from, '[Mia] ' + reply);
+                console.log(`[worker:${clientId}] OWNER REPLY: ${reply.substring(0, 60)}`);
+            }
+        } catch (e) {
+            console.error(`[worker:${clientId}] Owner API error: ${e.message}`);
+        }
     });
-}
+
