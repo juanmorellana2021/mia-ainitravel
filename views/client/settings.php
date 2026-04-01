@@ -140,6 +140,14 @@ $_obStep      = $_hasWa ? 3 : ($_hasBotCfg ? 2 : 1);
                            placeholder="+51 999 888 777">
                 </div>
 
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted">Tu número personal (modo dueño)</label>
+                    <input type="text" name="owner_phone" class="form-control"
+                           value="<?= htmlspecialchars($cfg['owner_phone'] ?? '') ?>"
+                           placeholder="51999888777">
+                    <div class="form-text">Si le escribes al bot desde tu número personal, te responderá como asistente (no como cliente). Solo dígitos, con código de país.</div>
+                </div>
+
                 <div class="mb-0">
                     <label class="form-label small fw-semibold text-muted">Email de cuenta</label>
                     <input type="email" class="form-control bg-light"

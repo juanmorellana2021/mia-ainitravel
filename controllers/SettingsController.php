@@ -103,6 +103,7 @@ class SettingsController
         $seatError    = $_SESSION['seat_error']   ?? null; unset($_SESSION['seat_error']);
         $seatSuccess  = $_SESSION['seat_success'] ?? null; unset($_SESSION['seat_success']);
         $isOwner      = empty($_SESSION['mia_seat_id']);
+        $cfg          = json_decode($client->bot_config ?? '{}', true) ?: [];
 
         require __DIR__ . '/../views/client/settings.php';
     }
@@ -169,6 +170,7 @@ class SettingsController
             'notify_daily_summary'=> $_POST['notify_daily_summary']?? 0,
             'hours_enabled'       => $_POST['hours_enabled']       ?? 0,
             'hours_config'        => $hoursConfig,
+            'owner_phone'         => $_POST['owner_phone']         ?? '',
         ]);
 
         header('Location: ' . App::basePath() . '/dashboard/settings?saved=1');

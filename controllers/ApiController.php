@@ -180,30 +180,50 @@ class ApiController
         }
         // ─────────────────────────────────────────────────────────────────────
 
-        // ── Owner bypass: skip pause check if the sender is the account owner ──
-        $ownerPhoneStored = preg_replace('/[^0-9]/', '', $client->phone ?? '');
+        // ── Path 2: Owner personal-phone message ─────────────────────────────
+        // Check if incoming phone matches owner_phone (from bot_config) or client->phone.
+        // If so, route directly to processOwner() — bypasses lead lookup + ignored check.
         $incomingNorm     = preg_replace('/[^0-9]/', '', $phone);
-        // Match with or without a 2-digit country code prefix (e.g. 938118436 == 51938118436)
-        $isOwner = $ownerPhoneStored !== '' && (
-            $incomingNorm === $ownerPhoneStored ||
-            $incomingNorm === '51' . $ownerPhoneStored ||
-            substr($incomingNorm, 2) === $ownerPhoneStored
+        $cfg              = json_decode($client->bot_config ?? '{}', true) ?: [];
+        $ownerPersonal    = preg_replace('/[^0-9]/', '', $cfg['owner_phone'] ?? '');
+        $ownerBiz         = preg_replace('/[^0-9]/', '', $client->phone ?? '');
+        // Match with/without 2-digit country code prefix (51938118436 == 938118436)
+        $phoneMatches = fn(string $stored) => $stored !== '' && (
+            $incomingNorm === $stored ||
+            $incomingNorm === '51' . $stored ||
+            substr($incomingNorm, 2) === $stored
         );
+        // Only treat as owner if personal phone is set AND it differs from the business WA number
+        // (if same number as biz, they'd use Saved Messages / is_owner_self path above)
+        $isOwner = ($ownerPersonal !== '' && $ownerPersonal !== $ownerBiz && $phoneMatches($ownerPersonal));
+
+        if ($isOwner) {
+            error_log("[ClientBot:{$clientId}] Owner personal phone {$phone} — routing to processOwner()");
+            try {
+                $service = new ClientBotService($client);
+                $result  = $service->processOwner($message);
+                echo json_encode(['success' => true, 'reply' => $result['reply'] ?? ''], JSON_UNESCAPED_UNICODE);
+            } catch (Throwable $e) {
+                error_log("[ClientBot:{$clientId}] Owner error: " . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            }
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         // ── Human takeover check — bot paused? ───────────────────────────────
-        if (!$isOwner) {
-            require_once __DIR__ . '/../services/ClientLeadService.php';
-            $leadSvc      = new ClientLeadService();
-            $leadForPause = $leadSvc->findByPhoneOrLid($clientId, $phone, $fromLid);
-            if ($leadForPause && $leadForPause->bot_paused_until) {
-                $pausedUntil = strtotime($leadForPause->bot_paused_until);
-                if ($pausedUntil && $pausedUntil > time()) {
-                    // Save inbound message to CRM but return no bot reply
-                    $leadSvc->saveMessage($clientId, $leadForPause->id, $phone ?: $fromLid, $message, 'inbound', 'bot');
-                    error_log("[ClientBot:{$clientId}] Bot paused for lead {$leadForPause->id} until {$leadForPause->bot_paused_until} — skipping AI.");
-                    echo json_encode(['success' => true, 'reply' => '', 'bot_paused' => true], JSON_UNESCAPED_UNICODE);
-                    return;
-                }
+        require_once __DIR__ . '/../services/ClientLeadService.php';
+        $leadSvc      = new ClientLeadService();
+        $leadForPause = $leadSvc->findByPhoneOrLid($clientId, $phone, $fromLid);
+        if ($leadForPause && $leadForPause->bot_paused_until) {
+            $pausedUntil = strtotime($leadForPause->bot_paused_until);
+            if ($pausedUntil && $pausedUntil > time()) {
+                // Save inbound message to CRM but return no bot reply
+                $leadSvc->saveMessage($clientId, $leadForPause->id, $phone ?: $fromLid, $message, 'inbound', 'bot');
+                error_log("[ClientBot:{$clientId}] Bot paused for lead {$leadForPause->id} until {$leadForPause->bot_paused_until} — skipping AI.");
+                echo json_encode(['success' => true, 'reply' => '', 'bot_paused' => true], JSON_UNESCAPED_UNICODE);
+                return;
             }
         }
         // ─────────────────────────────────────────────────────────────────────

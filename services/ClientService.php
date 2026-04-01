@@ -135,6 +135,8 @@ class ClientService
             // Business hours
             'hours_enabled'  => !empty($data['hours_enabled']),
             'hours_config'   => $data['hours_config'] ?? [],
+            // Owner personal phone for owner-mode bypass
+            'owner_phone'    => preg_replace('/[^0-9]/', '', $data['owner_phone'] ?? ''),
         ], JSON_UNESCAPED_UNICODE);
 
         $stmt = $this->db->prepare(
